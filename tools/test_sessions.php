@@ -14,6 +14,8 @@ require __DIR__ . '/../bootstrap/app.php';
 
 use App\Core\Database;
 
+require __DIR__ . '/_test_credentials.php';
+
 $base = $argv[1] ?? 'http://127.0.0.1:8090';
 $cookieFile = tempnam(sys_get_temp_dir(), 'bk_cookie');
 
@@ -117,7 +119,7 @@ check(
 );
 
 [$st, $body] = req('POST', "$base/api/login", [
-    'body' => json_encode(['email' => 'mehedi@gmail.com', 'password' => 'admin123']),
+    'body' => test_login_json(),
     'contentType' => 'application/json',
     'headers' => ["X-CSRF-TOKEN: $csrf"],
 ]);

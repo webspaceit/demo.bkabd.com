@@ -87,12 +87,15 @@ npx tailwindcss@3.4.17 -c tailwind.config.js -i resources/css/app.css -o public/
 - DB: `oop_exam` on localhost, root, empty password (config in `.env`).
   It holds the original sample data imported from `testdform`
   (115,765 students, 2,940 institutes, 226 centers, 229 users).
-- Logins (password set by `tools/set_sample_login.php`; change after import):
-  - `mehedi@gmail.com / admin123` — role "Admin Pro", full access
-  - `admin@gmail.com / admin123` — role "Admin"
+- Logins (no password ships in the repo — it is generated locally):
+  - `mehedi@gmail.com` — role "Admin Pro", full access
+  - `admin@gmail.com` — role "Admin"
+  Run `php tools/set_sample_login.php` to set a strong password on these
+  accounts; it writes it to `.env` (`TEST_ADMIN_PASSWORD`) for `tools/test_*.php`.
+  Rotate any account any time with `php tools/set_password.php <email>`.
 - A fresh install instead of the sample data uses
-  `database/schema.sql` → `seed_data.sql` → `demo_seed.sql`
-  (demo logins `admin@bkabd.com / admin123`, `center@bkabd.com / center123`).
+  `database/schema.sql` → `seed_data.sql` → `demo_seed.sql`. The demo seed ships
+  **no usable password** — set one with `php tools/set_password.php admin@bkabd.com`.
 
 ## Security fixes over the original
 
@@ -112,6 +115,14 @@ npx tailwindcss@3.4.17 -c tailwind.config.js -i resources/css/app.css -o public/
    original's encrypted value can reach this app. `Session::start()` now discards
    a foreign/malformed id (and enables `session.use_strict_mode`) instead of
    letting `session_start()` emit a warning and fail.
+9. No default credentials. Fresh-install seeds ship **no usable password**; rotate
+   any account with `php tools/set_password.php <email>`, and known default
+   passwords are refused outside local dev (`BLOCK_DEFAULT_PASSWORDS`).
+10. No JWT and no client-side tokens. Auth is a server-side session cookie
+    (`bkabd_session`); the `token` in the login response is a random value kept
+    in the session and is never written to `localStorage`/`sessionStorage`.
+11. API secrets stay server-side. The SMS key is read from `.env` by `SmsService`
+    and never sent to the browser; a placeholder/empty key refuses to send.
 
 ## Deployment
 

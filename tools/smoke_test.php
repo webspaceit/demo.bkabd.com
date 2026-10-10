@@ -4,6 +4,8 @@
  * Usage: php tools/smoke_test.php [base_url]
  */
 
+require __DIR__ . '/_test_credentials.php';
+
 $base = $argv[1] ?? 'http://127.0.0.1:8090';
 $cookieFile = tempnam(sys_get_temp_dir(), 'bk_cookie');
 
@@ -61,7 +63,7 @@ check('CSRF token present', $csrf !== '');
 
 // 2. Wrong password -> 401 {status:errors}
 [$st, $body] = req('POST', "$base/api/login", [
-    'body' => json_encode(['email' => 'mehedi@gmail.com', 'password' => 'wrong']),
+    'body' => json_encode(['email' => test_admin_email(), 'password' => 'wrong']),
     'contentType' => 'application/json',
     'headers' => ["X-CSRF-TOKEN: $csrf"],
 ]);
@@ -69,7 +71,7 @@ check('POST /api/login bad creds -> 401', $st === 401 && str_contains($body, 'er
 
 // 3. Correct login
 [$st, $body] = req('POST', "$base/api/login", [
-    'body' => json_encode(['email' => 'mehedi@gmail.com', 'password' => 'admin123']),
+    'body' => test_login_json(),
     'contentType' => 'application/json',
     'headers' => ["X-CSRF-TOKEN: $csrf"],
 ]);

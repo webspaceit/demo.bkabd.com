@@ -29,8 +29,15 @@ final class SmsService
             return 'DRY_RUN_OK';
         }
 
+        $apiKey = (string) Config::get('SMS_API_KEY', '');
+        if ($apiKey === '' || strtoupper($apiKey) === 'CHANGE_ME') {
+            // The key lives only in .env; never fall back to a built-in value.
+            error_log('[sms] SMS_API_KEY is not configured (placeholder/empty) — refusing to send.');
+            return false;
+        }
+
         $data = [
-            'api_key' => (string) Config::get('SMS_API_KEY', ''),
+            'api_key' => $apiKey,
             'type' => 'text',
             'contacts' => $number,
             'senderid' => $useMask

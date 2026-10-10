@@ -1,3 +1,14 @@
 <?php
-echo "admin123: " . password_hash('admin123', PASSWORD_BCRYPT) . "\n";
-echo "center123: " . password_hash('center123', PASSWORD_BCRYPT) . "\n";
+/**
+ * Print a bcrypt hash for a password (for manual seed edits).
+ *
+ * Usage: php tools/gen_hash.php <password>
+ */
+require __DIR__ . '/../bootstrap/app.php';
+
+$pw = (string) ($argv[1] ?? '');
+if ($pw === '') {
+    fwrite(STDERR, "usage: php tools/gen_hash.php <password>\n");
+    exit(1);
+}
+echo password_hash($pw, PASSWORD_DEFAULT) . "\n";

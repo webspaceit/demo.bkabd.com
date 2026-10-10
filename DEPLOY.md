@@ -68,7 +68,8 @@ chmod **755** (775 if the host requires it). The app writes logs and cache there
 
 ### 7. Verify
 - Visit `https://yourdomain.com/login` — login page renders.
-- Log in (with `demo_seed.sql`: `admin@bkabd.com / admin123`), click through the sidebar.
+- Log in (`demo_seed.sql` ships no default password — run
+  `php tools/set_password.php admin@bkabd.com` first), click through the sidebar.
 - A broken page? Check `oop-exam/storage/logs/error.log`.
 
 ## Host requirements

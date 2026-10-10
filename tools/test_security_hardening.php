@@ -38,6 +38,8 @@ use App\Core\Totp;
 use App\Models\User;
 use App\Services\ReportSheetService;
 
+require __DIR__ . '/_test_credentials.php';
+
 $base = rtrim($argv[1] ?? 'http://127.0.0.1:8090', '/');
 $failures = 0;
 
@@ -194,7 +196,7 @@ if (!dbUp()) {
     check('ReportSheetService::rows(center=45) returns only center-3 rows', $allOwn && count($leak) > 0, 'count=' . count($leak));
 
     // Admin bypass.
-    $adminRow = Database::selectOne("SELECT `id` FROM `users` WHERE `email` = ? LIMIT 1", ['mehedi@gmail.com']);
+    $adminRow = Database::selectOne("SELECT `id` FROM `users` WHERE `email` = ? LIMIT 1", [test_admin_email()]);
     if ($adminRow === null) {
         echo "SKIP  admin bypass (no admin fixture)\n";
     } else {
@@ -204,8 +206,8 @@ if (!dbUp()) {
         check('admin assertInstituteAccess(467) passes', !throwsHttp(fn() => Auth::assertInstituteAccess(467), 403));
         check('admin assertStudentAccess(other) passes', !throwsHttp(fn() => Auth::assertStudentAccess([$sOther]), 403));
 
-        $adminHash = Database::selectOne("SELECT `password` FROM `users` WHERE `email` = ? LIMIT 1", ['mehedi@gmail.com']);
-        check('admin hash verifies the demo password', $adminHash !== null && password_verify('admin123', $adminHash['password']));
+        $adminHash = Database::selectOne("SELECT `password` FROM `users` WHERE `email` = ? LIMIT 1", [test_admin_email()]);
+        check('admin hash verifies the configured test password', $adminHash !== null && password_verify(test_admin_password(), $adminHash['password']));
     }
     setAuthUser(null);
 }
@@ -368,7 +370,7 @@ if (!httpUp($base)) {
     try {
         $csrf = fetchCsrf($base);
         [$st, , $body] = httpReq('POST', "$base/api/login", [
-            'body' => ['email' => 'mehedi@gmail.com', 'password' => 'admin123'],
+            'body' => test_login_array(),
             'headers' => ["X-CSRF-TOKEN: $csrf"],
         ]);
         check('admin login ok', $st === 200, "status=$st body=$body");

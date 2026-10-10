@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\Config;
 use App\Core\Database;
 use App\Core\HttpException;
 use App\Core\RateLimiter;
@@ -49,6 +50,13 @@ class AuthController extends Controller
         $user = Auth::credentials($email, $password);
         if ($user === null) {
             Response::json(['status' => 'errors'], Auth::loginFailureCode($email));
+        }
+
+        // Refuse known default/weak passwords outside local dev (rotate with
+        // `php tools/set_password.php <email>`). Override by setting
+        // BLOCK_DEFAULT_PASSWORDS=false in .env.
+        if (self::isKnownDefaultPassword($password) && self::blockDefaultPasswords()) {
+            throw new HttpException(422, 'This account still uses a default password. An administrator must rotate it (php tools/set_password.php ' . $email . ') before you can sign in.');
         }
 
         // Account has MFA enabled: issue a short-lived challenge, do NOT log in.
@@ -223,5 +231,20 @@ class AuthController extends Controller
         if (!Auth::isAdmin()) {
             Response::json(['message' => 'This action is unauthorized.'], 403);
         }
+    }
+
+    /** Passwords that must never be accepted in production. */
+    private static function isKnownDefaultPassword(string $password): bool
+    {
+        static $defaults = [
+            'admin123', 'center123', 'password', 'admin', 'administrator',
+            '123456', '12345678', 'qwerty', 'letmein', 'welcome', 'changeme',
+        ];
+        return in_array(strtolower(trim($password)), $defaults, true);
+    }
+
+    private static function blockDefaultPasswords(): bool
+    {
+        return Config::getBool('BLOCK_DEFAULT_PASSWORDS', Config::get('APP_ENV', 'production') !== 'local');
     }
 }

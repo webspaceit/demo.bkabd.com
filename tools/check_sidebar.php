@@ -1,5 +1,7 @@
 <?php
 /** Authenticated sidebar link check: prints status for every sidebar path. */
+require __DIR__ . '/_test_credentials.php';
+
 $base = 'http://127.0.0.1:8090';
 $paths = ['/', '/student-registration', '/students', '/institute-registration', '/institutes',
     '/centers', '/divisions', '/districts', '/upazilas', '/sms', '/markentry', '/gradeassign',
@@ -32,7 +34,7 @@ function req(string $method, string $url, array $post = [], string $cookie = '')
 preg_match('/name="_token" value="([^"]+)"/', $loginPage, $m);
 $token = $m[1] ?? '';
 [$s] = req('POST', "$base/api/login",
-    ['email' => 'mehedi@gmail.com', 'password' => 'admin123', '_token' => $token, 'remember' => ''], $cookie);
+    test_login_array() + ['_token' => $token, 'remember' => ''], $cookie);
 
 $ok = 0; $bad = [];
 foreach ($paths as $p) {

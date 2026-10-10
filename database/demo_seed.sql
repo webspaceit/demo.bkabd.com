@@ -1,14 +1,14 @@
 -- =============================================================
 -- Demo data for oop_exam (safe to skip in production import).
--- Credentials:
---   admin@bkabd.com  / admin123   (admin, type=1, role "Super Admin")
---   center@bkabd.com / center123  (center user, type=4, role "Center")
+-- No default password is shipped. After importing, set one with:
+--   php tools/set_password.php admin@bkabd.com    (admin, type=1, role "Super Admin")
+--   php tools/set_password.php center@bkabd.com   (center user, type=4, role "Center")
 -- =============================================================
 
 -- Demo users -----------------------------------------------------
 INSERT INTO `users` (`id`, `name`, `email`, `phone`, `password`, `type`, `created_at`, `updated_at`) VALUES
-(1, 'Super Admin',  'admin@bkabd.com',  '01700000000', '$2y$10$tvDD/OvMfwg7y9hJf6gwNO2uHEXv8xvGzylob7yoFh.MdTLKQ0xbm', 1, NOW(), NOW()),
-(2, 'Center User',  'center@bkabd.com', '01700000001', '$2y$10$ZyEQMT6sMbpYFPwwXouay.fvSGMq4Wx9H3uuVxHZlPob6yYQG/tte', 4, NOW(), NOW());
+(1, 'Super Admin',  'admin@bkabd.com',  '01700000000', '$2y$12$lsqZk9OWwZa5A3vv5E1QJuJoY2fhUAePOoWkvTSXM0Ex2CWsLkuEG', 1, NOW(), NOW()),
+(2, 'Center User',  'center@bkabd.com', '01700000001', '$2y$12$lsqZk9OWwZa5A3vv5E1QJuJoY2fhUAePOoWkvTSXM0Ex2CWsLkuEG', 4, NOW(), NOW());
 
 -- RBAC assignments (roles 5=Super Admin, 4=Center from seed) ----
 INSERT INTO `model_has_roles` (`role_id`, `model_type`, `model_id`) VALUES

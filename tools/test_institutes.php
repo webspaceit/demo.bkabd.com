@@ -4,6 +4,8 @@
  * Usage: php tools/test_institutes.php [base_url]
  */
 
+require __DIR__ . '/_test_credentials.php';
+
 $base = $argv[1] ?? 'http://127.0.0.1:8090';
 $cookieFile = tempnam(sys_get_temp_dir(), 'bk_inst');
 
@@ -70,7 +72,7 @@ $csrf = $m[1] ?? '';
 check('CSRF token present', $csrf !== '', 'no token');
 
 [$st, $body] = req('POST', "$base/api/login", [
-    'body' => json_encode(['email' => 'mehedi@gmail.com', 'password' => 'admin123']),
+    'body' => test_login_json(),
     'headers' => ["X-CSRF-TOKEN: $csrf"],
 ]);
 check('POST /api/login ok', $st === 200, "status=$st");

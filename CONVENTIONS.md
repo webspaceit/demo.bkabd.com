@@ -199,8 +199,9 @@ REM rebuild CSS after adding classes (rare):
 npx tailwindcss@3.4.17 -c tailwind.config.js -i resources/css/app.css -o public/assets/css/app.css --minify
 ```
 
-Sample-data logins: `mehedi@gmail.com/admin123` (full access), `admin@gmail.com/admin123`.
-Fresh-install demo logins: `admin@bkabd.com/admin123`, `center@bkabd.com/center123`.
+Sample-data login: `mehedi@gmail.com` (full access) — set/rotate its password with
+`php tools/set_sample_login.php`; it records the value in `.env` as `TEST_ADMIN_PASSWORD`.
+Fresh installs ship **no** default password — set one with `php tools/set_password.php <email>`.
 DB: `oop_exam` on localhost, root, empty password (holds the original `testdform` data).
 
 ## Source of truth

@@ -8,6 +8,8 @@
  * literal bug that made roleWisePermissionList return [].
  */
 
+require __DIR__ . '/_test_credentials.php';
+
 $base = $argv[1] ?? 'http://127.0.0.1:8090';
 $jar = tempnam(sys_get_temp_dir(), 'bk_ur');
 $failures = 0;
@@ -55,7 +57,7 @@ function check(string $label, bool $ok, string $detail = ''): void
 [, , $body] = req('GET', "$base/login");
 preg_match('/name="csrf-token" content="([a-f0-9]+)"/', $body, $m);
 $csrf = $m[1] ?? '';
-[$st, , $body] = req('POST', "$base/api/login", ['email' => 'mehedi@gmail.com', 'password' => 'admin123']);
+[$st, , $body] = req('POST', "$base/api/login", test_login_array());
 check('admin login ok', $st === 200, "status=$st body=$body");
 
 // ---- /api/roleList -------------------------------------------------------
@@ -92,7 +94,7 @@ $users = $j['userList'] ?? null;
 check('GET /api/userList -> {userList:[...]}', $st === 200 && is_array($users) && count($users) > 0, "status=$st body=" . substr($body, 0, 200));
 $withRole = null;
 foreach ((array) $users as $u) {
-    if (($u['email'] ?? '') === 'mehedi@gmail.com') {
+    if (($u['email'] ?? '') === test_admin_email()) {
         $withRole = $u;
         break;
     }
