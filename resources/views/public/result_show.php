@@ -139,19 +139,19 @@ $mTh = 'border border-black px-2 py-1';
         <table class="mt-5 w-full text-center text-xs">
             <tr>
                 <td class="p-2 align-top">
-                    <img src="/assets/img/result/sign-monowara.png" alt="" class="mx-auto h-10 w-auto"><br>
+                    <img src="<?= e(result_signature('chairman')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
                     MONOWARA BHUIYAN<br>Chairman
                 </td>
                 <td class="p-2 align-top">
-                    <img src="/assets/img/result/sign-mizanur.png" alt="" class="mx-auto h-10 w-auto"><br>
+                    <img src="<?= e(result_signature('general_secretary')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
                     MD. MIZANUR RAHMAN<br>General Secretary
                 </td>
                 <td class="p-2 align-top">
-                    <img src="/assets/img/result/sign-faruk.png" alt="" class="mx-auto h-10 w-auto"><br>
+                    <img src="<?= e(result_signature('controller')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
                     MD. FARUK HOSSEN<br>Controller of Exam
                 </td>
                 <td class="p-2 align-top">
-                    <img src="/assets/img/result/sign-alim.png" alt="" class="mx-auto h-10 w-auto"><br>
+                    <img src="<?= e(result_signature('education_secretary')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
                     MD. ABDUL ALIM<br>Education Secretary
                 </td>
             </tr>

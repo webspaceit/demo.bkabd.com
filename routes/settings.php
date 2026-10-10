@@ -25,6 +25,8 @@ Router::post('/api/settings', [SettingController::class, 'store'], 'auth|permiss
 Router::get('/api/settings/{id}', [SettingController::class, 'show'], 'auth');
 Router::put('/api/settings/{id}', [SettingController::class, 'update'], 'auth|permission:setting-edit');
 Router::delete('/api/settings/{id}', [SettingController::class, 'destroy'], 'auth|permission:setting-edit');
+// Result-sheet signature uploads (multipart).
+Router::post('/api/settings/signatures', [SettingController::class, 'uploadSignatures'], 'auth|permission:setting-edit');
 
 // Roll/seat placement (state-changing → POST, original was GET)
 Router::post('/api/rollplace/{id}/{sta}', [SettingController::class, 'rollplace'], 'auth|permission:role-place');

@@ -6,6 +6,7 @@ use App\Core\Auth;
 use App\Core\Database;
 use App\Core\HttpException;
 use App\Core\Request;
+use App\Core\ValidationException;
 use App\Core\Validator;
 use App\Core\View;
 use App\Models\Rollplace;
@@ -30,6 +31,9 @@ use App\Models\Setting;
  */
 final class SettingController extends Controller
 {
+    /** Roles of the signatures printed on the result sheet. */
+    private const SIGNATURE_ROLES = ['chairman', 'general_secretary', 'controller', 'education_secretary'];
+
     // ---------------------------------------------------------------
     // API
     // ---------------------------------------------------------------
@@ -119,6 +123,56 @@ final class SettingController extends Controller
         Setting::deleteRow($id);
 
         return ['status' => 'success'];
+    }
+
+    /**
+     * POST /api/settings/signatures (multipart) — upload the four signatures
+     * printed at the bottom of the result sheet: chairman, general_secretary,
+     * controller, education_secretary. Each file is optional; an uploaded role
+     * overwrites any previous one. Saved to public/images/result-signatures/
+     * and served by the result_signature() helper (bundled default otherwise).
+     */
+    public function uploadSignatures(Request $request): array
+    {
+        $dir = BASE_PATH . '/public/images/result-signatures';
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            throw new HttpException(500, 'Could not store uploaded files');
+        }
+
+        $saved = [];
+        foreach (self::SIGNATURE_ROLES as $role) {
+            $file = $request->file($role);
+            if ($file === null || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+
+            $label = 'The ' . str_replace('_', ' ', $role) . ' signature';
+            $errors = [];
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                $errors[] = $label . ' failed to upload.';
+            } elseif (@getimagesize($file['tmp_name']) === false) {
+                $errors[] = $label . ' must be an image.';
+            } elseif (!in_array(strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION)), ['jpeg', 'png', 'jpg', 'gif'], true)) {
+                $errors[] = $label . ' must be a file of type: jpeg, png, jpg, gif.';
+            } elseif ((int) ($file['size'] ?? 0) > 1024 * 1024) {
+                $errors[] = $label . ' may not be greater than 1024 kilobytes.';
+            }
+            if ($errors !== []) {
+                throw new ValidationException([$role => $errors]);
+            }
+
+            // Replace any existing file for this role (possibly a different extension).
+            foreach (['png', 'jpg', 'jpeg', 'gif'] as $old) {
+                @unlink($dir . '/' . $role . '.' . $old);
+            }
+            $ext = strtolower(pathinfo((string) $file['name'], PATHINFO_EXTENSION));
+            if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $role . '.' . $ext)) {
+                throw new HttpException(500, 'Could not store the uploaded file');
+            }
+            $saved[] = $role;
+        }
+
+        return ['status' => 'success', 'saved' => $saved];
     }
 
     /**

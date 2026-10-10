@@ -327,3 +327,29 @@ if (!function_exists('form_close')) {
         return '</form>';
     }
 }
+
+if (!function_exists('result_signature')) {
+    /**
+     * URL for a result-sheet signature. Uses an uploaded file under
+     * public/images/result-signatures/<role>.<ext> when present (managed on
+     * /settings), otherwise the bundled default in public/assets/img/result/.
+     *
+     * Roles: chairman | general_secretary | controller | education_secretary.
+     */
+    function result_signature(string $role): string
+    {
+        static $bundled = [
+            'chairman'            => 'sign-monowara.png',
+            'general_secretary'   => 'sign-mizanur.png',
+            'controller'          => 'sign-faruk.png',
+            'education_secretary' => 'sign-alim.png',
+        ];
+        $base = BASE_PATH . '/public/images/result-signatures/' . $role;
+        foreach (['png', 'jpg', 'jpeg', 'gif'] as $ext) {
+            if (is_file($base . '.' . $ext)) {
+                return '/images/result-signatures/' . $role . '.' . $ext . '?v=' . filemtime($base . '.' . $ext);
+            }
+        }
+        return '/assets/img/result/' . ($bundled[$role] ?? 'logo.png');
+    }
+}

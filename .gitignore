@@ -24,9 +24,11 @@ Thumbs.db
 /storage/logs/*
 /storage/uploads/*
 /public/uploads/*
+/public/images/result-signatures/*
 !/storage/cache/.gitkeep
 !/storage/logs/.gitkeep
 !/storage/uploads/.gitkeep
 !/public/uploads/.gitkeep
+!/public/images/result-signatures/.gitkeep
 # .htaccess hardening for uploaded files must ship with the repo
 !/public/uploads/.htaccess

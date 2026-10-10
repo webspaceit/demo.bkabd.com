@@ -47,6 +47,41 @@ $canEdit = can('setting-edit');
                 </form>
             </div>
         </div>
+
+        <div class="card max-w-3xl">
+            <div class="card-header">Result Sheet Signatures</div>
+            <div class="card-body">
+                <p class="mb-4 text-sm text-slate-500">
+                    These appear at the bottom of the printed scholarship result sheet.
+                    Upload a file to replace an image; leave a field empty to keep the current one.
+                </p>
+                <form id="signature-form" novalidate>
+                    <?= csrf_field() ?>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <?php foreach ([
+                            'chairman'            => 'Chairman',
+                            'general_secretary'   => 'General Secretary',
+                            'controller'          => 'Controller of Exam',
+                            'education_secretary' => 'Education Secretary',
+                        ] as $sigRole => $sigLabel): ?>
+                            <div>
+                                <label class="label" for="sig-<?= e($sigRole) ?>"><?= e($sigLabel) ?></label>
+                                <div class="flex items-center gap-3">
+                                    <img src="<?= e(result_signature($sigRole)) ?>" alt="<?= e($sigLabel) ?> signature"
+                                         class="h-10 w-auto rounded bg-slate-50 p-0.5 ring-1 ring-slate-200">
+                                    <input type="file" id="sig-<?= e($sigRole) ?>" name="<?= e($sigRole) ?>" data-field="<?= e($sigRole) ?>"
+                                           accept="image/png,image/jpeg,image/gif" class="w-full text-xs">
+                                </div>
+                                <p class="field-error hidden" data-error-for="<?= e($sigRole) ?>"></p>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="mt-5">
+                        <button type="submit" class="btn btn-primary">Upload signatures</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     <?php endif; ?>
 </div>
 <script>
@@ -115,5 +150,17 @@ document.addEventListener('DOMContentLoaded', function () {
             BK.toast('Setting edited successfully', 'success');
         });
     });
+
+    const sigForm = document.getElementById('signature-form');
+    if (sigForm) {
+        sigForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            BK.submit(sigForm, async function () {
+                await BK.upload('/api/settings/signatures', new FormData(sigForm));
+                BK.toast('Signatures updated successfully', 'success');
+                window.location.reload();
+            });
+        });
+    }
 });
 </script>
