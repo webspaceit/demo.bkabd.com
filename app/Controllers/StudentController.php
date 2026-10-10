@@ -142,12 +142,7 @@ final class StudentController extends Controller
             return Response::redirect('/login');
         }
         $divisions  = (new Query('divisions'))->orderBy('name', 'asc')->get();
-        // RLS: center users see only their own center in the registration form.
-        $centersQuery = (new Query('centers'))->where('active', 1)->orderBy('id', 'asc');
-        if (!Auth::isAdmin() && Auth::centerId() !== null) {
-            $centersQuery->where('id', Auth::centerId());
-        }
-        $centers    = $centersQuery->get();
+        $centers    = $this->centerOptions();
         $sessions   = (new Query('sessions'))->orderBy('id', 'desc')->get();
         $oldDivId   = (int) (Session::get('old', [])['division_id'] ?? 0);
         $oldDistId  = (int) (Session::get('old', [])['district_id'] ?? 0);
@@ -169,6 +164,24 @@ final class StudentController extends Controller
             'classes'      => [1,2,3,4,5,6],
             'activeSession' => Auth::activeSession(),
         ], 'layouts.dashboard');
+    }
+
+    /**
+     * Center <option> rows for the registration / edit selects: id + display
+     * name. The `centers` table has no `name` column — the label is the centre
+     * account user's name (`centers.user_id` -> `users.name`). RLS: centre users
+     * get only their own centre.
+     */
+    private function centerOptions(): array
+    {
+        $q = (new Query('centers'))
+            ->select('centers.id', 'users.name as name')
+            ->join('users', 'users.id', '=', 'centers.user_id')
+            ->where('centers.active', 1);
+        if (!Auth::isAdmin() && Auth::centerId() !== null) {
+            $q->where('centers.id', Auth::centerId());
+        }
+        return $q->orderBy('users.name', 'asc')->get();
     }
 
     /** Register student. POST /api/students */
@@ -361,7 +374,7 @@ final class StudentController extends Controller
         Auth::assertStudentAccess($id);
 
         $divisions = (new Query('divisions'))->orderBy('name', 'asc')->get();
-        $centers = (new Query('centers'))->where('active', 1)->orderBy('id', 'asc')->get();
+        $centers = $this->centerOptions();
         $sessions = (new Query('sessions'))->orderBy('id', 'desc')->get();
 
         // Child lists filtered by the student's current values (mirrors
