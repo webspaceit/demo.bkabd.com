@@ -4,21 +4,28 @@ namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Database;
+use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
 use App\Models\Role;
-use App\Models\Permission;
 
 /**
  * Role controller — ported from original RoleController.
  *
- * Endpoint contracts (URL + JSON shape) identical to original routes/api.php.
- * Auth: 'auth' middleware; permission gates per original constructor strings.
+ * List/detail endpoints return the flat JSON the original Vue pages read
+ * (`roleList`, `role`, `rolePermissions`, `roleWisePermissionList`,
+ * `permissionList`); the create/update/delete actions keep the standard
+ * `{success,data,message}` envelope.
+ *
+ * NOTE: `model_has_roles`.`model_type` must be compared via a BOUND parameter
+ * ('App\\Models\\User'). MySQL treats a backslash inside a string literal as an
+ * escape, so an inline '\App\Models\User' collapses to 'AppModelsUser' and
+ * silently matches nothing — that bug made roleWisePermissionList return [].
  */
 final class RoleController extends Controller
 {
-    /** List roles with pagination. GET /api/roleList */
+    /** GET /api/roleList -> {roleList:[{id,name,guard_name}]} */
     public function index(Request $request): array
     {
         if (!Auth::isAdmin()) {
@@ -31,115 +38,80 @@ final class RoleController extends Controller
         if ($search) {
             $q->where('name', 'like', "%{$search}%");
         }
+        $q->orderBy('name', 'asc');
 
-        return $this->sendResponse(
-            $q->paginate((int) ($request->input('per_page', 20)), null, '/api/roleList'),
-            'Role list retrieved.'
-        );
+        return ['roleList' => $q->get()];
     }
 
-    /** Create role. POST /api/roleCreate */
+    /** GET /api/roleById/{id} -> {role:{id,name}, rolePermissions:[ids]} */
+    public function show(Request $request): array
+    {
+        $id = (int) $request->params['id'];
+        $role = Role::find($id);
+        if ($role === null) {
+            throw new HttpException(404, 'Role not found');
+        }
+
+        $perms = Database::select(
+            "SELECT p.`id` FROM `permissions` p
+               JOIN `role_has_permissions` rp ON rp.`permission_id` = p.`id`
+              WHERE rp.`role_id` = ?",
+            [$id]
+        );
+
+        return [
+            'role'            => ['id' => (int) $role['id'], 'name' => $role['name']],
+            'rolePermissions' => array_map('intval', array_column($perms, 'id')),
+        ];
+    }
+
+    /** POST /api/roleCreate (alias /api/roleSave) — body {name, permission:[ids]} */
     public function store(Request $request): array
     {
         if (!Auth::isAdmin()) {
             Response::json(['status' => 'errors'], 403);
         }
 
-        $rules = [
-            'name' => 'required|string|unique:roles,name',
-            'permission_ids' => 'required|array',
-            'permission_ids.*' => 'exists:permissions,id',
-        ];
+        $data = Validator::validate($request, [
+            'name'          => 'required|string|unique:roles,name',
+            'permission'    => 'array',
+            'permission.*'  => 'exists:permissions,id',
+        ]);
 
-        try {
-            $data = Validator::validate($request, $rules);
-        } catch (\App\Core\ValidationException $e) {
-            Response::validationError($e->errors, $e->getMessage());
-        }
-
-        // Begin transaction: create role + assign permissions
-        \App\Core\Database::transaction(function () use ($data) {
-            $role = Role::create(['name' => $data['name'], 'guard_name' => 'sanctum']);
-
-            // Sync permissions via role_has_permissions (many-to-many)
-            // First clear any existing permissions for this role
-            Database::delete('role_has_permissions', 'role_id = ?', [$role['id']]);
-
-            // Insert new permissions
-            $perms = array_values($data['permission_ids']);
-            foreach ($perms as $permId) {
-                Database::insert('role_has_permissions', [
-                    'permission_id' => (int) $permId,
-                    'role_id'       => (int) $role['id'],
-                ]);
-            }
+        $roleId = Database::transaction(function () use ($data) {
+            $id = Role::create(['name' => $data['name'], 'guard_name' => 'sanctum']);
+            $this->syncPermissions($id, $data['permission'] ?? []);
+            return $id;
         });
 
         return $this->sendResponse(
-            ['id' => $role['id'], 'name' => $data['name']],
+            ['id' => $roleId, 'name' => $data['name']],
             'Role registered successfully.'
         );
     }
 
-    /** View role. GET /api/roleById/{id} */
-    public function show(int $id): array
+    /** POST /api/roleUpdate/{id} — body {name, permission:[ids]} */
+    public function update(Request $request): array
     {
-        $role = Role::find($id);
-        if ($role === null) {
-            throw new \App\Core\HttpException(404, 'Role not found');
-        }
-
-        // Load assigned permissions
-        $perms = Database::select(
-            "SELECT p.* FROM `permissions` p
-               JOIN `role_has_permissions` rp ON rp.`permission_id` = p.`id`
-              WHERE rp.`role_id` = ?",
-            [$id]
-        );
-
-        $roleData = ['id' => $role['id'], 'name' => $role['name'], 'permissions' => $perms];
-
-        return $this->sendResponse($roleData, 'Role details retrieved.');
-    }
-
-    /** Update role. POST /api/roleUpdate/{id} */
-    public function update(Request $request, int $id): array
-    {
+        $id = (int) $request->params['id'];
         if (!Auth::isAdmin()) {
             Response::json(['status' => 'errors'], 403);
         }
 
         $role = Role::find($id);
         if ($role === null) {
-            throw new \App\Core\HttpException(404, 'Role not found');
+            throw new HttpException(404, 'Role not found');
         }
 
-        $rules = [
-            'name' => 'required|string|unique:roles,name,' . $id,
-            'permission_ids' => 'required|array',
-            'permission_ids.*' => 'exists:permissions,id',
-        ];
+        $data = Validator::validate($request, [
+            'name'          => 'required|string|unique:roles,name,' . $id,
+            'permission'    => 'array',
+            'permission.*'  => 'exists:permissions,id',
+        ]);
 
-        try {
-            $data = Validator::validate($request, $rules);
-        } catch (\App\Core\ValidationException $e) {
-            Response::validationError($e->errors, $e->getMessage());
-        }
-
-        // Begin transaction: update role + re-assign permissions
-        \App\Core\Database::transaction(function () use ($data, $id) {
+        Database::transaction(function () use ($data, $id) {
             Role::updateRow($id, ['name' => $data['name']]);
-
-            // Clear existing permissions and re-assign
-            Database::delete('role_has_permissions', 'role_id = ?', [$id]);
-
-            $perms = array_values($data['permission_ids']);
-            foreach ($perms as $permId) {
-                Database::insert('role_has_permissions', [
-                    'permission_id' => (int) $permId,
-                    'role_id'       => (int) $id,
-                ]);
-            }
+            $this->syncPermissions($id, $data['permission'] ?? []);
         });
 
         return $this->sendResponse(
@@ -148,31 +120,27 @@ final class RoleController extends Controller
         );
     }
 
-    /** Delete role. DELETE /api/roleDelete/{id} */
-    public function destroy(int $id): array
+    /** DELETE /api/roleDelete/{id} */
+    public function destroy(Request $request): array
     {
+        $id = (int) $request->params['id'];
         if (!Auth::isAdmin()) {
             Response::json(['status' => 'errors'], 403);
         }
 
         $role = Role::find($id);
         if ($role === null) {
-            throw new \App\Core\HttpException(404, 'Role not found');
+            throw new HttpException(404, 'Role not found');
         }
 
-        // Delete role and its permission assignments
         Database::delete('role_has_permissions', 'role_id = ?', [$id]);
-        Database::delete('model_has_roles', 'role_id = ?', [$id]); // clean orphaned model_has_roles
-
+        Database::delete('model_has_roles', 'role_id = ?', [$id]);
         Role::deleteRow($id);
 
-        return $this->sendResponse(
-            ['deleted' => true],
-            'Role deleted successfully.'
-        );
+        return $this->sendResponse(['deleted' => true], 'Role deleted successfully.');
     }
 
-    /** Role-wise permission list. GET /api/roleWisePermissionList */
+    /** GET /api/roleWisePermissionList -> {roleWisePermissionList:[{name}]} */
     public function roleWisePermissionList(): array
     {
         $id = Auth::id();
@@ -180,28 +148,41 @@ final class RoleController extends Controller
             Response::json(['status' => 'errors'], 401);
         }
 
+        // model_type is BOUND (not an inline literal) — see the class docblock.
         $rows = Database::select(
             "SELECT DISTINCT p.`name` AS name
                FROM `permissions` p
                JOIN `role_has_permissions` rp ON rp.`permission_id` = p.`id`
                JOIN `model_has_roles` mr ON mr.`role_id` = rp.`role_id`
-              WHERE mr.`model_type` = 'App\Models\User' AND mr.`model_id` = ?
+              WHERE mr.`model_type` = ? AND mr.`model_id` = ?
              UNION
              SELECT DISTINCT p.`name` AS name
                FROM `permissions` p
                JOIN `model_has_permissions` mp ON mp.`permission_id` = p.`id`
-              WHERE mp.`model_type` = 'App\Models\User' AND mp.`model_id` = ?",
-            [$id, $id]
+              WHERE mp.`model_type` = ? AND mp.`model_id` = ?",
+            ['App\\Models\\User', $id, 'App\\Models\\User', $id]
         );
 
-        return $this->sendResponse(['roleWisePermissionList' => array_column($rows, 'name')], 'Permission list retrieved.');
+        return ['roleWisePermissionList' => $rows];
     }
 
-    /** All permissions list. GET /api/permissionList */
+    /** GET /api/permissionList -> {permissionList:[{id,name,guard_name}]} */
     public function permissionList(): array
     {
-        $rows = Database::select('SELECT id, name, guard_name FROM `permissions` ORDER BY name');
+        $rows = Database::select('SELECT `id`, `name`, `guard_name` FROM `permissions` ORDER BY `name`');
 
-        return $this->sendResponse(array_column($rows, 'name', 'id'), 'Permission list retrieved.');
+        return ['permissionList' => $rows];
+    }
+
+    /** Replace a role's permission set (used by store/update). */
+    private function syncPermissions(int $roleId, array $permissionIds): void
+    {
+        Database::delete('role_has_permissions', 'role_id = ?', [$roleId]);
+        foreach (array_values($permissionIds) as $permId) {
+            Database::insert('role_has_permissions', [
+                'permission_id' => (int) $permId,
+                'role_id'       => $roleId,
+            ]);
+        }
     }
 }

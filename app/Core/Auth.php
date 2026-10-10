@@ -276,8 +276,8 @@ final class Auth
             "SELECT DISTINCT r.`name` AS name
                FROM `roles` r
                JOIN `model_has_roles` mr ON mr.`role_id` = r.`id`
-              WHERE mr.`model_type` = 'App\\Models\\User' AND mr.`model_id` = ?",
-            [$id]
+              WHERE mr.`model_type` = ? AND mr.`model_id` = ?",
+            ['App\\Models\\User', $id]
         );
         return array_column($rows, 'name');
     }

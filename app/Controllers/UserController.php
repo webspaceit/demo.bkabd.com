@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Database;
+use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
@@ -12,13 +13,18 @@ use App\Models\User;
 /**
  * User controller — ported from original UserController.
  *
- * Endpoint contracts (URL + JSON shape) identical to original routes/api.php.
- * Auth: 'auth' middleware on all routes (except permissionList which is public for role create/edit).
- * Passwords: hashed with password_hash() at create; never logged or exposed in JSON.
+ * The user pages read flat JSON: GET /api/userList -> {userList:[...]} and
+ * GET /api/userById/{id} -> {userById:{...,roles:<role id>}}. The form's role
+ * select is a Spatie role (model_has_roles), assigned here; `users.type`
+ * (0 = staff/admin, 4 = center) is a separate axis.
+ *
+ * Passwords: password_hash() at create/update; never logged or returned.
  */
 final class UserController extends Controller
 {
-    /** List users with pagination and optional search. GET /api/userList */
+    private const MODEL_USER = 'App\\Models\\User';
+
+    /** GET /api/userList -> {userList:[{id,name,email,phone,type,role_name}]} */
     public function index(Request $request): array
     {
         if (!Auth::isAdmin()) {
@@ -36,48 +42,68 @@ final class UserController extends Controller
             });
         }
 
-        // Optional filter by type (1=admin, 4=center)
+        // Optional filter by type (0/1/2/3 = staff, 4 = center)
         $type = $request->input('type');
-        if ($type !== null) {
+        if ($type !== null && $type !== '') {
             $q->where('type', (int) $type);
         }
 
-        return $this->sendResponse(
-            $q->paginate((int) ($request->input('per_page', 20)), null, '/api/userList'),
-            'User list retrieved.'
-        );
+        $rows = $q->orderBy('id', 'asc')->get();
+
+        // Attach each user's role name in one query (the list column shows it).
+        if ($rows !== []) {
+            $ids = array_map(static fn ($r) => (int) $r['id'], $rows);
+            $place = implode(',', array_fill(0, count($ids), '?'));
+            $roleRows = Database::select(
+                "SELECT mr.`model_id`, r.`name` AS role_name
+                   FROM `model_has_roles` mr
+                   JOIN `roles` r ON r.`id` = mr.`role_id`
+                  WHERE mr.`model_type` = ? AND mr.`model_id` IN ($place)",
+                array_merge([self::MODEL_USER], $ids)
+            );
+            $byUser = [];
+            foreach ($roleRows as $rr) {
+                $byUser[(int) $rr['model_id']] = $rr['role_name'];
+            }
+            foreach ($rows as &$r) {
+                $r['role_name'] = $byUser[(int) $r['id']] ?? '';
+            }
+            unset($r);
+        }
+
+        return ['userList' => $rows];
     }
 
-    /** Create user. POST /api/userCreate */
+    /** POST /api/userCreate (alias /api/userSave) */
     public function store(Request $request): array
     {
         if (!Auth::isAdmin()) {
             Response::json(['status' => 'errors'], 403);
         }
 
-        $rules = [
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|email|max:255|unique:users,email',
-            'phone'     => 'nullable|string|max:11',
-            'password'  => 'required|string|min:6',
-            'type'      => 'required|in:1,2,3,4',
-        ];
+        $data = Validator::validate($request, [
+            'name'            => 'required|string|max:255',
+            'email'           => 'required|email|max:255|unique:users,email',
+            'phone'           => 'nullable|string|max:20',
+            'password'        => 'required|string|min:6',
+            'confirmpassword' => 'nullable|same:password',
+            'roles'           => 'nullable|integer',
+            'type'            => 'nullable|in:0,1,2,3,4',
+        ]);
 
-        try {
-            $data = Validator::validate($request, $rules);
-        } catch (\App\Core\ValidationException $e) {
-            Response::validationError($e->errors, $e->getMessage());
-        }
-
-        $id = User::create(array_filter([
-            'name'       => $data['name'],
-            'email'      => $data['email'],
-            'phone'      => $data['phone'] ?? '',
-            'password'   => password_hash($data['password'], PASSWORD_BCRYPT),
-            'type'       => (int) $data['type'],
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]));
+        $id = Database::transaction(function () use ($data) {
+            $id = User::create([
+                'name'       => $data['name'],
+                'email'      => $data['email'],
+                'phone'      => $data['phone'] ?? '',
+                'password'   => password_hash($data['password'], PASSWORD_DEFAULT),
+                'type'       => (int) ($data['type'] ?? 0),
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            $this->syncRole($id, $data['roles'] ?? null);
+            return $id;
+        });
 
         return $this->sendResponse(
             ['id' => $id, 'name' => $data['name'], 'email' => $data['email']],
@@ -85,45 +111,49 @@ final class UserController extends Controller
         );
     }
 
-    /** View user. GET /api/userById/{id} */
-    public function show(int $id): array
+    /** GET /api/userById/{id} -> {userById:{...user, roles:<role id>}} */
+    public function show(Request $request): array
     {
+        $id = (int) $request->params['id'];
         $user = User::find($id);
         if ($user === null) {
-            throw new \App\Core\HttpException(404, 'User not found');
+            throw new HttpException(404, 'User not found');
         }
 
-        // Strip password from output
         unset($user['password']);
 
-        return $this->sendResponse($user, 'User details retrieved.');
+        $role = Database::selectOne(
+            "SELECT mr.`role_id` FROM `model_has_roles` mr
+              WHERE mr.`model_type` = ? AND mr.`model_id` = ? LIMIT 1",
+            [self::MODEL_USER, $id]
+        );
+        $user['roles'] = $role ? (int) $role['role_id'] : '';
+
+        return ['userById' => $user];
     }
 
-    /** Update user. POST /api/userUpdate/{id} */
-    public function update(Request $request, int $id): array
+    /** POST /api/userUpdate/{id} */
+    public function update(Request $request): array
     {
+        $id = (int) $request->params['id'];
         if (!Auth::isAdmin()) {
             Response::json(['status' => 'errors'], 403);
         }
 
         $user = User::find($id);
         if ($user === null) {
-            throw new \App\Core\HttpException(404, 'User not found');
+            throw new HttpException(404, 'User not found');
         }
 
-        $rules = [
+        $data = Validator::validate($request, [
             'name'      => 'nullable|string|max:255',
             'email'     => 'nullable|email|max:255|unique:users,email,' . $id,
-            'phone'     => 'nullable|string|max:11',
+            'phone'     => 'nullable|string|max:20',
             'password'  => 'nullable|string|min:6',
-            'type'      => 'nullable|in:1,2,3,4',
-        ];
-
-        try {
-            $data = Validator::validate($request, $rules);
-        } catch (\App\Core\ValidationException $e) {
-            Response::validationError($e->errors, $e->getMessage());
-        }
+            'cpassword' => 'nullable|same:password',
+            'roles'     => 'nullable|integer',
+            'type'      => 'nullable|in:0,1,2,3,4',
+        ]);
 
         $merge = [
             'name'       => $data['name'] ?? $user['name'],
@@ -131,15 +161,19 @@ final class UserController extends Controller
             'phone'      => $data['phone'] ?? $user['phone'],
             'updated_at' => date('Y-m-d H:i:s'),
         ];
-
         if (!empty($data['password'])) {
-            $merge['password'] = password_hash($data['password'], PASSWORD_BCRYPT);
+            $merge['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
         }
-        if (isset($data['type'])) {
+        if (isset($data['type']) && $data['type'] !== '' && $data['type'] !== null) {
             $merge['type'] = (int) $data['type'];
         }
 
-        User::updateRow($id, array_filter($merge));
+        Database::transaction(function () use ($id, $merge, $data) {
+            User::updateRow($id, $merge);
+            if (array_key_exists('roles', $data) && $data['roles'] !== null && $data['roles'] !== '') {
+                $this->syncRole($id, $data['roles']);
+            }
+        });
 
         return $this->sendResponse(
             ['id' => $id, 'name' => $merge['name'], 'email' => $merge['email']],
@@ -147,33 +181,31 @@ final class UserController extends Controller
         );
     }
 
-    /** Delete user. DELETE /api/userDelete/{id} */
-    public function destroy(int $id): array
+    /** DELETE /api/userDelete/{id} */
+    public function destroy(Request $request): array
     {
+        $id = (int) $request->params['id'];
         if (!Auth::isAdmin()) {
             Response::json(['status' => 'errors'], 403);
         }
 
         $user = User::find($id);
         if ($user === null) {
-            throw new \App\Core\HttpException(404, 'User not found');
+            throw new HttpException(404, 'User not found');
         }
 
         // Also delete associated center if type was 4
-        if ($user['type'] === 4) {
+        if ((int) $user['type'] === 4) {
             Database::delete('centers', 'user_id = ?', [$id]);
         }
 
-        // Delete personal access tokens (original did this in logout, but do it on delete too)
-        Database::delete('personal_access_tokens', 'tokenable_type = ? AND tokenable_id = ?',
-            ['App\Models\User', $id]);
+        Database::delete('personal_access_tokens', 'tokenable_type = ? AND tokenable_id = ?', [self::MODEL_USER, $id]);
+        Database::delete('model_has_roles', 'model_type = ? AND model_id = ?', [self::MODEL_USER, $id]);
+        Database::delete('model_has_permissions', 'model_type = ? AND model_id = ?', [self::MODEL_USER, $id]);
 
         User::deleteRow($id);
 
-        return $this->sendResponse(
-            ['deleted' => true],
-            'User deleted successfully.'
-        );
+        return $this->sendResponse(['deleted' => true], 'User deleted successfully.');
     }
 
     /**
@@ -208,5 +240,18 @@ final class UserController extends Controller
     public function isCenterEndpoint(): array
     {
         return ['status' => 'success', 'isAdmin' => !Auth::isAdmin()];
+    }
+
+    /** Assign exactly one role (or clear it) for a user. */
+    private function syncRole(int $userId, mixed $roleId): void
+    {
+        Database::delete('model_has_roles', 'model_type = ? AND model_id = ?', [self::MODEL_USER, $userId]);
+        if ($roleId !== null && $roleId !== '' && (int) $roleId > 0) {
+            Database::insert('model_has_roles', [
+                'role_id'    => (int) $roleId,
+                'model_type' => self::MODEL_USER,
+                'model_id'   => $userId,
+            ]);
+        }
     }
 }
