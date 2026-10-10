@@ -1,0 +1,19 @@
+# Uploaded user content — NEVER execute scripts from here.
+# logos/, principals/ and authority signatures are user images only.
+
+<FilesMatch "\.(?i:php|phtml|php[0-9]|phps|phar|pht|cgi|pl|py|sh|asp|aspx|jsp|jspx|jar|exe)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+<IfModule mod_mime.c>
+    RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phps .phar
+    RemoveType  .php .phtml .php3 .php4 .php5 .php7 .phps .phar
+</IfModule>
+
+<FilesMatch "\.(?i:jpg|jpeg|png|gif)$">
+    Require all granted
+</FilesMatch>

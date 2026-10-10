@@ -24,3 +24,5 @@ Thumbs.db
 !/storage/logs/.gitkeep
 !/storage/uploads/.gitkeep
 !/public/uploads/.gitkeep
+# .htaccess hardening for uploaded files must ship with the repo
+!/public/uploads/.htaccess

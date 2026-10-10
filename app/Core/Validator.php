@@ -179,19 +179,3 @@ final class Validator
             ?? str_replace(':attribute', str_replace('_', ' ', $field), $default);
     }
 }
-
-/**
- * Validation failure — carried to App's exception handler.
- */
-class ValidationException extends \Exception
-{
-    /** @var array<string,string[]> */
-    public array $errors;
-
-    /** @param array<string,string[]> $errors */
-    public function __construct(array $errors)
-    {
-        parent::__construct('The given data was invalid.');
-        $this->errors = $errors;
-    }
-}

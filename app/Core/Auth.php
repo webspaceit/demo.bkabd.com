@@ -68,6 +68,9 @@ final class Auth
     private static function login(array $user): void
     {
         Session::regenerate();
+        // Rotate the CSRF token too (defense in depth against token leakage
+        // via referrer / XSS before login); the old token stops working.
+        Session::put('_token', bin2hex(random_bytes(20)));
         Session::put('auth_user_id', (int) $user['id']);
         Session::put('access_token', bin2hex(random_bytes(24)));
         self::$user = $user;

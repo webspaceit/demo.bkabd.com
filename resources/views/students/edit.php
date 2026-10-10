@@ -62,8 +62,8 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
                 <select name="session" class="input" data-field="session" required>
                     <option value="">Select</option>
                     <?php foreach ($sessions as $s): ?>
-                        <option value="<?= $s['session'] ?>" <?= $v('session') == $s['session'] ? 'selected' : '' ?>>
-                            <?= $s['session'] ?> <?= (int) $s['active'] === 1 ? ' (active)' : '' ?>
+                        <option value="<?= e($s['session']) ?>" <?= $v('session') == $s['session'] ? 'selected' : '' ?>>
+                            <?= e($s['session']) ?> <?= (int) $s['active'] === 1 ? ' (active)' : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -74,8 +74,8 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
                 <select name="center_id" class="input" data-field="center_id" required>
                     <option value="">Select</option>
                     <?php foreach ($centers as $c): ?>
-                        <option value="<?= $c['id'] ?>" <?= $v('center_id') == $c['id'] ? 'selected' : '' ?>>
-                            <?= $c['name'] ?? '' ?>
+                        <option value="<?= e($c['id']) ?>" <?= $v('center_id') == $c['id'] ? 'selected' : '' ?>>
+                            <?= e($c['name'] ?? '') ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -90,8 +90,8 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
                     <option value="">Select</option>
                     <?php if ($v('center_id')): ?>
                         <?php foreach ($institutes as $i): ?>
-                            <option value="<?= $i['id'] ?>" <?= $v('institute_id') == $i['id'] ? 'selected' : '' ?>>
-                                <?= $i['name'] ?? '' ?>
+                            <option value="<?= e($i['id']) ?>" <?= $v('institute_id') == $i['id'] ? 'selected' : '' ?>>
+                                <?= e($i['name'] ?? '') ?>
                             </option>
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -105,8 +105,8 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
                 <select name="division_id" class="input" data-field="division_id" required>
                     <option value="">Select</option>
                     <?php foreach ($divisions as $d): ?>
-                        <option value="<?= $d['id'] ?>" <?= $v('division_id') == $d['id'] ? 'selected' : '' ?>>
-                            <?= $d['name'] ?>
+                        <option value="<?= e($d['id']) ?>" <?= $v('division_id') == $d['id'] ? 'selected' : '' ?>>
+                            <?= e($d['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -120,8 +120,8 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
                 <select name="district_id" class="input" data-field="district_id">
                     <option value="">Select</option>
                     <?php foreach ($districts as $d): ?>
-                        <option value="<?= $d['id'] ?>" <?= $v('district_id') == $d['id'] ? 'selected' : '' ?>>
-                            <?= $d['name'] ?>
+                        <option value="<?= e($d['id']) ?>" <?= $v('district_id') == $d['id'] ? 'selected' : '' ?>>
+                            <?= e($d['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -132,8 +132,8 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
                 <select name="upazila_id" class="input" data-field="upazila_id">
                     <option value="">Select</option>
                     <?php foreach ($upazilas as $u): ?>
-                        <option value="<?= $u['id'] ?>" <?= $v('upazila_id') == $u['id'] ? 'selected' : '' ?>>
-                            <?= $u['name'] ?>
+                        <option value="<?= e($u['id']) ?>" <?= $v('upazila_id') == $u['id'] ? 'selected' : '' ?>>
+                            <?= e($u['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -144,8 +144,8 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
                 <select name="union_id" class="input" data-field="union_id">
                     <option value="">Select</option>
                     <?php foreach ($unions as $un): ?>
-                        <option value="<?= $un['id'] ?>" <?= $v('union_id') == $un['id'] ? 'selected' : '' ?>>
-                            <?= $un['name'] ?>
+                        <option value="<?= e($un['id']) ?>" <?= $v('union_id') == $un['id'] ? 'selected' : '' ?>>
+                            <?= e($un['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

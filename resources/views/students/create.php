@@ -8,12 +8,12 @@
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="label">Name <span class="text-red-500">*</span></label>
-                <input type="text" name="name" class="input" data-field="name" value="<?= old('name') ?>" required>
+                <input type="text" name="name" class="input" data-field="name" value="<?= e((string) old('name')) ?>" required>
                 <p class="field-error hidden" data-error-for="name"></p>
             </div>
             <div>
                 <label class="label">Father's Name <span class="text-red-500">*</span></label>
-                <input type="text" name="father_name" class="input" data-field="father_name" value="<?= old('father_name') ?>" required>
+                <input type="text" name="father_name" class="input" data-field="father_name" value="<?= e((string) old('father_name')) ?>" required>
                 <p class="field-error hidden" data-error-for="father_name"></p>
             </div>
         </div>
@@ -21,12 +21,12 @@
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="label">Mother's Name</label>
-                <input type="text" name="mother_name" class="input" data-field="mother_name" value="<?= old('mother_name') ?>">
+                <input type="text" name="mother_name" class="input" data-field="mother_name" value="<?= e((string) old('mother_name')) ?>">
                 <p class="field-error hidden" data-error-for="mother_name"></p>
             </div>
             <div>
                 <label class="label">Phone <span class="text-red-500">*</span></label>
-                <input type="text" name="phone" class="input" data-field="phone" maxlength="11" value="<?= old('phone') ?>" required>
+                <input type="text" name="phone" class="input" data-field="phone" maxlength="11" value="<?= e((string) old('phone')) ?>" required>
                 <p class="field-error hidden" data-error-for="phone"></p>
             </div>
         </div>
@@ -47,8 +47,8 @@
                 <select name="session" class="input" data-field="session" required>
                     <option value="">Select</option>
                     <?php foreach ($sessions as $s): ?>
-                        <option value="<?= $s['session'] ?>" <?= old('session') == $s['session'] ? 'selected' : '' ?>>
-                            <?= $s['session'] ?> <?= (int) $s['active'] === 1 ? ' (active)' : '' ?>
+                        <option value="<?= e($s['session']) ?>" <?= old('session') == $s['session'] ? 'selected' : '' ?>>
+                            <?= e($s['session']) ?> <?= (int) $s['active'] === 1 ? ' (active)' : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -59,8 +59,8 @@
                 <select name="center_id" class="input" data-field="center_id" required>
                     <option value="">Select</option>
                     <?php foreach ($centers as $c): ?>
-                        <option value="<?= $c['id'] ?>" <?= old('center_id') == $c['id'] ? 'selected' : '' ?>>
-                            <?= $c['name'] ?? '' ?>
+                        <option value="<?= e($c['id']) ?>" <?= old('center_id') == $c['id'] ? 'selected' : '' ?>>
+                            <?= e($c['name'] ?? '') ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -75,8 +75,8 @@
                     <option value="">Select</option>
                     <?php if (old('center_id')): ?>
                         <?php foreach ($institutes as $i): ?>
-                            <option value="<?= $i['id'] ?>" <?= old('institute_id') == $i['id'] ? 'selected' : '' ?>>
-                                <?= $i['name'] ?? '' ?>
+                            <option value="<?= e($i['id']) ?>" <?= old('institute_id') == $i['id'] ? 'selected' : '' ?>>
+                                <?= e($i['name'] ?? '') ?>
                             </option>
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -90,8 +90,8 @@
                 <select name="division_id" class="input" data-field="division_id" required>
                     <option value="">Select</option>
                     <?php foreach ($divisions as $d): ?>
-                        <option value="<?= $d['id'] ?>" <?= old('division_id') == $d['id'] ? 'selected' : '' ?>>
-                            <?= $d['name'] ?>
+                        <option value="<?= e($d['id']) ?>" <?= old('division_id') == $d['id'] ? 'selected' : '' ?>>
+                            <?= e($d['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -105,8 +105,8 @@
                 <select name="district_id" class="input" data-field="district_id">
                     <option value="">Select</option>
                     <?php foreach ($districts as $d): ?>
-                        <option value="<?= $d['id'] ?>" <?= old('district_id') == $d['id'] ? 'selected' : '' ?>>
-                            <?= $d['name'] ?>
+                        <option value="<?= e($d['id']) ?>" <?= old('district_id') == $d['id'] ? 'selected' : '' ?>>
+                            <?= e($d['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -117,8 +117,8 @@
                 <select name="upazila_id" class="input" data-field="upazila_id">
                     <option value="">Select</option>
                     <?php foreach ($upazilas as $u): ?>
-                        <option value="<?= $u['id'] ?>" <?= old('upazila_id') == $u['id'] ? 'selected' : '' ?>>
-                            <?= $u['name'] ?>
+                        <option value="<?= e($u['id']) ?>" <?= old('upazila_id') == $u['id'] ? 'selected' : '' ?>>
+                            <?= e($u['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -129,8 +129,8 @@
                 <select name="union_id" class="input" data-field="union_id">
                     <option value="">Select</option>
                     <?php foreach ($unions as $un): ?>
-                        <option value="<?= $un['id'] ?>" <?= old('union_id') == $un['id'] ? 'selected' : '' ?>>
-                            <?= $un['name'] ?>
+                        <option value="<?= e($un['id']) ?>" <?= old('union_id') == $un['id'] ? 'selected' : '' ?>>
+                            <?= e($un['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -173,23 +173,23 @@
 
         <div>
             <label class="label">DOB</label>
-            <input type="date" name="dob" class="input" data-field="dob" value="<?= old('dob') ?>">
+            <input type="date" name="dob" class="input" data-field="dob" value="<?= e((string) old('dob')) ?>">
             <p class="field-error hidden" data-error-for="dob"></p>
         </div>
 
         <div>
             <label class="label">Principal Name</label>
-            <input type="text" name="principal_name" class="input" data-field="principal_name" value="<?= old('principal_name') ?>">
+            <input type="text" name="principal_name" class="input" data-field="principal_name" value="<?= e((string) old('principal_name')) ?>">
             <p class="field-error hidden" data-error-for="principal_name"></p>
         </div>
 
         <div>
             <label class="label">Notes</label>
-            <textarea name="note" class="input" data-field="note" rows="3"><?= old('note') ?></textarea>
+            <textarea name="note" class="input" data-field="note" rows="3"><?= e((string) old('note')) ?></textarea>
             <p class="field-error hidden" data-error-for="note"></p>
         </div>
 
-        <input type="hidden" name="photo" value="<?= old('photo') ?>">
+        <input type="hidden" name="photo" value="<?= e((string) old('photo')) ?>">
         <p class="text-sm text-slate-500 mt-2">Supported: jpeg, png, jpg, gif. Max 2MB.</p>
 
         <button type="submit" name="register" class="btn btn-primary w-full mt-6">

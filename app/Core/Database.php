@@ -90,6 +90,7 @@ final class Database
 
     public static function insert(string $table, array $data): int
     {
+        $table = self::quoteTable($table);
         $cols = array_keys($data);
         $sql = sprintf(
             'INSERT INTO `%s` (`%s`) VALUES (%s)',
@@ -107,6 +108,7 @@ final class Database
 
     public static function update(string $table, array $data, string $where, array $whereParams = []): int
     {
+        $table = self::quoteTable($table);
         $sets = implode(',', array_map(fn($c) => "`$c` = :set_$c", array_keys($data)));
         $params = [];
         foreach ($data as $k => $v) {
@@ -118,7 +120,18 @@ final class Database
 
     public static function delete(string $table, string $where, array $params = []): int
     {
+        $table = self::quoteTable($table);
         return self::run("DELETE FROM `$table` WHERE $where", $params)->rowCount();
+    }
+
+    /**
+     * Table names are code-level constants in this app (never user input), but
+     * quote them defensively so a stray backtick / quote can't break out of the
+     * identifier position — cheap belt-and-braces (CWE-89).
+     */
+    private static function quoteTable(string $table): string
+    {
+        return preg_replace('/[^A-Za-z0-9_]/', '', $table);
     }
 
     /**

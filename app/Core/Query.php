@@ -37,7 +37,9 @@ final class Query
 
     public function __construct(string $table)
     {
-        $this->table = $table;
+        // Table names are code-level constants; strip stray identifier chars
+        // defensively so nothing can break out of the backtick-quoted position.
+        $this->table = preg_replace('/[^A-Za-z0-9_]/', '', $table);
     }
 
     // ---------------------------------------------------------------

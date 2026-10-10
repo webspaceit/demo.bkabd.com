@@ -198,7 +198,7 @@ final class StudentController extends Controller
 
         try {
             $data = Validator::validate($request, $rules);
-        } catch (Validator\ValidationException $e) {
+        } catch (\App\Core\ValidationException $e) {
             Response::validationError($e->errors, $e->getMessage());
         }
 
@@ -241,15 +241,7 @@ final class StudentController extends Controller
         }
 
         // --- Photo upload (optional) ---
-        $photoPath = null;
-        if ($request->hasFile('photo') && $request->file('photo')['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = BASE_PATH . '/public/uploads/students/';
-            @mkdir($uploadDir, 0755, true);
-            $ext = strtolower(pathinfo($request->file('photo')['name'], PATHINFO_EXTENSION));
-            $photoName = uniqid('std_', true) . '.' . $ext;
-            $photoPath = 'uploads/students/' . $photoName;
-            @move_uploaded_file($request->file('photo')['tmp_name'], BASE_PATH . '/public/' . $photoPath);
-        }
+        $photoPath = $request->hasFile('photo') ? $this->savePhoto($request->file('photo')) : null;
 
         // --- Insert student ---
         $studentId = Student::create(array_filter([
@@ -422,7 +414,7 @@ final class StudentController extends Controller
 
         try {
             $data = Validator::validate($request, $rules);
-        } catch (Validator\ValidationException $e) {
+        } catch (\App\Core\ValidationException $e) {
             Response::validationError($e->errors, $e->getMessage());
         }
 
@@ -492,18 +484,15 @@ final class StudentController extends Controller
         }
 
         // --- Photo upload (replace if new file posted) ---
-        if ($request->hasFile('photo') && $request->file('photo')['error'] === UPLOAD_ERR_OK) {
+        if ($request->hasFile('photo')) {
             // Delete old photo if exists
             if ($student['photo']) {
                 @unlink(BASE_PATH . '/public/' . $student['photo']);
             }
-            $uploadDir = BASE_PATH . '/public/uploads/students/';
-            @mkdir($uploadDir, 0755, true);
-            $ext = strtolower(pathinfo($request->file('photo')['name'], PATHINFO_EXTENSION));
-            $photoName = uniqid('std_', true) . '.' . $ext;
-            $photoPath = 'uploads/students/' . $photoName;
-            $merge['photo'] = $photoPath;
-            @move_uploaded_file($request->file('photo')['tmp_name'], BASE_PATH . '/public/' . $photoPath);
+            $photoPath = $this->savePhoto($request->file('photo'));
+            if ($photoPath !== null) {
+                $merge['photo'] = $photoPath;
+            }
         }
 
         // --- Update student row ---
@@ -567,17 +556,82 @@ final class StudentController extends Controller
             return Response::validationError(['file' => ['No file uploaded']]);
         }
 
-        $uploadDir = BASE_PATH . '/public/uploads/students/';
-        @mkdir($uploadDir, 0755, true);
-        $ext = strtolower(pathinfo($request->file('file')['name'], PATHINFO_EXTENSION));
-        $fileName = uniqid('std_', true) . '.' . $ext;
-        $filePath = 'uploads/students/' . $fileName;
-
-        if (@move_uploaded_file($request->file('file')['tmp_name'], BASE_PATH . '/public/' . $filePath)) {
-            return ['status' => 'success', 'file' => $filePath, 'url' => '/'.$filePath];
+        // Hardened: real-image check (getimagesize) + detected-type extension
+        // + random name, via the shared savePhoto() helper. Rejects scripts,
+        // polyglots and oversized payloads with a 422.
+        $photoPath = $this->savePhoto($request->file('file'), 'file');
+        if ($photoPath === null) {
+            return Response::validationError(['file' => ['No file uploaded']]);
         }
 
-        return Response::json(['status' => 'error', 'message' => 'Upload failed'], 500);
+        return ['status' => 'success', 'file' => $photoPath, 'url' => '/' . $photoPath];
+    }
+
+    /**
+     * Validate + store an uploaded image (photo field) into public/uploads/students.
+     *
+     * Hardened: the file must actually be a JPEG/PNG/GIF (getimagesize on the
+     * uploaded bytes — never trust the client extension), the stored extension
+     * is derived from the detected image type, and the name is a random hex
+     * string, so a crafted polyglot is stored as .jpg/.png/.gif and served as
+     * a static image — never executed by the PHP handler.
+     *
+     * @throws \App\Core\ValidationException 422 (upload/size/type failures)
+     * @throws \App\Core\HttpException       500 (storage failures)
+     * @return string|null relative path like uploads/students/std_ab12….jpg
+     */
+    private function savePhoto(?array $file, string $field = 'photo'): ?string
+    {
+        if ($file === null || (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+        $label = str_replace('_', ' ', $field);
+        if ((int) ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            throw new \App\Core\ValidationException([$field => ["The $label failed to upload."]]);
+        }
+        if ((int) ($file['size'] ?? 0) > 2 * 1024 * 1024) {
+            throw new \App\Core\ValidationException([$field => ["The $label may not be greater than 2048 kilobytes."]]);
+        }
+        $info = @getimagesize((string) ($file['tmp_name'] ?? ''));
+        $allowed = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF];
+        if ($info === false || !in_array((int) $info[2], $allowed, true)) {
+            throw new \App\Core\ValidationException([$field => ["The $label must be an image."]]);
+        }
+        $ext = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_GIF => 'gif'][(int) $info[2]];
+        $name = 'std_' . bin2hex(random_bytes(12)) . '.' . $ext;
+        $dir = BASE_PATH . '/public/uploads/students/';
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            throw new \App\Core\HttpException(500, 'Unable to create the upload directory.');
+        }
+        $target = $dir . $name;
+
+        // Prefer GD: decode + re-encode so the stored bytes are a pure decoded
+        // image and any PHP/HTML payload in a polyglot file is dropped.
+        if (function_exists('imagecreatefromstring')) {
+            $bin = @file_get_contents((string) ($file['tmp_name'] ?? ''));
+            $img = is_string($bin) ? @imagecreatefromstring($bin) : false;
+            if ($img === false) {
+                throw new \App\Core\ValidationException([$field => ["The $label must be an image."]]);
+            }
+            $encoder = [IMAGETYPE_JPEG => 'imagejpeg', IMAGETYPE_PNG => 'imagepng', IMAGETYPE_GIF => 'imagegif'][(int) $info[2]];
+            ob_start();
+            $encoded = $encoder($img);
+            $out = ob_get_clean();
+            imagedestroy($img);
+            if (!$encoded || $out === '') {
+                throw new \App\Core\HttpException(500, 'Unable to process the uploaded image.');
+            }
+            $ok = @file_put_contents($target, $out) !== false;
+        } else {
+            // GD unavailable — store the validated upload byte-for-byte with the
+            // detected-type extension (never the client extension). The upload
+            // dir .htaccess / nginx guards still block script execution.
+            $ok = @move_uploaded_file((string) ($file['tmp_name'] ?? ''), $target);
+        }
+        if (!$ok) {
+            throw new \App\Core\HttpException(500, 'Unable to store the uploaded file.');
+        }
+        return 'uploads/students/' . $name;
     }
 
     /**

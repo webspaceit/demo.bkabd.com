@@ -65,7 +65,7 @@ final class UserController extends Controller
 
         try {
             $data = Validator::validate($request, $rules);
-        } catch (\App\Core\Validator\ValidationException $e) {
+        } catch (\App\Core\ValidationException $e) {
             Response::validationError($e->errors, $e->getMessage());
         }
 
@@ -121,7 +121,7 @@ final class UserController extends Controller
 
         try {
             $data = Validator::validate($request, $rules);
-        } catch (\App\Core\Validator\ValidationException $e) {
+        } catch (\App\Core\ValidationException $e) {
             Response::validationError($e->errors, $e->getMessage());
         }
 

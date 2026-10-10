@@ -1,0 +1,26 @@
+# Uploaded user content — NEVER execute scripts from here.
+# These directories may only ever serve static images (JPEG/PNG/GIF).
+# Defense in depth for the photo/logo uploads (CWE-434).
+
+# 1. Apache 2.4+: outright deny any request that looks like a script file
+#    (403 before the PHP handler can run).
+<FilesMatch "\.(?i:php|phtml|php[0-9]|phps|phar|pht|cgi|pl|py|sh|asp|aspx|jsp|jspx|jar|exe)$">
+    Require all denied
+</FilesMatch>
+
+# 2. If mod_php is loaded, also turn the engine off inside these directories.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+# 3. Belt-and-braces: strip any PHP handler mapping so nothing in here is
+#    ever passed through the interpreter.
+<IfModule mod_mime.c>
+    RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phps .phar
+    RemoveType  .php .phtml .php3 .php4 .php5 .php7 .phps .phar
+</IfModule>
+
+# 4. Only allow the image types the app actually stores.
+<FilesMatch "\.(?i:jpg|jpeg|png|gif)$">
+    Require all granted
+</FilesMatch>

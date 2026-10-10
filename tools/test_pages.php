@@ -99,6 +99,10 @@ check('POST /api/login ok', $st === 200 && ($decoded['success'] ?? false) === tr
 // ---------------------------------------------------------------
 [$st, $body] = pageReq("$base/", $cookieFile);
 check('GET / dashboard (home) 200', $st === 200 && str_contains($body, 'Welcome to') && str_contains($body, 'data-stat'), "status=$st");
+// The CSRF token is rotated on login (defense in depth); a full page load
+// re-issues the meta tag exactly like the browser after sign-in, so re-grab it.
+preg_match('/name="csrf-token" content="([a-f0-9]+)"/', $body, $m2);
+if (!empty($m2[1])) { $csrf = $m2[1]; }
 
 [$st, $body] = req('GET', "$base/api/dashboard");
 $stats = json_decode($body, true);

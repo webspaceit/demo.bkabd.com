@@ -59,7 +59,12 @@ Router::get('/home', function () {
     Response::redirect('/');
 });
 
-Router::get('/logout', function () {
+/** Logout: POST form/JS only (GET no longer destroys the session — CSRF-safe). */
+Router::post('/logout', function () {
     Auth::logout();
     Response::redirect('/login');
+}, 'auth');
+
+Router::get('/logout', function () {
+    Response::redirect('/');
 });

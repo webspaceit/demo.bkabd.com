@@ -140,6 +140,10 @@ function send_sms($number, $msg)
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+    curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
     $response = curl_exec($ch);
     curl_close($ch);
     return $response;
@@ -161,6 +165,10 @@ function send_sms_mask($number, $msg)
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+    curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
     $response = curl_exec($ch);
     curl_close($ch);
     return $response;
@@ -211,14 +219,17 @@ if (!function_exists('csrf_field')) {
 if (!function_exists('old')) {
     function old(string $key, mixed $default = ''): mixed
     {
-        return Session::get('old', [])[$key] ?? $default;
+        // One-shot "old input" carried across the validation redirect — flash
+        // storage (Session::flash('old', …)), NOT the plain session key.
+        $old = Session::pullFlash('old', []);
+        return is_array($old) && array_key_exists($key, $old) ? $old[$key] : $default;
     }
 }
 
 if (!function_exists('errors_for')) {
     function errors_for(string $field): array
     {
-        $errors = Session::get('errors', []);
+        $errors = Session::pullFlash('errors', []);
         return is_array($errors) && isset($errors[$field]) ? (array) $errors[$field] : [];
     }
 }
@@ -226,7 +237,7 @@ if (!function_exists('errors_for')) {
 if (!function_exists('has_errors')) {
     function has_errors(): bool
     {
-        return (array) Session::get('errors', []) !== [];
+        return (array) Session::pullFlash('errors', []) !== [];
     }
 }
 

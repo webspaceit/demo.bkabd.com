@@ -37,7 +37,9 @@ final class Session
             'path' => '/',
             'httponly' => true,
             'samesite' => 'Lax',
-            // 'secure' => true, // enable when serving over HTTPS
+            // Secure cookie: enable in production (served over HTTPS).
+            // SESSION_SECURE=true in .env; stays off for localhost dev.
+            'secure' => Config::getBool('SESSION_SECURE', false),
         ]);
         session_start();
         self::$started = true;

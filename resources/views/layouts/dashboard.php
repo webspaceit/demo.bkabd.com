@@ -177,7 +177,10 @@ $activeSession = Auth::activeSession();
                 </div>
                 <div class="mt-3 flex items-center gap-2 text-[11px]">
                     <a href="/passchange" class="flex-1 text-center rounded-md bg-white/10 hover:bg-white/20 py-1.5 text-white transition">Password</a>
-                    <a href="/logout" class="flex-1 text-center rounded-md bg-white/10 hover:bg-white/20 py-1.5 text-white transition">Logout</a>
+                    <form method="POST" action="/logout" class="flex-1 m-0">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="w-full rounded-md bg-white/10 hover:bg-white/20 py-1.5 text-white transition cursor-pointer">Logout</button>
+                    </form>
                 </div>
             </div>
         </div>
