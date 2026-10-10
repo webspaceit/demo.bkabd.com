@@ -93,7 +93,9 @@ for ($i = 0; $i < $N; $i++) {
 echo '  ' . t_avg($dbTimes) . "\n\n";
 
 echo "── 3. Service layer — cold (DB, cache misses) vs warm (memo) ─\n";
-$key = 'result_student:' . sha1(implode('|', [$P['session_id'], $P['division_id'], $P['center_id'], $P['class'], $P['registration'], $P['roll']]));
+$key = !empty($P['registration'])
+    ? 'result_student:reg:' . sha1((string) $P['registration'])
+    : 'result_student:roll:' . sha1($P['session_id'] . '|' . $P['class'] . '|' . $P['roll']);
 Cache::forget($key);
 $cold = [];
 for ($i = 0; $i < $N; $i++) {
@@ -157,7 +159,7 @@ if (!function_exists('curl_init')) {
         $html = curl_exec($ch);
         $httpGetTimes[] = hrt() - $t0;
         $getSt = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        if (!preg_match('/Calculate:\s*(\d+)\+(\d+)\s*=/', $html, $m)
+        if (!preg_match('/(\d+)\s*\+\s*(\d+)\s*<span/', $html, $m)
             || !preg_match('/name="_token"\s+value="([^"]+)"/', $html, $mToken)) {
             echo "  run {$run}: could not parse form (status {$getSt}) — skipping HTTP loop\n";
             curl_close($ch);
@@ -171,12 +173,7 @@ if (!function_exists('curl_init')) {
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => http_build_query([
                 '_token' => $mToken[1],
-                'session_id' => $P['session_id'],
-                'division_id' => $P['division_id'],
-                'center_id' => $P['center_id'],
-                'class' => $P['class'],
                 'registration' => $P['registration'],
-                'roll' => $P['roll'],
                 'captcha' => $answer,
             ]),
         ]);

@@ -34,8 +34,6 @@ final class ResultPortalController extends Controller
         return View::render('public.result', [
             'title' => 'Scholarship Exam Result',
             'sessions' => ResultPortalService::resultSessions(),
-            'divisions' => ResultPortalService::divisions(),
-            'centers' => ResultPortalService::centers(),
             'captchaEquation' => CaptchaService::issue(),
             'errors' => $errors,
             'old' => $old,
@@ -57,59 +55,69 @@ final class ResultPortalController extends Controller
         ResultPortalService::assertSearchThrottle($request);
 
         $data = Validator::validate($request, [
-            'session_id' => 'required',
-            'division_id' => 'required',
-            'center_id' => 'required',
-            'class' => 'required',
-            'registration' => 'required',
-            'roll' => 'required',
             'captcha' => 'required|numeric',
+            // Registration is UNIQUE — it alone is enough to search.
+            'registration' => 'nullable|string',
+            // Fallback: (session, class, roll) is a UNIQUE index.
+            'session_id' => 'nullable',
+            'class' => 'nullable',
+            'roll' => 'nullable',
+            // Accepted for old bookmarked forms / deep links; not required.
+            'division_id' => 'nullable',
+            'center_id' => 'nullable',
         ], [
-            'session_id.required' => 'Please select session.',
-            'division_id.required' => 'Please select division.',
-            'center_id.required' => 'Please select center.',
             'captcha.numeric' => 'The captcha answer must be a number.',
         ]);
+
+        $registration = trim((string) ($data['registration'] ?? ''));
+        $sessionId = trim((string) ($data['session_id'] ?? ''));
+        $class = trim((string) ($data['class'] ?? ''));
+        $roll = trim((string) ($data['roll'] ?? ''));
+
+        // Need a registration number, or the full fallback lookup set.
+        if ($registration === '' && !($sessionId !== '' && $class !== '' && $roll !== '')) {
+            throw new ValidationException(['registration' => ['Enter your Registration No — or fill Session, Class and Roll No.']]);
+        }
+
         // Session-backed answer — the original's hidden `captcha_answer`
         // field could be forged, this cannot (fresh problem per form GET).
         if (!CaptchaService::isCorrect($expectedAnswer, $data['captcha'])) {
             throw new ValidationException(['captcha' => ['The captcha answer is incorrect.']]);
         }
 
-        $sessionRow = ResultPortalService::gate((string) $data['session_id']);
-        if ($sessionRow === null) {
-            if ($request->expectsJson()) {
-                // Original searchAjax()/show() JSON contract (keys kept identical).
-                Response::json(['error' => 'Scholarship Result -' . $data['session_id']
-                    . ' have not been publish yet. Please wait till specified date & time. Thank You.'], 404);
+        if ($registration !== '') {
+            $student = ResultPortalService::findStudent(['registration' => $registration]);
+            if ($student === null) {
+                $this->notFound($request);
             }
-            Session::flash('error', 'Scholarship Result for session ' . $data['session_id']
-                . ' has not been published yet. Please wait till the specified date & time.');
-            Response::redirect($this->backPath($request));
-        }
-
-        $student = ResultPortalService::findStudent($data);
-        if ($student === null) {
-            if ($request->expectsJson()) {
-                Response::json(['error' => 'No student found.Please give correct information.'], 404);
+            $sessionRow = ResultPortalService::gate((string) $student['session']);
+            if ($sessionRow === null) {
+                $this->notPublished($request, (string) $student['session']);
             }
-            Session::flash('error', 'No student found. Please provide correct information.');
-            Response::redirect($this->backPath($request));
+        } else {
+            $sessionRow = ResultPortalService::gate($sessionId);
+            if ($sessionRow === null) {
+                $this->notPublished($request, $sessionId);
+            }
+            $student = ResultPortalService::findStudent(['session_id' => $sessionId, 'class' => $class, 'roll' => $roll]);
+            if ($student === null) {
+                $this->notFound($request);
+            }
         }
 
         if ($request->expectsJson()) {
-            // Original searchAjax() success payload.
+            // Original searchAjax() success payload (keys kept identical).
             return ['result' => [
-                'center_id' => $data['center_id'],
-                'division_id' => $data['division_id'],
-                'class' => $data['class'],
-                'registration' => $data['registration'],
-                'session' => $data['session_id'],
-                'roll' => $data['roll'],
+                'center_id' => (string) ($student['center_id'] ?? ''),
+                'division_id' => (string) ($student['division_id'] ?? ''),
+                'class' => $student['class'],
+                'registration' => $student['registration'],
+                'session' => $student['session'],
+                'roll' => $student['roll'],
             ]];
         }
 
-        // Success: render the result sheet directly (original search() returned the view).
+        // Success: render the result sheet directly.
         return View::render('public.result_show', $this->sheet($student, $sessionRow), 'layouts.guest');
     }
 
@@ -119,26 +127,24 @@ final class ResultPortalController extends Controller
         $raw = $request->input('data', '{}');
         $data = is_string($raw) ? json_decode($raw, true) : null;
         $data = is_array($data) ? $data : [];
-        $sessionName = (string) ($data['session'] ?? '');
 
-        $sessionRow = ResultPortalService::gate($sessionName);
-        if ($sessionRow === null) {
-            // Original behavior: JSON 404 with its exact message.
-            Response::json(['error' => 'Scholarship Result -' . $sessionName
-                . ' have not been publish yet. Please wait till specified date & time. Thank You.'], 404);
-        }
-
+        // Registration alone is enough; otherwise fall back to session/class/roll.
         $student = ResultPortalService::findStudent([
-            'session_id' => $sessionName,
-            'division_id' => (string) ($data['division_id'] ?? ''),
-            'center_id' => (string) ($data['center_id'] ?? ''),
-            'class' => (string) ($data['class'] ?? ''),
             'registration' => (string) ($data['registration'] ?? ''),
+            'session_id' => (string) ($data['session'] ?? ''),
+            'class' => (string) ($data['class'] ?? ''),
             'roll' => (string) ($data['roll'] ?? ''),
         ]);
         // Original crashed with a 500 here — return a proper 404 instead.
         if ($student === null) {
             throw new HttpException(404, 'No student found.Please give correct information.');
+        }
+
+        $sessionRow = ResultPortalService::gate((string) $student['session']);
+        if ($sessionRow === null) {
+            // Original behavior: JSON 404 with its exact message.
+            Response::json(['error' => 'Scholarship Result -' . $student['session']
+                . ' have not been publish yet. Please wait till specified date & time. Thank You.'], 404);
         }
 
         return View::render('public.result_show', $this->sheet($student, $sessionRow), 'layouts.guest');
@@ -153,6 +159,28 @@ final class ResultPortalController extends Controller
             'fullMarks' => ResultPortalService::fullMarks((string) $student['session']),
             'resultTime' => $sessionRow['result_time'],
         ];
+    }
+
+    /** No matching student: JSON 404 for Ajax, flash + redirect for plain posts. */
+    private function notFound(Request $request): never
+    {
+        if ($request->expectsJson()) {
+            Response::json(['error' => 'No student found.Please give correct information.'], 404);
+        }
+        Session::flash('error', 'No student found. Please provide correct information.');
+        Response::redirect($this->backPath($request));
+    }
+
+    /** Result not published yet: original JSON message / flash + redirect. */
+    private function notPublished(Request $request, string $session): never
+    {
+        if ($request->expectsJson()) {
+            Response::json(['error' => 'Scholarship Result -' . $session
+                . ' have not been publish yet. Please wait till specified date & time. Thank You.'], 404);
+        }
+        Session::flash('error', 'Scholarship Result for session ' . $session
+            . ' has not been published yet. Please wait till the specified date & time.');
+        Response::redirect($this->backPath($request));
     }
 
     /** Where redirect-back lands (the form) when no Referer is sent. */

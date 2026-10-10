@@ -72,25 +72,37 @@ final class ResultPortalService
     // ---------------------------------------------------------------
 
     /**
-     * Locate the student + all display names in ONE prepared JOIN query
-     * (original issued 1 + 5 relation queries). Hit by the UNIQUE indexes
-     * on registration and (session, roll, class). Found rows are cached
-     * briefly — marks/roll details are frozen once results are published.
+     * Locate the student + all display names in ONE prepared JOIN query.
      *
-     * @param array{session_id:string|int,division_id:string|int,center_id:string|int,class:string|int,registration:string,roll:string|int} $input
+     * Registration is UNIQUE, so when it is supplied it alone identifies the
+     * student. Otherwise the (session, class, roll) UNIQUE index is used as a
+     * fallback for students who only hold their admit card / roll number.
+     * Found rows are cached briefly (marks are frozen once results publish).
+     *
+     * @param array{registration?:string,session_id?:string|int,session?:string|int,class?:string|int,roll?:string|int} $input
      * @return array<string,mixed>|null
      */
     public static function findStudent(array $input): ?array
     {
-        $key = 'result_student:' . sha1(implode('|', [
-            $input['session_id'], $input['division_id'], $input['center_id'],
-            $input['class'], $input['registration'], $input['roll'],
-        ]));
+        $registration = trim((string) ($input['registration'] ?? ''));
 
-        return Cache::remember($key, self::CACHE_TTL, function () use ($input): ?array {
+        if ($registration !== '') {
+            $key = 'result_student:reg:' . sha1($registration);
+            $where = 'WHERE s.`registration` = ?';
+            $params = [$registration];
+        } else {
+            $session = (string) ($input['session_id'] ?? $input['session'] ?? '');
+            $class = (string) ($input['class'] ?? '');
+            $roll = (string) ($input['roll'] ?? '');
+            $key = 'result_student:roll:' . sha1($session . '|' . $class . '|' . $roll);
+            $where = 'WHERE s.`session` = ? AND s.`class` = ? AND s.`roll` = ?';
+            $params = [$session, $class, $roll];
+        }
+
+        return Cache::remember($key, self::CACHE_TTL, function () use ($where, $params): ?array {
             return Database::selectOne(
-                'SELECT s.`session`, s.`roll`, s.`registration`, s.`class`, s.`name`, '
-                . 's.`father_name`, s.`mother_name`, s.`dob`, '
+                'SELECT s.`session`, s.`roll`, s.`registration`, s.`class`, s.`center_id`, s.`division_id`, '
+                . 's.`name`, s.`father_name`, s.`mother_name`, s.`dob`, '
                 . 's.`bangla`, s.`english`, s.`math`, s.`total`, s.`percentage`, s.`grade`, s.`ml`, '
                 . 'd.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name, '
                 . 'cu.`name` AS center_name, i.`name` AS institute_name '
@@ -101,13 +113,9 @@ final class ResultPortalService
                 . 'LEFT JOIN `centers` c ON c.`id` = s.`center_id` '
                 . 'LEFT JOIN `users` cu ON cu.`id` = c.`user_id` '
                 . 'LEFT JOIN `institutes` i ON i.`id` = s.`institute_id` '
-                . 'WHERE s.`session` = ? AND s.`center_id` = ? AND s.`division_id` = ? '
-                . 'AND s.`class` = ? AND s.`registration` = ? AND s.`roll` = ? '
-                . 'LIMIT 1',
-                [
-                    $input['session_id'], $input['center_id'], $input['division_id'],
-                    $input['class'], $input['registration'], $input['roll'],
-                ]
+                . $where
+                . ' LIMIT 1',
+                $params
             );
         });
     }

@@ -1,14 +1,14 @@
 <?php
 /**
  * Public scholarship result search form.
- * Port of original resources/views/result.blade.php (same fields, labels,
- * messages). Dropdowns are server-side (cached in ResultPortalService),
- * the math captcha equation is issued server-side — the answer lives only
- * in the session, never in a hidden field.
+ *
+ * Registration No is UNIQUE, so it alone identifies a student. The exam-detail
+ * fields (Session / Class / Roll — which form a UNIQUE index) are kept as an
+ * optional fallback for students who only hold their admit card. The math
+ * captcha equation is issued server-side — the answer lives only in the
+ * session, never in a hidden field.
  *
  * @var array $sessions  rows: session
- * @var array $divisions rows: id, name
- * @var array $centers   rows: id, name (users.name)
  * @var string $captchaEquation e.g. "7+8"
  * @var array $errors    flashed validation errors (one-shot)
  * @var array $old       flashed input (one-shot)
@@ -20,6 +20,7 @@ $fieldError = function (string $field) use ($errors): string {
     $cls = $msgs ? 'field-error' : 'field-error hidden';
     return '<p class="' . $cls . '" data-error-for="' . $field . '">' . e(implode(' ', $msgs)) . '</p>';
 };
+$fallbackUsed = (string) $val('session_id') !== '' || (string) $val('roll') !== '' || (string) $val('class') !== '';
 ?>
 <div class="bg-gradient-to-b from-emerald-50 via-slate-50 to-slate-100">
     <div class="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12">
@@ -32,7 +33,7 @@ $fieldError = function (string $field) use ($errors): string {
                 </div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/90">Bangladesh Kindergarten Association</p>
                 <h1 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Scholarship Exam Result</h1>
-                <p class="mx-auto mt-2 max-w-md text-sm text-emerald-50/90">Enter the exam details below to view the published result.</p>
+                <p class="mx-auto mt-2 max-w-md text-sm text-emerald-50/90">Enter your registration number to view the published result.</p>
             </div>
             <div class="bg-slate-50/70 px-6 py-4 text-center">
                 <img src="/assets/img/result/header.png" alt="BKABD" class="mx-auto w-full max-w-[560px]">
@@ -47,7 +48,7 @@ $fieldError = function (string $field) use ($errors): string {
                 </span>
                 <div>
                     <h2 class="text-base font-semibold text-slate-800">Find your result</h2>
-                    <p class="text-xs text-slate-500">All fields are required.</p>
+                    <p class="text-xs text-slate-500">Search by your registration number.</p>
                 </div>
             </div>
 
@@ -59,83 +60,71 @@ $fieldError = function (string $field) use ($errors): string {
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" action="/result/search" id="result-search-form" class="grid gap-4 sm:grid-cols-2" novalidate>
+                <form method="POST" action="/result/search" id="result-search-form" novalidate>
                     <?= csrf_field() ?>
 
-                    <div>
-                        <label class="label" for="session_id">Session</label>
-                        <select id="session_id" name="session_id" data-field="session_id" class="uppercase">
-                            <option value="">Select Session</option>
-                            <?php foreach ($sessions as $s): ?>
-                                <option value="<?= e($s['session']) ?>" <?= (string) $val('session_id') === (string) $s['session'] ? 'selected' : '' ?>><?= e($s['session']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <?= $fieldError('session_id') ?>
-                    </div>
-
-                    <div>
-                        <label class="label" for="division_id">Division</label>
-                        <select id="division_id" name="division_id" data-field="division_id" class="uppercase">
-                            <option value="">Select Division</option>
-                            <?php foreach ($divisions as $d): ?>
-                                <option value="<?= e($d['id']) ?>" <?= (string) $val('division_id') === (string) $d['id'] ? 'selected' : '' ?>><?= e($d['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <?= $fieldError('division_id') ?>
-                    </div>
-
-                    <div>
-                        <label class="label" for="center_id">Name of Center</label>
-                        <select id="center_id" name="center_id" data-field="center_id" class="uppercase">
-                            <option value="">Select Center</option>
-                            <?php foreach ($centers as $c): ?>
-                                <option value="<?= e($c['id']) ?>" <?= (string) $val('center_id') === (string) $c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <?= $fieldError('center_id') ?>
-                    </div>
-
-                    <div>
-                        <label class="label" for="class">Name of Class</label>
-                        <select id="class" name="class" data-field="class" class="uppercase">
-                            <option value="">Select Class</option>
-                            <?php foreach ([6 => 'Kg', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four', 5 => 'Five'] as $cv => $cl): ?>
-                                <option value="<?= $cv ?>" <?= (string) $val('class') === (string) $cv ? 'selected' : '' ?>><?= e($cl) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <?= $fieldError('class') ?>
-                    </div>
-
+                    <!-- Primary: registration number (unique) -->
                     <div>
                         <label class="label" for="registration">Registration No</label>
                         <input type="text" id="registration" name="registration" data-field="registration"
-                               placeholder="Registration No" autocomplete="off" value="<?= e($val('registration')) ?>">
+                               placeholder="e.g. 2300300012001" autocomplete="off" autofocus
+                               value="<?= e($val('registration')) ?>">
                         <?= $fieldError('registration') ?>
+                        <p class="mt-1 text-xs text-slate-400">Printed on your admit card / registration certificate.</p>
                     </div>
 
-                    <div>
-                        <label class="label" for="roll">Roll No</label>
-                        <input type="text" id="roll" name="roll" data-field="roll"
-                               placeholder="Roll No" autocomplete="off" value="<?= e($val('roll')) ?>">
-                        <?= $fieldError('roll') ?>
-                    </div>
+                    <!-- Fallback: exam details (session + class + roll is unique) -->
+                    <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4" <?= $fallbackUsed ? 'open' : '' ?>>
+                        <summary class="cursor-pointer select-none text-sm font-medium text-slate-700">
+                            Don't have a registration number? &mdash; search by exam details
+                        </summary>
+
+                        <div class="mt-4 grid gap-4 sm:grid-cols-3">
+                            <div>
+                                <label class="label" for="session_id">Session</label>
+                                <select id="session_id" name="session_id" data-field="session_id" class="uppercase">
+                                    <option value="">Select Session</option>
+                                    <?php foreach ($sessions as $s): ?>
+                                        <option value="<?= e($s['session']) ?>" <?= (string) $val('session_id') === (string) $s['session'] ? 'selected' : '' ?>><?= e($s['session']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?= $fieldError('session_id') ?>
+                            </div>
+
+                            <div>
+                                <label class="label" for="class">Class</label>
+                                <select id="class" name="class" data-field="class" class="uppercase">
+                                    <option value="">Select Class</option>
+                                    <?php foreach ([6 => 'Kg', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four', 5 => 'Five'] as $cv => $cl): ?>
+                                        <option value="<?= $cv ?>" <?= (string) $val('class') === (string) $cv ? 'selected' : '' ?>><?= e($cl) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?= $fieldError('class') ?>
+                            </div>
+
+                            <div>
+                                <label class="label" for="roll">Roll No</label>
+                                <input type="text" id="roll" name="roll" data-field="roll"
+                                       placeholder="Roll No" autocomplete="off" value="<?= e($val('roll')) ?>">
+                                <?= $fieldError('roll') ?>
+                            </div>
+                        </div>
+                    </details>
 
                     <!-- Security check -->
-                    <div class="sm:col-span-2">
-                        <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
-                            <label class="label mb-0" for="captcha">Security check</label>
-                            <div class="mt-2 flex flex-wrap items-center gap-3">
-                                <span class="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-base font-semibold text-emerald-800 ring-1 ring-emerald-200">
-                                    <?= e($captchaEquation) ?> <span class="text-slate-400">=</span> <span class="text-slate-400">?</span>
-                                </span>
-                                <input type="number" id="captcha" name="captcha" data-field="captcha" inputmode="numeric"
-                                       placeholder="Type the total" autocomplete="off" class="sm:max-w-[200px]">
-                            </div>
-                            <?= $fieldError('captcha') ?>
+                    <div class="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+                        <label class="label mb-0" for="captcha">Security check</label>
+                        <div class="mt-2 flex flex-wrap items-center gap-3">
+                            <span class="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-base font-semibold text-emerald-800 ring-1 ring-emerald-200">
+                                <?= e($captchaEquation) ?> <span class="text-slate-400">=</span> <span class="text-slate-400">?</span>
+                            </span>
+                            <input type="number" id="captcha" name="captcha" data-field="captcha" inputmode="numeric"
+                                   placeholder="Type the total" autocomplete="off" class="sm:max-w-[200px]">
                         </div>
+                        <?= $fieldError('captcha') ?>
                     </div>
 
-                    <div class="flex flex-col-reverse gap-3 sm:col-span-2 sm:flex-row sm:justify-end">
+                    <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                         <button type="button" id="result-clear" class="btn btn-light">Clear</button>
                         <button type="submit" id="result-submit" class="btn btn-primary sm:min-w-[180px]">Submit</button>
                     </div>
