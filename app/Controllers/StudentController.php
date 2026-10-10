@@ -147,8 +147,8 @@ final class StudentController extends Controller
         $oldDistId  = (int) (Session::get('old', [])['district_id'] ?? 0);
         $oldUpaId   = (int) (Session::get('old', [])['upazila_id'] ?? 0);
         $districts  = $oldDivId  ? (new Query('districts'))->where('division_id', $oldDivId)->orderBy('name','asc')->get() : [];
-        $upazilas   = $oldDistId ? (new Query('upazilas'))->where('district_id', $oldDistId)->orderBy('name','asc')->get() : [];
-        $unions     = $oldUpaId  ? (new Query('unions'))->where('upazila_id', $oldUpaId)->orderBy('name','asc')->get() : [];
+        $upazilas   = $oldDistId ? (new Query('upozilas'))->where('district_id', $oldDistId)->orderBy('name','asc')->get() : [];
+        $unions     = $oldUpaId  ? (new Query('unions'))->where('upozila_id', $oldUpaId)->orderBy('name','asc')->get() : [];
         $oldCenterId = (int) (Session::get('old', [])['center_id'] ?? 0);
         $institutes = $oldCenterId ? (new Query('institutes'))->where('center_id', $oldCenterId)->where('active', 1)->orderBy('name','asc')->get() : [];
         return View::render('students.create', [
@@ -353,19 +353,28 @@ final class StudentController extends Controller
 
         $divisions = (new Query('divisions'))->orderBy('name', 'asc')->get();
         $centers = (new Query('centers'))->where('active', 1)->orderBy('id', 'asc')->get();
+        $sessions = (new Query('sessions'))->orderBy('id', 'desc')->get();
 
-        // Institutes filtered by center (if center_id is set)
+        // Child lists filtered by the student's current values (mirrors
+        // create(): options render server-side, no client-side cascade).
         $institutes = [];
         if ($student['center_id']) {
             $institutes = (new Query('institutes'))->where('center_id', $student['center_id'])
                 ->where('active', 1)->orderBy('name', 'asc')->get();
         }
+        $districts = $student['division_id'] ? (new Query('districts'))->where('division_id', $student['division_id'])->orderBy('name', 'asc')->get() : [];
+        $upazilas  = $student['district_id'] ? (new Query('upozilas'))->where('district_id', $student['district_id'])->orderBy('name', 'asc')->get() : [];
+        $unions    = $student['upazila_id'] ? (new Query('unions'))->where('upozila_id', $student['upazila_id'])->orderBy('name', 'asc')->get() : [];
 
         return View::render('students.edit', [
             'title' => 'Edit Student',
             'student' => $student,
             'divisions' => $divisions,
             'centers' => $centers,
+            'sessions' => $sessions,
+            'districts' => $districts,
+            'upazilas' => $upazilas,
+            'unions' => $unions,
             'institutes' => $institutes,
             'classes' => [1,2,3,4,5,6],
             'activeSession' => Auth::activeSession(),
