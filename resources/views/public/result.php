@@ -21,6 +21,8 @@ $fieldError = function (string $field) use ($errors): string {
     return '<p class="' . $cls . '" data-error-for="' . $field . '">' . e(implode(' ', $msgs)) . '</p>';
 };
 $fallbackUsed = (string) $val('session_id') !== '' || (string) $val('roll') !== '' || (string) $val('class') !== '';
+$logoV = (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png');
+$hdrV = (int) @filemtime(BASE_PATH . '/public/assets/img/result/header.png');
 ?>
 <div class="bg-gradient-to-b from-emerald-50 via-slate-50 to-slate-100">
     <div class="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12">
@@ -28,15 +30,15 @@ $fallbackUsed = (string) $val('session_id') !== '' || (string) $val('roll') !== 
         <!-- Branded hero -->
         <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70">
             <div class="bg-gradient-to-r from-emerald-800 via-emerald-700 to-emerald-600 px-6 py-7 text-center text-white">
-                <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/></svg>
-                </div>
+                <img src="/assets/img/result/logo.png?v=<?= $logoV ?>" alt="BKABD"
+                     class="mx-auto mb-3 h-16 w-16 rounded-full bg-white object-contain shadow-sm ring-2 ring-white/50">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/90">Bangladesh Kindergarten Association</p>
                 <h1 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Scholarship Exam Result</h1>
                 <p class="mx-auto mt-2 max-w-md text-sm text-emerald-50/90">Enter your registration number to view the published result.</p>
             </div>
-            <div class="bg-slate-50/70 px-6 py-4 text-center">
-                <img src="/assets/img/result/header.png" alt="BKABD" class="mx-auto w-full max-w-[560px]">
+            <div class="bg-white px-4 py-4 text-center sm:px-6">
+                <img src="/assets/img/result/header.png?v=<?= $hdrV ?>" alt="BKABD"
+                     class="mx-auto block w-full" width="1920" height="184">
             </div>
         </div>
 
