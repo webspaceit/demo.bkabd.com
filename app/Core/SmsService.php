@@ -25,7 +25,7 @@ final class SmsService
         }
 
         if (Config::getBool('SMS_DRY_RUN', false)) {
-            error_log(sprintf('[sms:dry-run] to=%s sender=%s msg=%s', $number, $useMask ? 'BKABD' : '8809601002953', $message));
+            error_log(sprintf('[sms:dry-run] to=%s sender=%s len=%d', self::mask($number), $useMask ? 'BKABD' : '8809601002953', strlen($message)));
             return 'DRY_RUN_OK';
         }
 
@@ -62,5 +62,15 @@ final class SmsService
         }
         curl_close($ch);
         return $response;
+    }
+
+    /** Keep only the last 4 digits of a phone number for logs. */
+    private static function mask(string $number): string
+    {
+        $n = (string) preg_replace('/\D/', '', $number);
+        if ($n === '') {
+            return '(none)';
+        }
+        return strlen($n) <= 4 ? str_repeat('*', strlen($n)) : str_repeat('*', strlen($n) - 4) . substr($n, -4);
     }
 }

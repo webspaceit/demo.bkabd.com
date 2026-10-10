@@ -47,7 +47,7 @@ if ($debug) {
     ini_set('display_startup_errors', '1');
 } else {
     set_exception_handler(function (Throwable $e) {
-        error_log('[uncaught] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+        error_log('[uncaught] ' . App\Core\Database::redact($e->getMessage()) . ' @ ' . $e->getFile() . ':' . $e->getLine());
         http_response_code(500);
         if (App\Core\Request::isJsonPreferred()) {
             header('Content-Type: application/json');

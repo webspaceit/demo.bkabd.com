@@ -120,6 +120,10 @@ try {
     @unlink($probePath);
 }
 
+// A0b. Log redaction never keeps quoted PII.
+$redacted = Database::redact("SQLSTATE[23000]: Duplicate entry 'student@example.com' for key 'users_email_unique'");
+check('log redaction masks quoted values', !str_contains($redacted, 'student@example.com') && str_contains($redacted, '***'));
+
 // A1. HOTP core vs RFC 4226 Appendix D vectors (secret ASCII "12345678901234567890").
 $rfcKey = '12345678901234567890';
 $rfcB32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
@@ -375,6 +379,21 @@ if (!httpUp($base)) {
     $anonBody = (string) curl_exec($ch);
     $anonStatus = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     check('anonymous report access -> 401', $anonStatus === 401, "status=$anonStatus body=$anonBody");
+
+    // 6b. Same-origin (CORS) guard on state-changing requests.
+    $originPost = function (string $url, ?string $origin): int {
+        $ch = curl_init($url);
+        $h = ['Content-Type: application/json', 'Accept: application/json', 'X-Requested-With: XMLHttpRequest'];
+        if ($origin !== null) {
+            $h[] = 'Origin: ' . $origin;
+        }
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POSTFIELDS => '{}', CURLOPT_HTTPHEADER => $h]);
+        curl_exec($ch);
+        return (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    };
+    check('foreign Origin POST -> 403 (CORS blocked)', $originPost("$base/api/login", 'https://evil.example') === 403);
+    check('same-origin POST passes origin guard -> 419 (CSRF)', $originPost("$base/api/login", $base) === 419);
+    check('no Origin (non-browser) -> 419 (CSRF)', $originPost("$base/api/login", null) === 419);
 
     // 7. Admin smoke: RLS guards must not block an admin.
     $cookieFile = tempnam(sys_get_temp_dir(), 'bk_sec_admin');

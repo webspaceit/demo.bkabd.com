@@ -117,8 +117,18 @@ final class Router
 
         $this->authorize($methodMatch, $request);
 
-        // CSRF for state-changing methods.
+        // State-changing methods.
         $safeMethod = in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true);
+
+        // Same-origin enforcement (CORS): a browser sends an Origin header on
+        // cross-site requests. Reject state-changing requests from a foreign
+        // origin. CORS is not enabled at all, so nothing is allowed cross-origin;
+        // non-browser clients (curl, CLI) send no Origin and are unaffected.
+        if (!$safeMethod && !$this->isSameOrigin($request)) {
+            throw new HttpException(403, 'Cross-origin request blocked.');
+        }
+
+        // CSRF for state-changing methods.
         if (!$safeMethod && !in_array('no-csrf', $methodMatch['middleware'], true)) {
             $token = $request->header('X-CSRF-TOKEN') ?? $request->input('_token');
             if (!Session::checkToken($token)) {
@@ -169,5 +179,24 @@ final class Router
                     break;
             }
         }
+    }
+
+    /**
+     * True when the request has no Origin header (curl/CLI/server-to-server),
+     * or its Origin host matches the request Host. Used to reject cross-origin
+     * state changes; the app never emits CORS headers.
+     */
+    private function isSameOrigin(Request $request): bool
+    {
+        $origin = $request->header('Origin');
+        if ($origin === null || $origin === '') {
+            return true;
+        }
+        $host = parse_url($origin, PHP_URL_HOST);
+        if (!is_string($host) || $host === '') {
+            return false;
+        }
+        $reqHost = strtolower((string) preg_replace('/:\d+$/', '', (string) ($request->header('Host') ?? '')));
+        return $reqHost !== '' && strtolower($host) === $reqHost;
     }
 }

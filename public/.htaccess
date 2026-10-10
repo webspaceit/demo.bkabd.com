@@ -37,8 +37,21 @@
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    # HTTPS-only (ignored over plain HTTP); safe to always send.
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # Same-origin app: never emit a permissive CORS header (belt-and-braces
+    # against a future misconfiguration).
+    Header always unset Access-Control-Allow-Origin
+    Header always unset Access-Control-Allow-Credentials
     # Browser cache static assets hard.
     <FilesMatch "\.(css|js|png|jpe?g|gif|svg|webp|woff2?)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
 </IfModule>
+
+# Never serve source maps or other build artifacts.
+<FilesMatch "\.(map|ts|scss)$">
+    Require all denied
+</FilesMatch>

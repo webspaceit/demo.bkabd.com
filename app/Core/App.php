@@ -27,10 +27,10 @@ final class App
         } catch (HttpException $e) {
             $this->handleHttp($e);
         } catch (\PDOException $e) {
-            error_log('[db] ' . $e->getMessage());
+            error_log('[db] ' . Database::redact($e->getMessage()));
             $this->handleHttp(new HttpException(500, 'Database error'));
         } catch (\Throwable $e) {
-            error_log('[error] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+            error_log('[error] ' . Database::redact($e->getMessage()) . ' @ ' . $e->getFile() . ':' . $e->getLine());
             if (Config::getBool('APP_DEBUG', false)) {
                 $this->debugPage($e);
             } else {

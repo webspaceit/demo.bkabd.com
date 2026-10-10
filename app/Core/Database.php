@@ -59,7 +59,7 @@ final class Database
                 $stmt->execute($params);
                 return $stmt;
             }
-            error_log('[db] ' . $sql . ' :: ' . $e->getMessage());
+            error_log('[db] ' . self::redact($sql) . ' :: ' . self::redact($e->getMessage()));
             throw $e;
         }
     }
@@ -158,5 +158,17 @@ final class Database
     public static function queryCount(): int
     {
         return self::$queryCount;
+    }
+
+    /**
+     * Mask quoted literals so PII (emails, names, phone numbers) can never
+     * land in the error log, and cap the length. Used for every logged SQL /
+     * driver message.
+     */
+    public static function redact(string $text): string
+    {
+        $text = (string) preg_replace("/'[^']*'/", "'***'", $text);
+        $text = (string) preg_replace('/"[^"]*"/', '"***"', $text);
+        return strlen($text) > 500 ? substr($text, 0, 500) . '…' : $text;
     }
 }
