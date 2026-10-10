@@ -8,6 +8,7 @@ use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
+use App\Core\View;
 use App\Models\Role;
 
 /**
@@ -172,6 +173,30 @@ final class RoleController extends Controller
         $rows = Database::select('SELECT `id`, `name`, `guard_name` FROM `permissions` ORDER BY `name`');
 
         return ['permissionList' => $rows];
+    }
+
+    /** GET /create-role — create form (behaviour in /assets/js/roles.js). */
+    public function pageCreate(Request $request): string
+    {
+        return View::render('roles.create', [
+            'title'       => 'Add Role',
+            'pageScripts' => ['/assets/js/roles.js'],
+        ], 'layouts.dashboard');
+    }
+
+    /** GET /edit-role/{id} — edit form (data loads from /api/roleById/{id}). */
+    public function pageEdit(Request $request): string
+    {
+        $id = (int) $request->params['id'];
+        if (Role::find($id) === null) {
+            throw new HttpException(404, 'Role not found');
+        }
+
+        return View::render('roles.edit', [
+            'title'       => 'Edit Role',
+            'roleId'      => $id,
+            'pageScripts' => ['/assets/js/roles.js'],
+        ], 'layouts.dashboard');
     }
 
     /** Replace a role's permission set (used by store/update). */

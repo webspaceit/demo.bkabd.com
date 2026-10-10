@@ -155,6 +155,18 @@ if (!empty($roles)) {
     }
 }
 
+// ---- form pages render ---------------------------------------------------
+[$st, , $body] = req('GET', "$base/create-role");
+check('GET /create-role renders role form', $st === 200 && str_contains($body, 'id="role-form"') && str_contains($body, '/assets/js/roles.js'), "status=$st");
+[$st, , $body] = req('GET', "$base/edit-role/$firstRoleId");
+check('GET /edit-role/{id} renders role form', $st === 200 && str_contains($body, 'id="role-form"') && str_contains($body, 'data-role-id="' . $firstRoleId . '"'), "status=$st");
+[$st, , $body] = req('GET', "$base/create-user");
+check('GET /create-user renders user form', $st === 200 && str_contains($body, 'id="user-form"') && str_contains($body, '/assets/js/users.js'), "status=$st");
+if ($meId > 0) {
+    [$st, , $body] = req('GET', "$base/edit-user/$meId");
+    check('GET /edit-user/{id} renders user form', $st === 200 && str_contains($body, 'id="user-form"') && str_contains($body, 'data-user-id="' . $meId . '"'), "status=$st");
+}
+
 @unlink($jar);
 echo "\n" . ($failures === 0 ? 'All users/roles tests passed.' : "$failures users/roles test(s) FAILED.") . "\n";
 exit($failures === 0 ? 0 : 1);

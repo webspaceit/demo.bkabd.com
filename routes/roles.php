@@ -42,3 +42,7 @@ Router::get('/userrole', fn(): string => View::render('roles.index', [
     'title'       => 'Manage User',
     'pageScripts' => ['/assets/js/roles.js'],
 ], 'layouts.dashboard'), 'auth|permission:role-list');
+
+// Role create / edit pages (behaviour in /assets/js/roles.js)
+Router::get('/create-role', [RoleController::class, 'pageCreate'], 'auth|permission:role-create');
+Router::get('/edit-role/{id}', [RoleController::class, 'pageEdit'], 'auth|permission:role-edit');

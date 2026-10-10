@@ -43,3 +43,7 @@ Router::get('/user', fn(): string => View::render('users.index', [
     'title'       => 'All User Access',
     'pageScripts' => ['/assets/js/users.js'],
 ], 'layouts.dashboard'), 'auth|permission:user-list');
+
+// User create / edit pages (behaviour in /assets/js/users.js)
+Router::get('/create-user', [UserController::class, 'pageCreate'], 'auth|permission:user-create');
+Router::get('/edit-user/{id}', [UserController::class, 'pageEdit'], 'auth|permission:user-edit');

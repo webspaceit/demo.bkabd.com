@@ -8,6 +8,7 @@ use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
+use App\Core\View;
 use App\Models\User;
 
 /**
@@ -240,6 +241,30 @@ final class UserController extends Controller
     public function isCenterEndpoint(): array
     {
         return ['status' => 'success', 'isAdmin' => !Auth::isAdmin()];
+    }
+
+    /** GET /create-user — create form (behaviour in /assets/js/users.js). */
+    public function pageCreate(Request $request): string
+    {
+        return View::render('users.create', [
+            'title'       => 'Add User',
+            'pageScripts' => ['/assets/js/users.js'],
+        ], 'layouts.dashboard');
+    }
+
+    /** GET /edit-user/{id} — edit form (data loads from /api/userById/{id}). */
+    public function pageEdit(Request $request): string
+    {
+        $id = (int) $request->params['id'];
+        if (User::find($id) === null) {
+            throw new HttpException(404, 'User not found');
+        }
+
+        return View::render('users.edit', [
+            'title'       => 'Edit User',
+            'userId'      => $id,
+            'pageScripts' => ['/assets/js/users.js'],
+        ], 'layouts.dashboard');
     }
 
     /** Assign exactly one role (or clear it) for a user. */
