@@ -21,13 +21,25 @@ sudo apt install -y nginx mysql-server php8.2-fpm php8.2-cli \
 Required PHP extensions come from `composer.json`: `ext-gd`, `ext-pdo_mysql`
 (plus phpspreadsheet's zip/xml/mbstring).
 
-## 2. Upload the project
+## 2. Pull from GitHub
 
 ```bash
-sudo mkdir -p /var/www/oop-exam
-# rsync/scp the project (excluding local junk):
-rsync -av --exclude '.git' --exclude 'tmp' --exclude 'storage/cache' \
-      ./ user@VPS:/var/www/oop-exam/
+sudo mkdir -p /var/www && cd /var/www
+sudo git clone https://github.com/webspaceit/exam.bkabd.com.git oop-exam
+cd oop-exam
+sudo chown -R www-data:www-data .
+sudo -u www-data git checkout v1.0-pre-result
+```
+
+Only code ships (the repo is gitignored) — no `.env`, `vendor/`, or probe scripts.
+
+Applying later updates, or rolling back:
+
+```bash
+cd /var/www/oop-exam
+sudo -u www-data git pull                    # or: git checkout <old-tag> to roll back
+sudo -u www-data composer install --no-dev --classmap-authoritative
+sudo systemctl restart php8.2-fpm            # new code is live (opcache revalidates in ≤60s anyway)
 ```
 
 ## 3. Composer (dompdf + phpspreadsheet live in vendor/)
