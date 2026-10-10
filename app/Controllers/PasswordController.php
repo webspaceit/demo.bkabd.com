@@ -22,9 +22,15 @@ class PasswordController extends Controller
     /** GET /passchange → password change form. */
     public function page(Request $request): string
     {
+        $user = Auth::user();
         return \App\Core\View::render('auth.passchange', [
-            'title' => 'Password Change',
-            'pageScripts' => ['/assets/js/users.js'],
+            'title' => 'Account Security',
+            'twoFactorEnabled' => (int) ($user['two_factor_enabled'] ?? 0) === 1,
+            'pageScripts' => [
+                '/assets/js/vendor/qrcode.min.js',
+                '/assets/js/users.js',
+                '/assets/js/mfa.js',
+            ],
         ], 'layouts.dashboard');
     }
 

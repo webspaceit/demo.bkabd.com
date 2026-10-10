@@ -15,6 +15,12 @@ Router::post('/api/login', [AuthController::class, 'login'], 'guest');
 Router::post('/api/logout', [AuthController::class, 'logout'], 'auth');
 Router::post('/api/register', [AuthController::class, 'register'], 'auth');
 
+// Two-factor authentication (TOTP) — two-step login + account management.
+Router::post('/api/login/mfa', [AuthController::class, 'mfaChallenge'], 'guest');
+Router::get('/api/mfa/setup', [AuthController::class, 'mfaSetup'], 'auth');
+Router::post('/api/mfa/enable', [AuthController::class, 'mfaEnable'], 'auth');
+Router::post('/api/mfa/disable', [AuthController::class, 'mfaDisable'], 'auth');
+
 /** Admin picks the exam session to work in (original: GET /api/updateSession/{id}). */
 Router::get('/api/updateSession/{id}', function (Request $request) {
     if (!Auth::isAdmin()) {

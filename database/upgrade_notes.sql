@@ -37,3 +37,14 @@ WHERE NOT EXISTS (
   SELECT 1 FROM `role_has_permissions` rp
   WHERE rp.`permission_id` = p.`id` AND rp.`role_id` = 5
 );
+
+-- ---------------------------------------------------------------
+-- Security hardening — two-factor authentication (TOTP)
+-- New installs get the columns from database/schema.sql; this mirrors
+-- them for existing databases. Users.two_factor_enabled + secret are
+-- managed via /api/mfa/setup|enable|disable (auth) and the two-step
+-- login at POST /api/login + POST /api/login/mfa.
+-- ---------------------------------------------------------------
+ALTER TABLE `users`
+  ADD COLUMN `two_factor_secret` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  ADD COLUMN `two_factor_enabled` tinyint(1) NOT NULL DEFAULT '0';

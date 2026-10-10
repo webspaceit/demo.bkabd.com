@@ -30,6 +30,44 @@ final class ReportController extends Controller
     /** Class-order SQL used by the original reports (KG first). */
     private const FIELD_CLASS = 'FIELD(`students`.`class`,6,1,2,3,4,5)';
 
+    // ---------------------------------------------------------------
+    // Row Level Security helpers (id/scope guards, backend of BOLA fixes)
+    // Admins may read any center/institute; center users (type 4) are
+    // scoped to their own center (centers.user_id = users.id).
+    // ---------------------------------------------------------------
+
+    /** 403 unless the {id} in the URL is the caller's own center. */
+    private function assertCenter(int $centerId): void
+    {
+        Auth::assertCenterAccess($centerId);
+    }
+
+    /**
+     * Center scope for "all centers" reports: null = all centers (admin),
+     * the caller's own center id for center users.
+     */
+    private function centerScopeOrNull(): ?int
+    {
+        return Auth::isAdmin() ? null : (int) (Auth::centerId() ?? 0);
+    }
+
+    /**
+     * Resolve a report {id} where 0 means "all centers". Center users asking
+     * for id=0 are pinned to their own center; any other id must be theirs.
+     */
+    private function resolveCenter(int $id): int
+    {
+        if (!Auth::isAdmin()) {
+            $mine = (int) (Auth::centerId() ?? 0);
+            if ($id === 0) {
+                return $mine;
+            }
+            Auth::assertCenterAccess($id);
+            return $id;
+        }
+        return $id;
+    }
+
     // ===============================================================
     // JSON endpoints
     // ===============================================================
@@ -75,6 +113,11 @@ final class ReportController extends Controller
         }
 
         $centers = ReportService::centersCache();
+        // RLS: a center user's picker lists only their own center.
+        if (!Auth::isAdmin()) {
+            $mine = (int) (Auth::centerId() ?? 0);
+            $centers = array_values(array_filter($centers, static fn($c) => (int) ($c['id'] ?? 0) === $mine));
+        }
 
         return $this->sendResponse(['centerList' => $centers], 'Center list retrieved.');
     }
@@ -90,6 +133,9 @@ final class ReportController extends Controller
         if ($centerId === null) {
             return $this->sendError('center_id is required.', [], 400);
         }
+
+        // RLS/BOLA: a center user may only list institutes of their own center.
+        Auth::assertCenterAccess((int) $centerId);
 
         $institutes = ReportService::institutesByCenterCache((int) $centerId);
 
@@ -112,6 +158,7 @@ final class ReportController extends Controller
     public function institutestudentdetailsexport(Request $request): never
     {
         $id = (int) $request->params['id'];
+        Auth::assertInstituteAccess($id); // RLS/BOLA
         $session = $this->activeSession();
         $students = ReportSheetService::rows([
             'session' => $session,
@@ -154,7 +201,8 @@ final class ReportController extends Controller
     /** All-centers (id=0) or single-center info sheet. */
     public function centerinfo(Request $request): string
     {
-        $id = (int) $request->params['id'];
+        // RLS: id=0 (all centers) becomes the caller's own center for center users.
+        $id = $this->resolveCenter((int) $request->params['id']);
         $session = $this->activeSession();
 
         if ($id > 0) {
@@ -209,6 +257,7 @@ final class ReportController extends Controller
     public function institutewisedetails(Request $request): string
     {
         $id = (int) $request->params['id'];
+        Auth::assertInstituteAccess($id); // RLS/BOLA
         $session = $this->activeSession();
         $students = ReportSheetService::rows([
             'session' => $session,
@@ -280,6 +329,7 @@ final class ReportController extends Controller
     public function CenterWiseStudentDetailsReportIssuedAdmitCard(Request $request): string
     {
         $id = (int) $request->params['id'];
+        Auth::assertCenterAccess($id); // RLS/BOLA
         $session = $this->activeSession();
         $students = ReportSheetService::rows(['session' => $session, 'center_id' => $id]);
         if ($students === []) {
@@ -341,6 +391,7 @@ final class ReportController extends Controller
     public function CenterWiseGradeSheetCountReport(Request $request): string
     {
         $id = (int) $request->params['id'];
+        Auth::assertCenterAccess($id); // RLS/BOLA
         $session = $this->activeSession();
         $students = ReportSheetService::rows([
             'session' => $session,
@@ -381,6 +432,25 @@ final class ReportController extends Controller
         $session = $this->activeSession();
         $centers = ReportSheetService::centerGradeMerit($session);
         $overall = ReportSheetService::overallGradeMerit($session);
+
+        // RLS: center users see only their own center — the "overall" total row
+        // is recomputed from the centers actually shown (no cross-center leak).
+        if (!Auth::isAdmin()) {
+            $mine = (int) (Auth::centerId() ?? 0);
+            $centers = array_values(array_filter($centers, static fn($c) => (int) ($c['id'] ?? 0) === $mine));
+            $overall = ['total' => 0, 'present' => 0, 'absent' => 0, 'tp' => 0, 'gg' => 0, 'sg' => 0, 'position1' => 0, 'position2' => 0, 'position3' => 0];
+            foreach ($centers as $c) {
+                $overall['total'] += (int) $c['students_count'];
+                $overall['present'] += (int) $c['students_present'];
+                $overall['absent'] += (int) $c['students_absent'];
+                $overall['tp'] += (int) $c['tp'];
+                $overall['gg'] += (int) $c['gg'];
+                $overall['sg'] += (int) $c['sg'];
+                $overall['position1'] += (int) $c['position1'];
+                $overall['position2'] += (int) $c['position2'];
+                $overall['position3'] += (int) $c['position3'];
+            }
+        }
 
         $headings = ['Sl', 'Center Name', 'Students', 'Present', 'Absent', 'Talent Pool', 'General Grade', 'School Grade', '1st', '2nd', '3rd'];
         $rows = [];
@@ -426,6 +496,7 @@ final class ReportController extends Controller
     public function MeritListResultwithPosition(Request $request): string
     {
         $id = (int) $request->params['id'];
+        Auth::assertCenterAccess($id); // RLS/BOLA
         $session = $this->activeSession();
         $students = ReportService::meritStudents($id, $session);
         if ($students === []) {
@@ -464,7 +535,9 @@ final class ReportController extends Controller
     /** Total institute information — .xlsx for all institutes, sheet for one center. */
     public function TotalInstituteInformation(Request $request): string
     {
-        $id = (int) $request->params['id'];
+        // RLS: id=0 (all centers) is admin-only; center users are pinned to
+        // their own center.
+        $id = $this->resolveCenter((int) $request->params['id']);
         $institutes = ReportService::institutesWithCenter($id > 0 ? $id : null);
         if ($institutes === []) {
             ReportPdf::noData('Institute');
@@ -503,6 +576,11 @@ final class ReportController extends Controller
     public function AllCenterDetailsInformationReport(Request $request): string
     {
         $centers = ReportSheetService::allCenterDetails();
+        // RLS: a center user may only see their own center + authority contact.
+        if (!Auth::isAdmin()) {
+            $mine = (int) (Auth::centerId() ?? 0);
+            $centers = array_values(array_filter($centers, static fn($c) => (int) ($c['id'] ?? 0) === $mine));
+        }
         if ($centers === []) {
             ReportPdf::noData('Center');
         }
@@ -530,7 +608,9 @@ final class ReportController extends Controller
     public function DocumentsDistributionReport(Request $request): string
     {
         $session = $this->activeSession();
-        $report = ReportSheetService::documentsDistribution($session);
+        // RLS: center users' "documents distribution" covers their own center only.
+        $scopeCenter = $this->centerScopeOrNull();
+        $report = ReportSheetService::documentsDistribution($session, $scopeCenter);
         if ($report === []) {
             ReportPdf::noData('Center');
         }
@@ -554,8 +634,8 @@ final class ReportController extends Controller
 
         return $this->renderSheet([
             'reportTitle' => 'Documents Distribution Report',
-            'scopeName' => 'All Centers',
-            'summaries' => [$this->classSummary(ReportService::classCounts($session))],
+            'scopeName' => $scopeCenter !== null ? 'Center Name: ' . ReportService::centerName($scopeCenter) : 'All Centers',
+            'summaries' => [$this->classSummary(ReportService::classCounts($session, $scopeCenter))],
             'headings' => $headings,
             'rows' => $rows,
         ], 'landscape');
@@ -565,7 +645,9 @@ final class ReportController extends Controller
     public function EducationalTypeStudentCountReport(Request $request): string
     {
         $session = $this->activeSession();
-        $report = ReportSheetService::educationalType($session);
+        // RLS: center users' report covers their own center only.
+        $scopeCenter = $this->centerScopeOrNull();
+        $report = ReportSheetService::educationalType($session, $scopeCenter);
         if ($report === []) {
             ReportPdf::noData('Center');
         }
@@ -582,7 +664,7 @@ final class ReportController extends Controller
 
         return $this->renderSheet([
             'reportTitle' => 'Educational Type Student Count Report',
-            'scopeName' => 'All Centers',
+            'scopeName' => $scopeCenter !== null ? 'Center Name: ' . ReportService::centerName($scopeCenter) : 'All Centers',
             'headings' => $headings,
             'rows' => $rows,
         ]);
@@ -636,6 +718,7 @@ final class ReportController extends Controller
     /** Center student detail spreadsheet. */
     private function centerStudentExcel(int $centerId): never
     {
+        Auth::assertCenterAccess($centerId); // RLS/BOLA
         $session = $this->activeSession();
         $students = ReportSheetService::rows(['session' => $session, 'center_id' => $centerId]);
         if ($students === []) {
@@ -655,6 +738,7 @@ final class ReportController extends Controller
     /** Center student detail sheet (with or without photo). */
     private function centerStudentPdf(int $centerId, bool $withPhoto): string
     {
+        Auth::assertCenterAccess($centerId); // RLS/BOLA
         $session = $this->activeSession();
         $students = ReportSheetService::rows(['session' => $session, 'center_id' => $centerId]);
         if ($students === []) {
@@ -701,6 +785,7 @@ final class ReportController extends Controller
     /** Class-wise attendance sheet. */
     private function attendSheetPdf(int $centerId, bool $withPhoto, bool $classFirst): string
     {
+        Auth::assertCenterAccess($centerId); // RLS/BOLA
         $session = $this->activeSession();
         $orders = $classFirst
             ? [
@@ -753,6 +838,12 @@ final class ReportController extends Controller
     /** Marks report sheet (highest marks / tabulation). */
     private function marksReportPdf(int $centerId, ?int $instituteId, bool $instituteWise, string $title = 'Highest Marks Report'): string
     {
+        // RLS/BOLA: the center must be the caller's own; a specific institute
+        // must also belong to that center (admins pass through).
+        Auth::assertCenterAccess($centerId);
+        if ($instituteId !== null) {
+            Auth::assertInstituteAccess($instituteId);
+        }
         $session = $this->activeSession();
         $students = ReportSheetService::rows([
             'session' => $session,
@@ -794,6 +885,11 @@ final class ReportController extends Controller
     /** Grade sheet result details (center-wide or one institute). */
     private function gradeSheetResultPdf(int $centerId, ?int $instituteId): string
     {
+        // RLS/BOLA: same ownership rules as marksReportPdf.
+        Auth::assertCenterAccess($centerId);
+        if ($instituteId !== null) {
+            Auth::assertInstituteAccess($instituteId);
+        }
         $session = $this->activeSession();
         $students = ReportService::certifiedStudents($centerId, $session, $instituteId);
         if ($students === []) {
@@ -832,7 +928,9 @@ final class ReportController extends Controller
     /** Membership institute sheet. */
     private function membershipPdf(int $membershipType, string $title): string
     {
-        $institutes = ReportService::institutesWithCenter(null, $membershipType);
+        // RLS: lifetime/temporary membership lists are scoped to the caller's
+        // own center for center users (admins see all centers).
+        $institutes = ReportService::institutesWithCenter($this->centerScopeOrNull(), $membershipType);
         if ($institutes === []) {
             ReportPdf::noData('Institute');
         }

@@ -176,7 +176,7 @@ $activeSession = Auth::activeSession();
                     </div>
                 </div>
                 <div class="mt-3 flex items-center gap-2 text-[11px]">
-                    <a href="/passchange" class="flex-1 text-center rounded-md bg-white/10 hover:bg-white/20 py-1.5 text-white transition">Password</a>
+                    <a href="/passchange" class="flex-1 text-center rounded-md bg-white/10 hover:bg-white/20 py-1.5 text-white transition">Security</a>
                     <form method="POST" action="/logout" class="flex-1 m-0">
                         <?= csrf_field() ?>
                         <button type="submit" class="w-full rounded-md bg-white/10 hover:bg-white/20 py-1.5 text-white transition cursor-pointer">Logout</button>
@@ -220,7 +220,7 @@ $activeSession = Auth::activeSession();
                 </a>
                 <?php endif; ?>
 
-                <a href="/passchange" title="Account settings" aria-label="Account settings"
+                <a href="/passchange" title="Account &amp; security settings" aria-label="Account &amp; security settings"
                    class="w-8 h-8 rounded-full ring-2 ring-white shadow-sm bg-emerald-600 text-white flex items-center justify-center shrink-0">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
                 </a>

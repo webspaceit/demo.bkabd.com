@@ -21,9 +21,12 @@ final class SeatPlanController extends Controller
             Response::json(['message' => 'This action is unauthorized.'], 403);
         }
 
-        $id = (int) $request->params['id']; // center_id or institute_id
+        $id = (int) $request->params['id']; // institute_id
         $class = (int) $request->params['class'];
         $activeSession = $this->activeSession();
+
+        // RLS/BOLA: the institute must belong to the caller's center.
+        Auth::assertInstituteAccess($id);
 
         // In original, seatplan is called with institute_id/class based on some routes,
         // but seatplan_print takes center_id/class - need to check context

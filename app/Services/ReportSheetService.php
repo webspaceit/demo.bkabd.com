@@ -29,6 +29,14 @@ final class ReportSheetService
      */
     public static function rows(array $o): array
     {
+        // RLS (defense in depth): a center user can only ever pull their own
+        // center's rows, no matter what scope the URL asks for. The controller
+        // asserts also block the request; this makes the service safe even if a
+        // future endpoint forgets the check.
+        if (!Auth::isAdmin() && Auth::centerId() !== null) {
+            $o['center_id'] = Auth::centerId();
+        }
+
         $session = $o['session'] ?? Auth::activeSession();
 
         $q = (new Query('students'))
@@ -155,10 +163,9 @@ final class ReportSheetService
     // ---------------------------------------------------------------
 
     /** Center/class student counts grouped by division/district/upazila. */
-    public static function documentsDistribution(string|int $session): array
+    public static function documentsDistribution(string|int $session, ?int $centerId = null): array
     {
-        return Database::select(
-            "SELECT u.`name` AS center_name, d.`name` AS division, dt.`name` AS district,
+        $sql = "SELECT u.`name` AS center_name, d.`name` AS division, dt.`name` AS district,
                     uz.`name` AS upazila, s.`class`, COUNT(s.`id`) AS class_count
                FROM `centers` c
                JOIN `students` s ON s.`center_id` = c.`id`
@@ -166,11 +173,15 @@ final class ReportSheetService
                JOIN `divisions` d ON d.`id` = c.`division_id`
                JOIN `districts` dt ON dt.`id` = c.`district_id`
                JOIN `upozilas` uz ON uz.`id` = c.`upazila_id`
-              WHERE s.`session` = :s
-           GROUP BY u.`name`, d.`name`, dt.`name`, uz.`name`, s.`class`
-           ORDER BY d.`name` ASC, dt.`name` ASC, uz.`name` ASC, u.`name` ASC, " . self::FIELD_CLASS_S,
-            [':s' => (int) $session]
-        );
+              WHERE s.`session` = :s";
+        $params = [':s' => (int) $session];
+        if ($centerId !== null && $centerId > 0) {
+            $sql .= ' AND c.`id` = :c';
+            $params[':c'] = (int) $centerId;
+        }
+        $sql .= ' GROUP BY u.`name`, d.`name`, dt.`name`, uz.`name`, s.`class`
+           ORDER BY d.`name` ASC, dt.`name` ASC, uz.`name` ASC, u.`name` ASC, ' . self::FIELD_CLASS_S;
+        return Database::select($sql, $params);
     }
 
     // ---------------------------------------------------------------
@@ -178,10 +189,9 @@ final class ReportSheetService
     // ---------------------------------------------------------------
 
     /** Per center + class counts split by education type. */
-    public static function educationalType(string|int $session): array
+    public static function educationalType(string|int $session, ?int $centerId = null): array
     {
-        return Database::select(
-            "SELECT u.`name` AS center_name, s.`class`,
+        $sql = "SELECT u.`name` AS center_name, s.`class`,
                     COALESCE(SUM(s.`education_type` = 1), 0) AS bangla,
                     COALESCE(SUM(s.`education_type` = 2), 0) AS english,
                     COALESCE(SUM(s.`education_type` = 3), 0) AS arabic,
@@ -189,11 +199,14 @@ final class ReportSheetService
                FROM `centers` c
           LEFT JOIN `users` u ON u.`id` = c.`user_id`
           LEFT JOIN `students` s ON s.`center_id` = c.`id` AND s.`session` = :s
-              WHERE s.`education_type` IS NOT NULL AND s.`education_type` <> ''
-           GROUP BY u.`name`, s.`class`
-           ORDER BY u.`name` ASC, " . self::FIELD_CLASS_S,
-            [':s' => (int) $session]
-        );
+              WHERE s.`education_type` IS NOT NULL AND s.`education_type` <> ''";
+        $params = [':s' => (int) $session];
+        if ($centerId !== null && $centerId > 0) {
+            $sql .= ' AND c.`id` = :c';
+            $params[':c'] = (int) $centerId;
+        }
+        $sql .= ' GROUP BY u.`name`, s.`class` ORDER BY u.`name` ASC, ' . self::FIELD_CLASS_S;
+        return Database::select($sql, $params);
     }
 
     // ---------------------------------------------------------------

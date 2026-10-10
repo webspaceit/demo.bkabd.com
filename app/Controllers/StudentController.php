@@ -7,6 +7,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
 use App\Core\Query;
+use App\Core\RateLimiter;
 use App\Core\Session;
 use App\Core\Database;
 use App\Models\Student;
@@ -141,7 +142,12 @@ final class StudentController extends Controller
             return Response::redirect('/login');
         }
         $divisions  = (new Query('divisions'))->orderBy('name', 'asc')->get();
-        $centers    = (new Query('centers'))->where('active', 1)->orderBy('id', 'asc')->get();
+        // RLS: center users see only their own center in the registration form.
+        $centersQuery = (new Query('centers'))->where('active', 1)->orderBy('id', 'asc');
+        if (!Auth::isAdmin() && Auth::centerId() !== null) {
+            $centersQuery->where('id', Auth::centerId());
+        }
+        $centers    = $centersQuery->get();
         $sessions   = (new Query('sessions'))->orderBy('id', 'desc')->get();
         $oldDivId   = (int) (Session::get('old', [])['division_id'] ?? 0);
         $oldDistId  = (int) (Session::get('old', [])['district_id'] ?? 0);
@@ -201,6 +207,11 @@ final class StudentController extends Controller
         } catch (\App\Core\ValidationException $e) {
             Response::validationError($e->errors, $e->getMessage());
         }
+
+        // RLS/BOLA: a center user may only register into a center they own and
+        // an institute that belongs to that center (admins pass through).
+        Auth::assertCenterAccess((int) $data['center_id']);
+        Auth::assertInstituteAccess((int) $data['institute_id']);
 
         // --- Duplicate check (phone+father_name+name+session+class+center+institute) ---
         $dup = Database::selectOne(
@@ -298,6 +309,9 @@ final class StudentController extends Controller
             throw new \App\Core\HttpException(404, 'Student not found');
         }
 
+        // RLS/BOLA: the student must belong to the caller's center.
+        Auth::assertStudentAccess($id);
+
         // Load related names in one query to avoid N+1
         $institute = Institute::find($student['institute_id'] ?? 0);
         $center = Center::find($student['center_id'] ?? 0);
@@ -342,6 +356,9 @@ final class StudentController extends Controller
         if ($student === null) {
             throw new \App\Core\HttpException(404, 'Student not found');
         }
+
+        // RLS/BOLA: the student must belong to the caller's center.
+        Auth::assertStudentAccess($id);
 
         $divisions = (new Query('divisions'))->orderBy('name', 'asc')->get();
         $centers = (new Query('centers'))->where('active', 1)->orderBy('id', 'asc')->get();
@@ -388,6 +405,10 @@ final class StudentController extends Controller
             throw new \App\Core\HttpException(404, 'Student not found');
         }
 
+        // RLS/BOLA: only the owner center user (or an admin) may update;
+        // a moved center/institute must also stay inside the caller's scope.
+        Auth::assertStudentAccess($id);
+
         // Re-validate only the fields being sent; keep existing values for omitted fields
         $rules = [
             'name'                 => 'nullable|string',
@@ -416,6 +437,15 @@ final class StudentController extends Controller
             $data = Validator::validate($request, $rules);
         } catch (\App\Core\ValidationException $e) {
             Response::validationError($e->errors, $e->getMessage());
+        }
+
+        // RLS/BOLA: a center user must not move a student into another center
+        // or an institute outside their own center.
+        if (isset($data['center_id']) && $data['center_id'] !== null && $data['center_id'] !== '') {
+            Auth::assertCenterAccess((int) $data['center_id']);
+        }
+        if (isset($data['institute_id']) && $data['institute_id'] !== null && $data['institute_id'] !== '') {
+            Auth::assertInstituteAccess((int) $data['institute_id']);
         }
 
         // Preserve existing values for fields not sent
@@ -529,6 +559,9 @@ final class StudentController extends Controller
             throw new \App\Core\HttpException(404, 'Student not found');
         }
 
+        // RLS/BOLA: only the owner center user (or an admin) may delete.
+        Auth::assertStudentAccess($id);
+
         // Delete photo file if exists
         if ($student['photo']) {
             @unlink(BASE_PATH . '/public/' . $student['photo']);
@@ -551,6 +584,9 @@ final class StudentController extends Controller
         if (!Auth::check()) {
             Response::json(['status' => 'errors'], 401);
         }
+
+        // Rate limiting: transient storage abuse per IP (photo uploads).
+        RateLimiter::hit('upload-file', 30, 60);
 
         if (!$request->hasFile('file') || $request->file('file')['error'] !== UPLOAD_ERR_OK) {
             return Response::validationError(['file' => ['No file uploaded']]);

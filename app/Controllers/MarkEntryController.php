@@ -45,6 +45,10 @@ final class MarkEntryController extends Controller
     {
         $rows = $this->validatedStudents($request);
 
+        // RLS/BOLA: every edited student must belong to the caller's center
+        // (one DISTINCT query over the whole batch — see Auth::assertStudentAccess).
+        Auth::assertStudentAccess(array_column($rows, 'id'));
+
         foreach ($rows as $row) {
             // Original: `Student::find(...)` then update — missing ids are skipped.
             if (Student::find($row['id']) === null) {
@@ -90,6 +94,9 @@ final class MarkEntryController extends Controller
      */
     public static function fetchStudents(int $instituteId, int $class, bool $highestFirst): array
     {
+        // RLS/BOLA: center users may only fetch an institute that belongs to them.
+        Auth::assertInstituteAccess($instituteId);
+
         $q = \App\Models\Student::query()
             ->select('id', 'name', 'registration', 'roll', 'bangla', 'english', 'math', 'total', 'percentage', 'ml', 'grade')
             ->where('institute_id', $instituteId)

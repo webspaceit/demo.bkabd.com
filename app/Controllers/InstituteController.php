@@ -6,6 +6,7 @@ use App\Core\Auth;
 use App\Core\Database;
 use App\Core\HttpException;
 use App\Core\Query;
+use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
@@ -70,7 +71,9 @@ final class InstituteController extends Controller
     /** GET /api/institutes/{id} — single institute (edit form / detail). */
     public function show(Request $request): array
     {
-        return ['instituteById' => $this->findOrFail((int) $request->params['id'])];
+        $id = (int) $request->params['id'];
+        Auth::assertInstituteAccess($id); // RLS/BOLA
+        return ['instituteById' => $this->findOrFail($id)];
     }
 
     /**
@@ -81,6 +84,8 @@ final class InstituteController extends Controller
      */
     public function instituteById(Request $request): array
     {
+        $centerId = (int) $request->params['id'];
+        Auth::assertCenterAccess($centerId); // RLS/BOLA: {id} is a CENTER id
         $rows = (new Query('institutes'))
             ->where('center_id', (int) $request->params['id'])
             ->where('active', 1)
@@ -94,6 +99,7 @@ final class InstituteController extends Controller
     public function store(Request $request): array
     {
         $data = $this->validated($request);
+        Auth::assertCenterAccess((int) $data['center_id']); // RLS/BOLA
         $row = $this->pick($data);
         $row['created_at'] = date('Y-m-d H:i:s');
         $row['updated_at'] = date('Y-m-d H:i:s');
@@ -106,8 +112,12 @@ final class InstituteController extends Controller
     public function update(Request $request): array
     {
         $id = (int) $request->params['id'];
+        Auth::assertInstituteAccess($id); // RLS/BOLA
         $this->findOrFail($id);
         $data = $this->validated($request);
+        if (isset($data['center_id']) && $data['center_id'] !== null && $data['center_id'] !== '') {
+            Auth::assertCenterAccess((int) $data['center_id']); // must not move center
+        }
         $row = $this->pick($data);
         $row['updated_at'] = date('Y-m-d H:i:s');
         (new Query('institutes'))->where('id', $id)->update($row);
@@ -119,6 +129,7 @@ final class InstituteController extends Controller
     public function destroy(Request $request): array
     {
         $id = (int) $request->params['id'];
+        Auth::assertInstituteAccess($id); // RLS/BOLA
         $this->findOrFail($id);
         (new Query('institutes'))->where('id', $id)->delete();
 
@@ -130,6 +141,7 @@ final class InstituteController extends Controller
     {
         $id = (int) $request->params['id'];
         $sta = (int) $request->params['sta'];
+        Auth::assertInstituteAccess($id); // RLS/BOLA
         $this->findOrFail($id);
         (new Query('institutes'))->where('id', $id)->update(['active' => $sta === 1 ? 1 : 0]);
 
@@ -144,6 +156,7 @@ final class InstituteController extends Controller
     public function updateValidity(Request $request): array
     {
         $id = (int) $request->params['id'];
+        Auth::assertInstituteAccess($id); // RLS/BOLA
         $this->findOrFail($id);
         $data = Validator::validate($request, [
             'last_renewal_date' => 'required|string|max:10',
@@ -187,6 +200,11 @@ final class InstituteController extends Controller
      */
     public function instituteregistrationpdf(Request $request): string
     {
+        // Public read-back endpoint for a newly self-registered institute's own
+        // card — rate-limited per IP so it can't be used to enumerate other
+        // institutes' director / contact PII.
+        RateLimiter::hit('institute-registration-pdf', 30, 60);
+
         $institute = (new InstituteService())->registrationCard((int) $request->params['id']);
 
         return View::render('institutes.registration_card', [
@@ -225,6 +243,9 @@ final class InstituteController extends Controller
      */
     public function store2(Request $request): array
     {
+        // Public form: per-IP limit so bots can't spam the institutes table.
+        RateLimiter::hit('ins-store', 10, 3600);
+
         $data = Validator::validate($request, [
             'name' => 'required|string|max:255',
             'director_name' => 'required|string|max:255',
@@ -333,6 +354,7 @@ final class InstituteController extends Controller
     public function pageEdit(Request $request): string
     {
         $id = (int) $request->params['id'];
+        Auth::assertInstituteAccess($id); // RLS/BOLA
         $this->findOrFail($id);
 
         return View::render('institutes.form', [
@@ -350,6 +372,7 @@ final class InstituteController extends Controller
     public function pageValidity(Request $request): string
     {
         $id = (int) $request->params['id'];
+        Auth::assertInstituteAccess($id); // RLS/BOLA
         $this->findOrFail($id);
 
         return View::render('institutes.validity', [

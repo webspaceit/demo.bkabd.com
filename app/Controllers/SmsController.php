@@ -2,8 +2,10 @@
 
 namespace App\Controllers;
 
+use App\Core\Auth;
 use App\Core\HttpException;
 use App\Core\Query;
+use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\SmsService;
 use App\Core\Validator;
@@ -34,6 +36,10 @@ final class SmsController extends Controller
     {
         $centerId = (int) $request->params['id'];
 
+        // RLS/BOLA: center users may only pull numbers for their own center
+        // (id=0 "every center" is admin-only — a center user's assert throws 403).
+        Auth::assertCenterAccess($centerId);
+
         $q = (new Query('users'))
             ->join('centers', 'centers.user_id', '=', 'users.id')
             ->select('users.phone');
@@ -57,6 +63,10 @@ final class SmsController extends Controller
         $centerId = (int) $request->params['id'];
         $instituteId = (int) $request->params['institute'];
 
+        // RLS/BOLA: the center must be the caller's own (id=0 for "whole
+        // center" is scoped by the center_id filter below; admins pass through).
+        Auth::assertCenterAccess($centerId);
+
         if ($instituteId === 0) {
             $rows = (new Query('institutes'))
                 ->select('phone')
@@ -67,7 +77,13 @@ final class SmsController extends Controller
             return ['numbers' => implode(',', $numbers)];
         }
 
-        $row = (new Query('institutes'))->select('phone')->where('id', $instituteId)->first();
+        // Institute must exist AND belong to the given center (kills the IDOR
+        // where any institute's number could be read by guessing its id).
+        $row = (new Query('institutes'))
+            ->select('phone')
+            ->where('id', $instituteId)
+            ->where('center_id', $centerId)
+            ->first();
         if ($row === null) {
             throw new HttpException(404, 'Institute not found');
         }
@@ -83,6 +99,12 @@ final class SmsController extends Controller
             'phone' => 'required|string',
             'type' => 'required|in:1,2',
         ]);
+
+        // Rate limiting: a per-user daily cap (SMS blast abuse) and a per-recipient
+        // daily cap (number pumping). Legit bulk use stays well inside these.
+        $userId = (int) Auth::id();
+        RateLimiter::hit('sms:user:' . $userId, 200, 86400);
+        RateLimiter::hit('sms:phone:' . $data['phone'], 50, 86400);
 
         // type 1 -> masking sender "BKABD", type 2 -> numeric sender (original SmsSend).
         SmsService::send((string) $data['phone'], (string) $data['message'], (string) $data['type'] === '1');

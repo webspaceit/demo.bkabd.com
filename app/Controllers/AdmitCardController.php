@@ -29,6 +29,10 @@ final class AdmitCardController extends Controller
 
         $activeSession = $this->activeSession();
 
+        // RLS/BOLA: admit cards are per-institute — the institute must be the
+        // caller's own when the caller is a center user.
+        Auth::assertInstituteAccess($id);
+
         // Determine if id is center or institute based on usage
         // In original, sometimes center_id is passed; check the seatplan usage - seatplan_print takes center_id/class
         // But admitcards in original takes institute_id/class based on the code we saw earlier
@@ -66,6 +70,9 @@ final class AdmitCardController extends Controller
         $id = (int) $request->params['id'];
         $class = (int) $request->params['class'];
         $activeSession = $this->activeSession();
+
+        // RLS/BOLA: same ownership rule for the printable admit cards.
+        Auth::assertInstituteAccess($id);
 
         // In original admitcard_print takes institute_id
         $students = Student::query()

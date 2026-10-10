@@ -51,8 +51,9 @@ Router::post('/api/students/{id}', [StudentController::class, 'update'], 'auth|p
 Router::delete('/api/students/{id}', [StudentController::class, 'destroy'], 'auth|permission:student-delete');
 
 // Photo upload
-// Original: POST /api/uploadFile (was unauthenticated + had dd()) — we require auth + no dd()
-Router::post('/api/uploadFile', [StudentController::class, 'uploadFile'], 'auth');
+// Original: POST /api/uploadFile (was unauthenticated + had dd()) — requires
+// auth + one of the student write permissions; rate-limited in the controller.
+Router::post('/api/uploadFile', [StudentController::class, 'uploadFile'], ['auth', 'permission:student-registration|student-edit']);
 
 // Students list page (server-side pagination + filters; inline page script in the view)
 // Original: GET /students -> students/index.vue

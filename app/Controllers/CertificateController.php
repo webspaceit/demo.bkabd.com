@@ -45,6 +45,9 @@ final class CertificateController extends Controller
     public function student(Request $request): string
     {
         $session = Auth::activeSession();
+        // RLS/BOLA: center users may only print certificates for their own institutes.
+        Auth::assertInstituteAccess((int) $request->params['instituteId']);
+
         $students = (new Query('students'))
             ->leftJoin('centers', 'centers.id', '=', 'students.center_id')
             ->leftJoin('users', 'users.id', '=', 'centers.user_id')
@@ -69,6 +72,9 @@ final class CertificateController extends Controller
      */
     public function institute(Request $request): string
     {
+        // RLS/BOLA: center users may only print certificates for their own institutes.
+        Auth::assertInstituteAccess((int) $request->params['instituteId']);
+
         $institute = (new Query('institutes'))
             ->where('id', (int) $request->params['instituteId'])
             ->where('active', 1)
