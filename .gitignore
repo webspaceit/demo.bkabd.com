@@ -1,0 +1,26 @@
+# ---- OS / editor junk ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.tmp
+
+# ---- environment (never publish credentials) ----
+.env
+
+# ---- composer dependencies: install on the server (`composer install`) ----
+/vendor/
+
+# ---- dev scratch / probe scripts (never publish) ----
+/tmp/
+
+# ---- runtime artifacts: created on the server; dirs kept via .gitkeep ----
+/storage/cache/*
+/storage/logs/*
+/storage/uploads/*
+/public/uploads/*
+!/storage/cache/.gitkeep
+!/storage/logs/.gitkeep
+!/storage/uploads/.gitkeep
+!/public/uploads/.gitkeep

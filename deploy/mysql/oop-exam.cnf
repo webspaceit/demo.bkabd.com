@@ -1,0 +1,45 @@
+# BKABD Exam System — MySQL tuning (4C / 8GB VPS)
+# Install: /etc/mysql/mysql.conf.d/oop-exam.cnf   (Ubuntu/Debian)
+#
+# The whole dataset is small (~116k students -> tens of MB), so 2G buffer pool
+# is enormous headroom: on result day the hot working set stays fully in RAM.
+
+[mysqld]
+# --- memory (total budget ~2.5 GB for MySQL) ---
+innodb_buffer_pool_size = 2G
+innodb_buffer_pool_instances = 4          # 4 cores -> 4 pools, less mutex contention
+innodb_log_buffer_size = 16M
+
+# --- connections: FPM has 50 workers, each holding <=1 connection; 250 is safe headroom ---
+max_connections = 250
+max_connect_errors = 1000
+
+# --- don't let idle connections stack up on result day ---
+wait_timeout = 60
+interactive_timeout = 60
+
+# --- concurrency / threads (4 cores) ---
+thread_cache_size = 8
+innodb_thread_concurrency = 8             # 2x cores
+table_open_cache = 1000
+
+# --- durability vs speed: result day is 99% reads. For the admin writes that
+#     DO happen, fsync-batching tradeoff is acceptable: ---
+innodb_flush_log_at_trx_commit = 2
+
+# --- packets (photo base64 uploads can be a few MB) ---
+max_allowed_packet = 64M
+
+# --- sorting / temp tables for report generation (PDF/xlsx exports) ---
+tmp_table_size = 64M
+max_heap_table_size = 64M
+sort_buffer_size = 4M
+join_buffer_size = 4M
+
+# --- slow query log: tiny dataset, worth keeping to catch regressions ---
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/oop-exam-slow.log
+long_query_time = 1
+
+[client]
+default-character-set = utf8mb4

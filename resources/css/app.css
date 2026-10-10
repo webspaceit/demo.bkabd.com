@@ -1,0 +1,199 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply text-sm;
+        font-family: "Inter", "Noto Sans Bengali", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    /* Uniform form control look. Plain element selectors (specificity 0,0,1) so
+       utility classes such as bg-white/10, rounded-full or text-xs can override
+       the defaults. Checkboxes/radios are reset back to their native look below. */
+    input,
+    select,
+    textarea {
+        @apply w-full rounded border border-slate-300 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none;
+    }
+    input[type="checkbox"],
+    input[type="radio"] {
+        @apply w-auto rounded-none border-0 p-0 bg-transparent focus:ring-0;
+    }
+}
+
+@layer components {
+    .card {
+        @apply bg-white border border-slate-200 rounded-xl;
+    }
+    .card-header {
+        @apply px-5 py-4 border-b border-slate-100 font-semibold text-slate-800 flex flex-wrap items-center justify-between gap-2;
+    }
+    .card-body {
+        @apply p-5;
+    }
+    .btn {
+        @apply inline-flex items-center justify-center gap-1.5 rounded px-4 py-2 text-sm font-medium transition disabled:opacity-60 disabled:cursor-not-allowed;
+    }
+    .btn-primary {
+        @apply btn bg-emerald-600 text-white hover:bg-emerald-700;
+    }
+    .btn-dark {
+        @apply btn bg-slate-800 text-white hover:bg-slate-700;
+    }
+    .btn-light {
+        @apply btn bg-white border border-slate-300 text-slate-700 hover:bg-slate-50;
+    }
+    .btn-danger {
+        @apply btn bg-red-600 text-white hover:bg-red-700;
+    }
+    .btn-sm {
+        @apply px-2.5 py-1 text-xs;
+    }
+    .label {
+        @apply block text-sm font-medium text-slate-700 mb-1;
+    }
+    .table {
+        @apply w-full text-sm border-collapse;
+    }
+    .table thead th {
+        @apply bg-slate-50 text-left font-semibold text-xs tracking-wide text-slate-500 px-4 py-3 border-b-2 border-slate-200 whitespace-nowrap;
+    }
+    .table tbody td {
+        @apply px-4 py-3 border-b border-slate-100 align-middle;
+    }
+    .table tbody tr {
+        @apply transition-colors duration-150;
+    }
+    .table tbody tr:hover {
+        @apply bg-emerald-50/50;
+    }
+    .table tbody tr:last-child td {
+        @apply border-b-0;
+    }
+    .badge {
+        @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium;
+    }
+    .badge-green {
+        @apply bg-emerald-100 text-emerald-700;
+    }
+    .badge-red {
+        @apply bg-red-100 text-red-700;
+    }
+    .badge-gray {
+        @apply bg-slate-100 text-slate-600;
+    }
+    .field-error {
+        @apply text-red-600 text-xs mt-1 block;
+    }
+    .filter-bar {
+        @apply flex flex-wrap items-end gap-3;
+    }
+    .filter-bar > div {
+        @apply min-w-[140px];
+    }
+}
+
+/* ------------------------------------------------------------------ *
+ * App shell: Rubick-style "notch" active nav item.
+ * The active link is a light pill that melts into the rounded light
+ * canvas to its right via two concave pseudo-element curves.
+ * The colour must match the light canvas background (#f1f5f9).
+ * ------------------------------------------------------------------ */
+.active-nav-notch {
+    position: relative;
+    background-color: #f1f5f9;
+    color: #064e3b;
+    border-radius: 9999px 0 0 9999px;
+    margin-right: -1.25rem;
+    padding-right: 1.5rem;
+    z-index: 20;
+}
+.active-nav-notch::before,
+.active-nav-notch::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    width: 24px;
+    height: 24px;
+    background-color: transparent;
+    pointer-events: none;
+}
+.active-nav-notch::before {
+    top: -24px;
+    border-bottom-right-radius: 20px;
+    box-shadow: 8px 8px 0 8px #f1f5f9;
+}
+.active-nav-notch::after {
+    bottom: -24px;
+    border-top-right-radius: 20px;
+    box-shadow: 8px -8px 0 8px #f1f5f9;
+}
+
+/* Slim scrollbars (shell-wide). */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Table row actions: buttons rest hidden behind a "⋮" kebab on each
+ * row; the buttons fade in when the row is hovered (or focused, for
+ * keyboard users). Only on fine-pointer devices — touch devices always
+ * show the buttons (no hover there). Tapping the kebab adds `.pinned`
+ * to keep the buttons visible (see app.js).
+ * ------------------------------------------------------------------ */
+@media (hover: hover) {
+    .table tbody tr .row-actions {
+        position: relative;
+    }
+    .table tbody tr .row-actions > * {
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity .15s ease, visibility 0s linear .15s;
+    }
+    .table tbody tr:hover .row-actions > *,
+    .table tbody tr:focus-within .row-actions > * {
+        visibility: visible;
+        opacity: 1;
+        transition: opacity .15s ease;
+    }
+    .table tbody tr .row-actions::before {
+        content: "⋮";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 26px;
+        border-radius: 6px;
+        color: #94a3b8;
+        background-color: transparent;
+        transition: color .15s ease, background-color .15s ease;
+        font-size: 18px;
+        line-height: 1;
+    }
+    .table tbody tr:hover .row-actions::before,
+    .table tbody tr:focus-within .row-actions::before {
+        display: none;
+    }
+    .table tbody tr .row-actions:empty::before {
+        display: none;
+    }
+}
+/* Pinned (kebab tapped/clicked): keep the buttons visible. Placed after
+ * the hover block so it also wins on a hovered row. */
+.table tbody tr .row-actions.pinned > *,
+.table tbody tr:focus-within .row-actions.pinned > * {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity .15s ease;
+}
+.table tbody tr .row-actions.pinned::before {
+    display: none;
+}
