@@ -183,11 +183,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<td class="text-center">' + BK.esc(s.registration) + '</td>' +
                 '<td class="text-center">' + BK.esc(s.roll) + '</td>' +
                 '<td>' + BK.esc(s.name) + '</td>' +
-                '<td class="text-center"><input type="number" data-mark="bangla" class="form-control" value="' + BK.esc(s.bangla) + '"' +
+                '<td class="text-center"><input type="number" data-mark="bangla" class="form-control" placeholder="0" value="' + BK.esc(s.bangla) + '"' +
                     (ab ? ' readonly disabled' : '') + '></td>' +
-                '<td class="text-center"><input type="number" data-mark="english" class="form-control" value="' + BK.esc(s.english) + '"' +
+                '<td class="text-center"><input type="number" data-mark="english" class="form-control" placeholder="0" value="' + BK.esc(s.english) + '"' +
                     (ab ? ' readonly disabled' : '') + '></td>' +
-                '<td class="text-center"><input type="number" data-mark="math" class="form-control" value="' + BK.esc(s.math) + '"' +
+                '<td class="text-center"><input type="number" data-mark="math" class="form-control" placeholder="0" value="' + BK.esc(s.math) + '"' +
                     (ab ? ' readonly disabled' : '') + '></td>' +
                 '<td class="text-center" data-out="total">' + BK.esc(s.total) + '</td>' +
                 '<td class="text-center" data-out="percentage">' + BK.esc(s.percentage) + '%</td>' +

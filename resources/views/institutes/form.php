@@ -19,27 +19,27 @@ $isEdit = ($mode ?? 'create') === 'edit';
                     </div>
                     <div>
                         <label class="label" for="f-name">Institute Name <span class="text-red-600">*</span></label>
-                        <input type="text" id="f-name" data-field="name" autocomplete="off">
+                        <input type="text" id="f-name" data-field="name" placeholder="Institute Name" autocomplete="off">
                         <p class="field-error hidden" data-error-for="name"></p>
                     </div>
                     <div>
                         <label class="label" for="f-director_name">Director Name</label>
-                        <input type="text" id="f-director_name" data-field="director_name" autocomplete="off">
+                        <input type="text" id="f-director_name" data-field="director_name" placeholder="Director Name" autocomplete="off">
                         <p class="field-error hidden" data-error-for="director_name"></p>
                     </div>
                     <div>
                         <label class="label" for="f-phone">Phone</label>
-                        <input type="text" id="f-phone" data-field="phone" autocomplete="off">
+                        <input type="text" id="f-phone" data-field="phone" placeholder="Phone" autocomplete="off">
                         <p class="field-error hidden" data-error-for="phone"></p>
                     </div>
                     <div>
                         <label class="label" for="f-email">Email</label>
-                        <input type="email" id="f-email" data-field="email" autocomplete="off">
+                        <input type="email" id="f-email" data-field="email" placeholder="Email Address" autocomplete="off">
                         <p class="field-error hidden" data-error-for="email"></p>
                     </div>
                     <div>
                         <label class="label" for="f-website">Website</label>
-                        <input type="text" id="f-website" data-field="website" autocomplete="off">
+                        <input type="text" id="f-website" data-field="website" placeholder="Website" autocomplete="off">
                         <p class="field-error hidden" data-error-for="website"></p>
                     </div>
                     <div>
@@ -59,17 +59,17 @@ $isEdit = ($mode ?? 'create') === 'edit';
                     </div>
                     <div class="md:col-span-2">
                         <label class="label" for="f-address">Address</label>
-                        <input type="text" id="f-address" data-field="address" autocomplete="off">
+                        <input type="text" id="f-address" data-field="address" placeholder="Address" autocomplete="off">
                         <p class="field-error hidden" data-error-for="address"></p>
                     </div>
                     <div>
                         <label class="label" for="f-certificate_no">Certificate No</label>
-                        <input type="text" id="f-certificate_no" data-field="certificate_no" autocomplete="off">
+                        <input type="text" id="f-certificate_no" data-field="certificate_no" placeholder="Certificate No" autocomplete="off">
                         <p class="field-error hidden" data-error-for="certificate_no"></p>
                     </div>
                     <div>
                         <label class="label" for="f-established_date">Established Date</label>
-                        <input type="date" id="f-established_date" data-field="established_date">
+                        <input type="date" id="f-established_date" data-field="established_date" placeholder="Established Date">
                         <p class="field-error hidden" data-error-for="established_date"></p>
                     </div>
                     <div>

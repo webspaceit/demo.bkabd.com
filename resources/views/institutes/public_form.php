@@ -26,31 +26,31 @@ $val = fn(string $f, string $d = '') => (string) ($old[$f] ?? $d);
 
                 <div class="sm:col-span-2">
                     <label class="label" for="name">Name of Institute <span class="text-red-500">*</span></label>
-                    <input type="text" id="name" name="name" data-field="name" required value="<?= e($val('name')) ?>">
+                    <input type="text" id="name" name="name" data-field="name" placeholder="Institute Name" required value="<?= e($val('name')) ?>">
                     <p class="field-error hidden" data-error-for="name"></p>
                 </div>
 
                 <div>
                     <label class="label" for="director_name">Representative / Director Name <span class="text-red-500">*</span></label>
-                    <input type="text" id="director_name" name="director_name" data-field="director_name" required value="<?= e($val('director_name')) ?>">
+                    <input type="text" id="director_name" name="director_name" data-field="director_name" placeholder="Director Name" required value="<?= e($val('director_name')) ?>">
                     <p class="field-error hidden" data-error-for="director_name"></p>
                 </div>
 
                 <div>
                     <label class="label" for="phone">Mobile Number <span class="text-red-500">*</span></label>
-                    <input type="text" id="phone" name="phone" data-field="phone" required value="<?= e($val('phone')) ?>">
+                    <input type="text" id="phone" name="phone" data-field="phone" placeholder="Mobile Number" required value="<?= e($val('phone')) ?>">
                     <p class="field-error hidden" data-error-for="phone"></p>
                 </div>
 
                 <div>
                     <label class="label" for="email">Email Address <span class="text-red-500">*</span></label>
-                    <input type="email" id="email" name="email" data-field="email" required value="<?= e($val('email')) ?>">
+                    <input type="email" id="email" name="email" data-field="email" placeholder="Email Address" required value="<?= e($val('email')) ?>">
                     <p class="field-error hidden" data-error-for="email"></p>
                 </div>
 
                 <div>
                     <label class="label" for="website">Website (If Any)</label>
-                    <input type="text" id="website" name="website" data-field="website" value="<?= e($val('website')) ?>">
+                    <input type="text" id="website" name="website" data-field="website" placeholder="Website (if any)" value="<?= e($val('website')) ?>">
                     <p class="field-error hidden" data-error-for="website"></p>
                 </div>
 
@@ -83,25 +83,25 @@ $val = fn(string $f, string $d = '') => (string) ($old[$f] ?? $d);
 
                 <div>
                     <label class="label" for="zip">Postal Code <span class="text-red-500">*</span></label>
-                    <input type="text" id="zip" name="zip" data-field="zip" required value="<?= e($val('zip')) ?>">
+                    <input type="text" id="zip" name="zip" data-field="zip" placeholder="Postal Code" required value="<?= e($val('zip')) ?>">
                     <p class="field-error hidden" data-error-for="zip"></p>
                 </div>
 
                 <div>
                     <label class="label" for="established_date">Established Date <span class="text-red-500">*</span></label>
-                    <input type="date" id="established_date" name="established_date" data-field="established_date" required value="<?= e($val('established_date')) ?>">
+                    <input type="date" id="established_date" name="established_date" data-field="established_date" placeholder="Established Date" required value="<?= e($val('established_date')) ?>">
                     <p class="field-error hidden" data-error-for="established_date"></p>
                 </div>
 
                 <div>
                     <label class="label" for="total_students">Total Students <span class="text-red-500">*</span></label>
-                    <input type="number" id="total_students" name="total_students" data-field="total_students" min="0" required value="<?= e($val('total_students')) ?>">
+                    <input type="number" id="total_students" name="total_students" data-field="total_students" min="0" placeholder="e.g. 120" required value="<?= e($val('total_students')) ?>">
                     <p class="field-error hidden" data-error-for="total_students"></p>
                 </div>
 
                 <div>
                     <label class="label" for="total_teachers">Total Teachers <span class="text-red-500">*</span></label>
-                    <input type="number" id="total_teachers" name="total_teachers" data-field="total_teachers" min="0" required value="<?= e($val('total_teachers')) ?>">
+                    <input type="number" id="total_teachers" name="total_teachers" data-field="total_teachers" min="0" placeholder="e.g. 8" required value="<?= e($val('total_teachers')) ?>">
                     <p class="field-error hidden" data-error-for="total_teachers"></p>
                 </div>
 
@@ -127,7 +127,7 @@ $val = fn(string $f, string $d = '') => (string) ($old[$f] ?? $d);
 
                 <div id="cert-wrap" class="hidden">
                     <label class="label" for="certificate_no">Membership Certificate No (If any)</label>
-                    <input type="text" id="certificate_no" name="certificate_no" data-field="certificate_no">
+                    <input type="text" id="certificate_no" name="certificate_no" data-field="certificate_no" placeholder="Certificate No (if any)">
                     <p class="field-error hidden" data-error-for="certificate_no"></p>
                 </div>
 
@@ -165,13 +165,13 @@ $val = fn(string $f, string $d = '') => (string) ($old[$f] ?? $d);
 
                 <div>
                     <label class="label" for="monthly_income">Monthly Income</label>
-                    <input type="text" id="monthly_income" name="monthly_income" data-field="monthly_income">
+                    <input type="text" id="monthly_income" name="monthly_income" data-field="monthly_income" placeholder="Monthly Income (BDT)">
                     <p class="field-error hidden" data-error-for="monthly_income"></p>
                 </div>
 
                 <div>
                     <label class="label" for="monthly_expense">Monthly Expense</label>
-                    <input type="text" id="monthly_expense" name="monthly_expense" data-field="monthly_expense">
+                    <input type="text" id="monthly_expense" name="monthly_expense" data-field="monthly_expense" placeholder="Monthly Expense (BDT)">
                     <p class="field-error hidden" data-error-for="monthly_expense"></p>
                 </div>
 
@@ -190,7 +190,7 @@ $val = fn(string $f, string $d = '') => (string) ($old[$f] ?? $d);
 
                 <div class="sm:col-span-2">
                     <label class="label" for="note">Note (If Any)</label>
-                    <input type="text" id="note" name="note" data-field="note">
+                    <input type="text" id="note" name="note" data-field="note" placeholder="Note (if any)">
                     <p class="field-error hidden" data-error-for="note"></p>
                 </div>
 

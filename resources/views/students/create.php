@@ -8,12 +8,12 @@
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="label">Name <span class="text-red-500">*</span></label>
-                <input type="text" name="name" class="input" data-field="name" value="<?= e((string) old('name')) ?>" required>
+                <input type="text" name="name" class="input" data-field="name" placeholder="Student Name" value="<?= e((string) old('name')) ?>" required>
                 <p class="field-error hidden" data-error-for="name"></p>
             </div>
             <div>
                 <label class="label">Father's Name <span class="text-red-500">*</span></label>
-                <input type="text" name="father_name" class="input" data-field="father_name" value="<?= e((string) old('father_name')) ?>" required>
+                <input type="text" name="father_name" class="input" data-field="father_name" placeholder="Father's Name" value="<?= e((string) old('father_name')) ?>" required>
                 <p class="field-error hidden" data-error-for="father_name"></p>
             </div>
         </div>
@@ -21,12 +21,12 @@
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="label">Mother's Name</label>
-                <input type="text" name="mother_name" class="input" data-field="mother_name" value="<?= e((string) old('mother_name')) ?>">
+                <input type="text" name="mother_name" class="input" data-field="mother_name" placeholder="Mother's Name" value="<?= e((string) old('mother_name')) ?>">
                 <p class="field-error hidden" data-error-for="mother_name"></p>
             </div>
             <div>
                 <label class="label">Phone <span class="text-red-500">*</span></label>
-                <input type="text" name="phone" class="input" data-field="phone" maxlength="11" value="<?= e((string) old('phone')) ?>" required>
+                <input type="text" name="phone" class="input" data-field="phone" placeholder="Phone (11 digits)" maxlength="11" value="<?= e((string) old('phone')) ?>" required>
                 <p class="field-error hidden" data-error-for="phone"></p>
             </div>
         </div>
@@ -173,19 +173,19 @@
 
         <div>
             <label class="label">DOB</label>
-            <input type="date" name="dob" class="input" data-field="dob" value="<?= e((string) old('dob')) ?>">
+            <input type="date" name="dob" class="input" data-field="dob" placeholder="Date of Birth" value="<?= e((string) old('dob')) ?>">
             <p class="field-error hidden" data-error-for="dob"></p>
         </div>
 
         <div>
             <label class="label">Principal Name</label>
-            <input type="text" name="principal_name" class="input" data-field="principal_name" value="<?= e((string) old('principal_name')) ?>">
+            <input type="text" name="principal_name" class="input" data-field="principal_name" placeholder="Principal Name" value="<?= e((string) old('principal_name')) ?>">
             <p class="field-error hidden" data-error-for="principal_name"></p>
         </div>
 
         <div>
             <label class="label">Notes</label>
-            <textarea name="note" class="input" data-field="note" rows="3"><?= e((string) old('note')) ?></textarea>
+            <textarea name="note" class="input" data-field="note" placeholder="Note (optional)" rows="3"><?= e((string) old('note')) ?></textarea>
             <p class="field-error hidden" data-error-for="note"></p>
         </div>
 

@@ -27,7 +27,7 @@
                     </div>
                     <div>
                         <label class="label" for="session-result-time">Result Time</label>
-                        <input type="datetime-local" id="session-result-time" name="result_time" data-field="result_time">
+                        <input type="datetime-local" id="session-result-time" name="result_time" data-field="result_time" placeholder="Result Time">
                         <p class="field-error hidden" data-error-for="result_time"></p>
                     </div>
                 </div>
