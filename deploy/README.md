@@ -28,18 +28,31 @@ sudo mkdir -p /var/www && cd /var/www
 sudo git clone https://github.com/webspaceit/exam.bkabd.com.git oop-exam
 cd oop-exam
 sudo chown -R www-data:www-data .
-sudo -u www-data git checkout v1.0-pre-result
 ```
+
+> Stay on the default branch (`main`) so updates reach the box via `git pull`.
+> Do **not** `git checkout <tag>` after a normal install — it leaves the repo on a
+> detached HEAD where `git pull` silently does nothing (classic "I pushed but the
+> VPS still runs old code"). Only `git checkout <old-tag>` when you deliberately
+> want to roll back, then `git switch main` to come back to updates.
 
 Only code ships (the repo is gitignored) — no `.env`, `vendor/`, or probe scripts.
 
-Applying later updates, or rolling back:
+Applying later updates:
 
 ```bash
 cd /var/www/oop-exam
-sudo -u www-data git pull                    # or: git checkout <old-tag> to roll back
+sudo -u www-data git switch main             # safety: back onto the branch (works even from detached HEAD)
+sudo -u www-data git pull origin main        # or: git checkout <old-tag> to roll back
 sudo -u www-data composer install --no-dev --classmap-authoritative
 sudo systemctl restart php8.2-fpm            # new code is live (opcache revalidates in ≤60s anyway)
+```
+
+Verify the update really landed on the box before testing:
+
+```bash
+sudo -u www-data git log -1 --oneline        # should match the commit you pushed
+sudo -u www-data git branch --show-current   # main
 ```
 
 ## 3. Composer (dompdf + phpspreadsheet live in vendor/)
@@ -122,6 +135,13 @@ sudo systemctl restart nginx php8.2-fpm mysql
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/            # 302 -> /login
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1/scholarship-result   # 200
 sudo certbot --nginx -d example.com        # wire up HTTPS once DNS points here
+```
+
+**Troubleshooting a 500:** even with `APP_DEBUG=false` the app logs every exception,
+so the generic "Server error" page is never a mystery:
+
+```bash
+sudo tail -n 100 /var/www/oop-exam/storage/logs/error.log
 ```
 
 On the dev machine, the regression suites still work after the URL base change;
