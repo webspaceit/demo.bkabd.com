@@ -164,26 +164,6 @@ $activeSession = Auth::activeSession();
             </nav>
         </div>
 
-        <div class="px-3 pr-5 mt-6">
-            <div class="rounded-xl bg-white/10 p-3 border border-white/10">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-xs font-semibold text-white truncate"><?= e($user['name'] ?? '') ?></p>
-                        <p class="text-[11px] text-emerald-100/70">Signed in</p>
-                    </div>
-                </div>
-                <div class="mt-3 flex items-center gap-2 text-[11px]">
-                    <a href="/passchange" class="flex-1 text-center rounded-md bg-white/10 hover:bg-white/20 py-1.5 text-white transition">Security</a>
-                    <form method="POST" action="/logout" class="flex-1 m-0">
-                        <?= csrf_field() ?>
-                        <button type="submit" class="w-full rounded-md bg-white/10 hover:bg-white/20 py-1.5 text-white transition cursor-pointer">Logout</button>
-                    </form>
-                </div>
-            </div>
-        </div>
     </aside>
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
 
@@ -220,10 +200,39 @@ $activeSession = Auth::activeSession();
                 </a>
                 <?php endif; ?>
 
-                <a href="/passchange" title="Account &amp; security settings" aria-label="Account &amp; security settings"
-                   class="w-8 h-8 rounded-full ring-2 ring-white shadow-sm bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
-                </a>
+                <div class="relative" id="profile-menu">
+                    <button type="button" id="profile-toggle"
+                            class="flex items-center gap-2 rounded-full hover:bg-slate-200/60 p-1 pr-2 transition"
+                            aria-haspopup="menu" aria-expanded="false" aria-controls="profile-dropdown">
+                        <span class="w-8 h-8 rounded-full ring-2 ring-white shadow-sm bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+                        </span>
+                        <span class="hidden sm:flex flex-col items-start leading-tight min-w-0 max-w-[10rem]">
+                            <span class="text-xs font-semibold text-slate-800 truncate"><?= e($user['name'] ?? '') ?></span>
+                            <span class="text-[11px] text-slate-400 truncate"><?= e($user['email'] ?? 'Signed in') ?></span>
+                        </span>
+                        <svg class="hidden sm:block w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+
+                    <div id="profile-dropdown"
+                         class="hidden absolute right-0 top-full mt-2 w-60 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                        <div class="px-4 py-3 border-b border-slate-100">
+                            <p class="text-sm font-semibold text-slate-800 truncate"><?= e($user['name'] ?? '') ?></p>
+                            <p class="text-xs text-slate-400 truncate"><?= e($user['email'] ?? '') ?></p>
+                        </div>
+                        <a href="/passchange" class="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+                            Account &amp; Security
+                        </a>
+                        <form method="POST" action="/logout" class="m-0 border-t border-slate-100">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </header>
 

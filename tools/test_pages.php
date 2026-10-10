@@ -99,6 +99,8 @@ check('POST /api/login ok', $st === 200 && ($decoded['success'] ?? false) === tr
 // ---------------------------------------------------------------
 [$st, $body] = pageReq("$base/", $cookieFile);
 check('GET / dashboard (home) 200', $st === 200 && str_contains($body, 'Welcome to') && str_contains($body, 'data-stat'), "status=$st");
+check('top-right profile dropdown present', str_contains($body, 'id="profile-toggle"') && str_contains($body, 'id="profile-dropdown"') && str_contains($body, 'Account &amp; Security') && str_contains($body, 'action="/logout"'), 'profile markup missing');
+check('sidebar user card removed (profile moved to top bar)', !str_contains($body, 'Signed in'), 'sidebar card still present');
 // The CSRF token is rotated on login (defense in depth); a full page load
 // re-issues the meta tag exactly like the browser after sign-in, so re-grab it.
 preg_match('/name="csrf-token" content="([a-f0-9]+)"/', $body, $m2);

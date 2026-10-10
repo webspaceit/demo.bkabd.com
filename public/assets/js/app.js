@@ -295,6 +295,30 @@ window.BK = (function () {
         });
     }
 
+    // Top-right profile dropdown.
+    const profToggle = document.getElementById('profile-toggle');
+    const profMenu = document.getElementById('profile-dropdown');
+    if (profToggle && profMenu) {
+        const closeProfile = function () {
+            profMenu.classList.add('hidden');
+            profToggle.setAttribute('aria-expanded', 'false');
+        };
+        profToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const hidden = profMenu.classList.toggle('hidden');
+            profToggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+        });
+        document.addEventListener('click', function (e) {
+            if (profMenu.classList.contains('hidden')) { return; }
+            if (!profMenu.contains(e.target) && !profToggle.contains(e.target)) {
+                closeProfile();
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { closeProfile(); }
+        });
+    }
+
     // Sidebar menu filter (client-side, no backend call).
     const navSearch = document.getElementById('nav-search');
     const navEl = document.getElementById('sidebar-nav');
