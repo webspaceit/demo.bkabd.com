@@ -109,6 +109,17 @@ function dbUp(): bool
 
 echo "== Part A: unit ==\n";
 
+// A0. The bootstrap's own App\ autoloader must resolve a newly added class
+// without a `composer dump-autoload` (the production failure mode where an
+// optimised/authoritative classmap predates the file).
+$probePath = BASE_PATH . '/app/Core/ZzAutoloadProbe.php';
+file_put_contents($probePath, "<?php\nnamespace App\\Core;\nclass ZzAutoloadProbe {}\n");
+try {
+    check('App\\ autoloader resolves a brand-new class', class_exists(App\Core\ZzAutoloadProbe::class));
+} finally {
+    @unlink($probePath);
+}
+
 // A1. HOTP core vs RFC 4226 Appendix D vectors (secret ASCII "12345678901234567890").
 $rfcKey = '12345678901234567890';
 $rfcB32 = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';

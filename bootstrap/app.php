@@ -5,7 +5,26 @@
 
 define('BASE_PATH', dirname(__DIR__));
 
-// Composer autoloader (PSR-4 App\ + dompdf + phpspreadsheet).
+// ---------------------------------------------------------------
+// App\ PSR-4 autoloader.
+// Composer also maps App\ -> app/, but on hosts whose optimised (classmap)
+// autoloader predates a freshly pulled file — and is authoritative — a newly
+// added class such as App\Core\RateLimiter would not resolve. This loader
+// guarantees app/ classes on every host with no `composer dump-autoload` step;
+// Composer still handles the vendored packages (dompdf, phpspreadsheet) and
+// the app/helpers.php "files" entry.
+// ---------------------------------------------------------------
+spl_autoload_register(static function (string $class): void {
+    if (!str_starts_with($class, 'App\\')) {
+        return;
+    }
+    $file = BASE_PATH . '/app/' . str_replace('\\', '/', substr($class, 4)) . '.php';
+    if (is_file($file)) {
+        require $file;
+    }
+});
+
+// Composer autoloader (vendored packages + helpers.php).
 require BASE_PATH . '/vendor/autoload.php';
 
 // ---------------------------------------------------------------
