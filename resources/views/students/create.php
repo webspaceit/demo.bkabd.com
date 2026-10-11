@@ -11,6 +11,17 @@
 $currentSession = (string) ($activeSession ?? '');
 $selSession = $currentSession; // only the current session is selectable
 $req = '<span class="text-red-500">*</span>';
+
+// Date of birth: the form submits ISO Y-m-d (validated server-side), but the
+// visible field shows DD-MM-YYYY. Seed both from the previous submission.
+$dobOld = (string) old('dob');
+$dobIso = '';
+$dobDisplay = '';
+if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
+    [$dobY, $dobM, $dobD] = explode('-', $dobOld);
+    $dobIso = $dobOld;
+    $dobDisplay = $dobD . '-' . $dobM . '-' . $dobY;
+}
 ?>
 <div class="max-w-4xl mx-auto">
 
@@ -79,9 +90,18 @@ $req = '<span class="text-red-500">*</span>';
                         <input type="text" id="phone" name="phone" class="input" data-field="phone" placeholder="01XXXXXXXXX" maxlength="11" inputmode="numeric" autocomplete="tel" value="<?= e((string) old('phone')) ?>" required>
                         <p class="field-error hidden" data-error-for="phone"></p>
                     </div>
-                    <div>
-                        <label class="label" for="dob">Date of Birth</label>
-                        <input type="text" id="dob" name="dob" class="input" data-field="dob" data-datepicker autocomplete="off" placeholder="DD-MM-YYYY" value="<?= e((string) old('dob')) ?>">
+                    <div class="dob-field">
+                        <label class="label" for="dob-display">Date of Birth</label>
+                        <div class="dob-field__box">
+                            <input type="text" id="dob-display" data-dobpicker class="input" data-field="dob"
+                                   placeholder="DD-MM-YYYY" autocomplete="off" readonly
+                                   aria-haspopup="dialog" aria-expanded="false"
+                                   value="<?= e($dobDisplay) ?>">
+                            <input type="hidden" id="dob" name="dob" data-dobpicker-value value="<?= e($dobIso) ?>">
+                            <span class="dob-field__icon" aria-hidden="true">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+                            </span>
+                        </div>
                         <p class="field-error hidden" data-error-for="dob"></p>
                     </div>
                     <div>
@@ -433,10 +453,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var sessionValue = sessionEl ? sessionEl.value : '';
             form.reset();
-            // form.reset() clears the hidden field, not flatpickr's visible input.
-            document.querySelectorAll('input[data-datepicker]').forEach(function (el) {
-                if (el._flatpickr) { el._flatpickr.clear(); }
-            });
+            // form.reset() does not reliably clear the custom DOB picker.
+            if (window.DOBPicker) { window.DOBPicker.clear('dob'); }
             if (sessionValue && sessionEl) { sessionEl.value = sessionValue; }
             fillOptions(instituteEl, [], 'Select a Center first');
             fillOptions(districtEl, [], 'Select Division first');

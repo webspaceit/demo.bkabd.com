@@ -155,8 +155,6 @@ final class StudentController extends Controller
         $institutes = $oldCenterId ? (new Query('institutes'))->where('center_id', $oldCenterId)->where('active', 1)->orderBy('name','asc')->get() : [];
         return View::render('students.create', [
             'title'        => 'Student Registration',
-            'pageStyles'   => ['/assets/css/flatpickr.min.css', '/assets/css/datepicker.css'],
-            'pageScripts'  => ['/assets/js/vendor/flatpickr.min.js', '/assets/js/datepicker.js'],
             'divisions'    => $divisions,
             'centers'      => $centers,
             'sessions'     => $sessions,
@@ -166,6 +164,8 @@ final class StudentController extends Controller
             'institutes'   => $institutes,
             'classes'      => [1,2,3,4,5,6],
             'activeSession' => Auth::activeSession(),
+            'pageStyles'   => ['/assets/css/dobpicker.css'],
+            'pageScripts'  => ['/assets/js/dobpicker.js'],
         ], 'layouts.dashboard');
     }
 

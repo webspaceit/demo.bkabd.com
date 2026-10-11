@@ -1,0 +1,193 @@
+/* ------------------------------------------------------------------ *
+ * Decade-first date-of-birth picker (see public/assets/js/dobpicker.js).
+ *
+ * Emerald theme, matching the BKABD design system. The popup is appended
+ * to <body> at runtime, so it is positioned absolutely and never takes
+ * part in the registration grid layout.
+ * ------------------------------------------------------------------ */
+.dob-field__box { position: relative; }
+.dob-field__box input[data-dobpicker] { padding-right: 2.25rem; cursor: pointer; }
+.dob-field__icon {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: .75rem;
+    display: flex;
+    align-items: center;
+    color: #94a3b8;
+    pointer-events: none;
+}
+.dob-field__icon svg { width: 1rem; height: 1rem; }
+
+.dobp-popup {
+    position: absolute;
+    z-index: 70;
+    width: 312px;
+    max-width: calc(100vw - 16px);
+    max-height: min(440px, calc(100vh - 20px));
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: .75rem;
+    box-shadow: 0 20px 45px -18px rgba(2, 20, 14, .4), 0 6px 16px -8px rgba(2, 20, 14, .2);
+    font-size: 13px;
+    color: #334155;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.dobp-popup[hidden] { display: none; }
+
+.dobp-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .25rem;
+    padding: .45rem .5rem;
+    background: #ecfdf5;
+    border-bottom: 1px solid #d1fae5;
+}
+.dobp-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #065f46;
+    letter-spacing: .01em;
+    white-space: nowrap;
+}
+.dobp-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    border-radius: .5rem;
+    background: transparent;
+    color: #047857;
+    cursor: pointer;
+    transition: background-color .14s, color .14s;
+}
+.dobp-nav:hover:not(:disabled) { background: rgba(5, 150, 105, .14); color: #065f46; }
+.dobp-nav:disabled { opacity: .3; cursor: not-allowed; }
+.dobp-nav svg { width: 16px; height: 16px; }
+
+.dobp-body { padding: .5rem .5rem .25rem; }
+.dobp-sec {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: .1rem .25rem .3rem;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+.dobp-years {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: .25rem;
+    margin-bottom: .55rem;
+}
+.dobp-months {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .25rem;
+    margin-bottom: .55rem;
+}
+.dobp-year,
+.dobp-month {
+    padding: .35rem 0;
+    border: 0;
+    border-radius: .5rem;
+    background: #f8fafc;
+    color: #334155;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color .14s, color .14s;
+}
+.dobp-year:hover:not(:disabled),
+.dobp-month:hover:not(:disabled) { background: #f1f5f9; }
+.dobp-year:disabled,
+.dobp-month:disabled { color: #cbd5e1; cursor: not-allowed; }
+.dobp-year.is-active,
+.dobp-month.is-active {
+    background: #059669;
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 3px 8px -2px rgba(5, 150, 105, .55);
+}
+
+.dobp-dow {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: .15rem;
+    margin-bottom: .2rem;
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #94a3b8;
+}
+.dobp-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: .15rem;
+    text-align: center;
+}
+.dobp-day {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: .5rem;
+    background: transparent;
+    color: #334155;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color .14s, color .14s;
+}
+.dobp-day:hover:not(:disabled) { background: #f1f5f9; }
+.dobp-day.is-today { box-shadow: inset 0 0 0 1.5px #6ee7b7; }
+.dobp-day.is-active {
+    background: #059669;
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 3px 8px -2px rgba(5, 150, 105, .55);
+}
+.dobp-day:disabled { color: #cbd5e1; cursor: not-allowed; }
+.dobp-day.is-off { color: #e2e8f0; font-weight: 400; pointer-events: none; }
+
+.dobp-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .45rem .5rem;
+    background: #fcfdfe;
+    border-top: 1px solid #f1f5f9;
+}
+.dobp-btn {
+    padding: .35rem .6rem;
+    border: 0;
+    border-radius: .5rem;
+    background: transparent;
+    color: #047857;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .14s, color .14s;
+}
+.dobp-btn:hover { background: #ecfdf5; }
+.dobp-btn.is-muted { color: #64748b; }
+.dobp-btn.is-muted:hover { background: #f1f5f9; color: #b91c1c; }
