@@ -44,6 +44,13 @@ Router::get('/api/upazilas/{id}', [UpazilaController::class, 'show'], 'auth');
 Router::put('/api/upazilas/{id}', [UpazilaController::class, 'update'], 'auth|permission:upazila-edit');
 Router::delete('/api/upazilas/{id}', [UpazilaController::class, 'destroy'], 'auth|permission:upazila-delete');
 
+// Unions (apiResource + the cascade lookup above)
+Router::get('/api/unions', [UnionController::class, 'index'], 'auth');
+Router::post('/api/unions', [UnionController::class, 'store'], 'auth|permission:union-create');
+Router::get('/api/unions/{id}', [UnionController::class, 'show'], 'auth');
+Router::put('/api/unions/{id}', [UnionController::class, 'update'], 'auth|permission:union-edit');
+Router::delete('/api/unions/{id}', [UnionController::class, 'destroy'], 'auth|permission:union-delete');
+
 // ---------------------------------------------------------------
 // Pages
 // ---------------------------------------------------------------
@@ -61,3 +68,8 @@ Router::get('/upazilas', fn(): string => View::render('geo.upazilas', [
     'title' => 'Upazilas',
     'pageScripts' => ['/assets/js/geo.js'],
 ], 'layouts.dashboard'), 'auth|permission:upazila-list');
+
+Router::get('/unions', fn(): string => View::render('geo.unions', [
+    'title' => 'Unions',
+    'pageScripts' => ['/assets/js/geo.js'],
+], 'layouts.dashboard'), 'auth|permission:union-list');

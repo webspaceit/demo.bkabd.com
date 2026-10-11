@@ -26,6 +26,7 @@ $nav = [
     ['Divisions Info', '/divisions', 'division-list', 'map'],
     ['District Info', '/districts', 'district-list', 'map-pin'],
     ['Upazila Info', '/upazilas', 'upazila-list', 'navigation'],
+    ['Union Info', '/unions', 'union-list', 'navigation'],
     ['SMS Dashboard', '/sms', 'sms', 'message'],
     ["Mark's Entry", '/markentry', 'mark-entry', 'clipboard'],
     ['Grade Assign', '/gradeassign', 'grade-assign', 'badge-check'],
@@ -143,7 +144,7 @@ $activeSession = Auth::activeSession();
                     <?php } ?>
                     <?php if (!$canSee($perm)) { continue; } ?>
                     <?php $active = $isActive($path); ?>
-                    <?php $sub = in_array($path, ['/divisions', '/districts', '/upazilas'], true) ? 'ml-4' : ''; ?>
+                    <?php $sub = in_array($path, ['/divisions', '/districts', '/upazilas', '/unions'], true) ? 'ml-4' : ''; ?>
                     <?php if ($active): ?>
                         <div class="relative">
                             <a href="<?= e($path) ?>" data-nav-item

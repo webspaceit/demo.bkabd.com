@@ -4,7 +4,7 @@ require __DIR__ . '/_test_credentials.php';
 
 $base = 'http://127.0.0.1:8090';
 $paths = ['/', '/student-registration', '/students', '/institute-registration', '/institutes',
-    '/centers', '/divisions', '/districts', '/upazilas', '/sms', '/markentry', '/gradeassign',
+    '/centers', '/divisions', '/districts', '/upazilas', '/unions', '/sms', '/markentry', '/gradeassign',
     '/admitcards', '/seatplan', '/student-certificate', '/institute-certificate', '/reports',
     '/notices', '/user', '/routines', '/sessions', '/userrole', '/settings', '/mark-distributions',
     '/role-place', '/instructions', '/passchange'];

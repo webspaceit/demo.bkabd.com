@@ -1,5 +1,5 @@
 /**
- * GEO pages (/divisions, /districts, /upazilas) — list + inline create/edit form.
+ * GEO pages (/divisions, /districts, /upazilas, /unions) — list + inline create/edit form.
  * One script for all three pages; behaviour selected by [data-geo-page].
  * Endpoint contracts live in routes/geo.php (ported from original routes/api.php).
  */
@@ -16,7 +16,8 @@
     const cancelBtn = document.getElementById('geo-cancel');
     const newBtn = document.getElementById('geo-new');
     const parentSel = document.getElementById('geo-parent'); // division select (districts / upazilas)
-    const childSel = document.getElementById('geo-child');   // district select (upazilas)
+    const childSel = document.getElementById('geo-child');   // district select (upazilas / unions)
+    const grandChildSel = document.getElementById('geo-grandchild'); // upazila select (unions)
     const searchEl = document.getElementById('geo-search');  // upazilas only
     const pagerEl = document.getElementById('geo-pagination');
     const nameInput = document.getElementById('geo-name');
@@ -157,6 +158,56 @@
                 return '<td>' + (i + 1) + '</td><td>' + BK.esc(rec.name) + '</td><td>' + BK.esc(district) +
                     '</td><td>' + actionsCell(rec.id) + '</td>';
             }
+        },
+        unions: {
+            cols: 5,
+            addTitle: 'Add Union',
+            editTitle: 'Edit Union',
+            fields: ['name', 'upozila_id'],
+            added: 'Union added successfully',
+            edited: 'Union edited successfully',
+            deleted: 'Union has been deleted.',
+            load: async function () {
+                const url = BK.qs('/api/unions', {
+                    page: pageNum,
+                    per_page: 20,
+                    search: searchTerm
+                });
+                const pager = await BK.get(url);
+                return { rows: pager.data || [], total: pager.total, pager: pager };
+            },
+            byId: async function (id) {
+                const json = await BK.get('/api/unions/' + id);
+                return {
+                    name: json.unionById ? json.unionById.name : '',
+                    upozila_id: json.unionById ? json.unionById.upozila_id : '',
+                    district_id: json.district ? json.district.id : '',
+                    division_id: json.division ? json.division.id : '',
+                    districts: json.districts || [],
+                    upazilas: json.upozilas || []
+                };
+            },
+            fill: async function (rec) {
+                nameInput.value = rec.name || '';
+                if (!divisionCache) { await loadDivisions(); }
+                parentSel.value = String(rec.division_id || '');
+                if (childSel) { childSel.innerHTML = optionList(rec.districts, rec.district_id, 'Select District'); }
+                if (grandChildSel) { grandChildSel.innerHTML = optionList(rec.upazilas, rec.upozila_id, 'Select Upazila'); }
+            },
+            save: function (id, payload) {
+                return id === null
+                    ? BK.post('/api/unions', payload)
+                    : BK.put('/api/unions/' + id, payload);
+            },
+            remove: function (id) {
+                return BK.del('/api/unions/' + id);
+            },
+            row: function (rec, i) {
+                const upozila = rec.upozila ? rec.upozila.name : '';
+                const district = rec.district ? rec.district.name : '';
+                return '<td>' + (i + 1) + '</td><td>' + BK.esc(rec.name) + '</td><td>' + BK.esc(upozila) +
+                    '</td><td>' + BK.esc(district) + '</td><td>' + actionsCell(rec.id) + '</td>';
+            }
         }
     };
 
@@ -196,6 +247,7 @@
         formTitle.textContent = cfg.addTitle;
         cancelBtn.classList.add('hidden');
         if (childSel) { childSel.innerHTML = optionList([], null, 'Select District'); }
+        if (grandChildSel) { grandChildSel.innerHTML = optionList([], null, 'Select Upazila'); }
     }
 
     async function loadDivisions(selectedId) {
@@ -283,6 +335,7 @@
     // ---------------------------------------------------------------
     if (parentSel && childSel) {
         parentSel.addEventListener('change', async function () {
+            if (grandChildSel) { grandChildSel.innerHTML = optionList([], null, 'Select Upazila'); }
             if (!parentSel.value) {
                 childSel.innerHTML = optionList([], null, 'Select District');
                 return;
@@ -292,6 +345,21 @@
                 childSel.innerHTML = optionList(json.districtById, null, 'Select District');
             } catch (err) {
                 BK.toast(err.message || 'Could not load districts', 'error');
+            }
+        });
+    }
+
+    if (childSel && grandChildSel) {
+        childSel.addEventListener('change', async function () {
+            if (!childSel.value) {
+                grandChildSel.innerHTML = optionList([], null, 'Select Upazila');
+                return;
+            }
+            try {
+                const json = await BK.get('/api/upazilaById/' + childSel.value);
+                grandChildSel.innerHTML = optionList(json.upazilaById, null, 'Select Upazila');
+            } catch (err) {
+                BK.toast(err.message || 'Could not load upazilas', 'error');
             }
         });
     }
