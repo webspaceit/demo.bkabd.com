@@ -41,17 +41,6 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                     </select>
                 </div>
                 <div>
-                    <label class="label" for="f-class">Class</label>
-                    <select id="f-class" class="w-full">
-                        <option value="">All Classes</option>
-                        <?php foreach ($classes as $c): ?>
-                            <option value="<?= (int) $c ?>" <?= (string) ($filters['class'] ?? '') === (string) $c ? 'selected' : '' ?>>
-                                <?= e(ClassName($c)) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div>
                     <label class="label" for="f-center">Center</label>
                     <select id="f-center" class="w-full">
                         <option value="">All Centers</option>
@@ -69,6 +58,17 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                         <?php foreach ((array) $institutes as $i): ?>
                             <option value="<?= (int) $i['id'] ?>" data-center="<?= (int) $i['center_id'] ?>" <?= (string) ($filters['institute_id'] ?? '') === (string) $i['id'] ? 'selected' : '' ?>>
                                 <?= e($i['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="label" for="f-class">Class</label>
+                    <select id="f-class" class="w-full">
+                        <option value="">All Classes</option>
+                        <?php foreach ($classes as $c): ?>
+                            <option value="<?= (int) $c ?>" <?= (string) ($filters['class'] ?? '') === (string) $c ? 'selected' : '' ?>>
+                                <?= e(ClassName($c)) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
