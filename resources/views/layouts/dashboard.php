@@ -17,33 +17,47 @@ $current = Request::capture()->path();
 /** label, path, permission(null=always), icon */
 $nav = [
     ['Dashboard', '/', null, 'dashboard'],
-    ['Student Registration', '/student-registration', 'student-registration', 'userplus'],
-    ['Student Details', '/students', 'student-list', 'users'],
-    ['Institute Registration', '/institute-registration', 'institute-create', 'building-plus'],
-    ['Institute Details', '/institutes', 'institute-list', 'building'],
-    ['Manage Center', '/centers', 'center-list', 'layers'],
-    ['group:Manage Area', '#', 'manage-area', 'arrow', [
+
+    ['group:Students', '#', null, 'arrow', [
+        ['Student Registration', '/student-registration', 'student-registration', 'userplus'],
+        ['Student Details', '/students', 'student-list', 'users'],
+    ]],
+    ['group:Institutes', '#', null, 'arrow', [
+        ['Institute Registration', '/institute-registration', 'institute-create', 'building-plus'],
+        ['Institute Details', '/institutes', 'institute-list', 'building'],
+        ['Manage Center', '/centers', 'center-list', 'layers'],
+    ]],
+    ['group:Manage Area', '#', null, 'arrow', [
         ['Divisions Info', '/divisions', 'division-list', 'map'],
         ['District Info', '/districts', 'district-list', 'map-pin'],
         ['Upazila Info', '/upazilas', 'upazila-list', 'navigation'],
         ['Union Info', '/unions', 'union-list', 'navigation'],
     ]],
-    ['SMS Dashboard', '/sms', 'sms', 'message'],
-    ["Mark's Entry", '/markentry', 'mark-entry', 'clipboard'],
-    ['Grade Assign', '/gradeassign', 'grade-assign', 'badge-check'],
-    ['Admit Card', '/admitcards', 'admit-card', 'id-card'],
-    ['Seat Plan', '/seatplan', 'seatplan', 'grid'],
-    ['Student Certificate', '/student-certificate', 'student-certificate', 'award'],
-    ['Institute Certificate', '/institute-certificate', 'institute-certificate', 'file-check'],
-    ['All Reports', '/reports', 'report-list', 'bar-chart'],
-    ['Notice Board', '/notices', 'notice-list', 'bell'],
-    ['All User Access', '/user', 'user-list', 'user-check'],
-    ['Routine', '/routines', 'routine-list', 'calendar'],
-    ['Session', '/sessions', 'session-list', 'calendar-clock'],
-    ['Manage User', '/userrole', 'role-list', 'shield'],
-    ['Settings', '/settings', 'settings', 'settings'],
-    ['Mark Distribution', '/mark-distributions', 'mark-distributions', 'sliders'],
-    ['Role Place', '/role-place', 'role-place', 'key'],
+    ['group:Examinations', '#', null, 'arrow', [
+        ['SMS Dashboard', '/sms', 'sms', 'message'],
+        ["Mark's Entry", '/markentry', 'mark-entry', 'clipboard'],
+        ['Grade Assign', '/gradeassign', 'grade-assign', 'badge-check'],
+        ['Admit Card', '/admitcards', 'admit-card', 'id-card'],
+        ['Seat Plan', '/seatplan', 'seatplan', 'grid'],
+    ]],
+    ['group:Certificates', '#', null, 'arrow', [
+        ['Student Certificate', '/student-certificate', 'student-certificate', 'award'],
+        ['Institute Certificate', '/institute-certificate', 'institute-certificate', 'file-check'],
+    ]],
+    ['group:Reports & Notices', '#', null, 'arrow', [
+        ['All Reports', '/reports', 'report-list', 'bar-chart'],
+        ['Notice Board', '/notices', 'notice-list', 'bell'],
+    ]],
+    ['group:Administration', '#', null, 'arrow', [
+        ['All User Access', '/user', 'user-list', 'user-check'],
+        ['Routine', '/routines', 'routine-list', 'calendar'],
+        ['Session', '/sessions', 'session-list', 'calendar-clock'],
+        ['Manage User', '/userrole', 'role-list', 'shield'],
+        ['Settings', '/settings', 'settings', 'settings'],
+        ['Mark Distribution', '/mark-distributions', 'mark-distributions', 'sliders'],
+        ['Role Place', '/role-place', 'role-place', 'key'],
+    ]],
+
     ['Instructions', '/instructions', null, 'book'],
 ];
 
@@ -150,6 +164,12 @@ $activeSession = Auth::activeSession();
                         <?php
                         $groupName = substr($label, 6);
                         $groupId = 'nav-group-' . preg_replace('/[^a-z0-9]+/', '-', strtolower($groupName));
+                        // A section only appears when the user may see at least one of its items.
+                        $visibleChildren = array_values(array_filter(
+                            $children,
+                            static function ($c) use ($canSee) { return $canSee($c[2] ?? null); }
+                        ));
+                        if (!$visibleChildren) { continue; }
                         ?>
                         <button type="button" data-nav-header data-nav-group-toggle aria-controls="<?= e($groupId) ?>"
                                 aria-expanded="true"
@@ -158,12 +178,11 @@ $activeSession = Auth::activeSession();
                             <svg data-nav-chevron class="w-4 h-4 shrink-0" style="transition: transform .15s; transform: rotate(90deg)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
                         </button>
                         <div id="<?= e($groupId) ?>" data-nav-group data-open="1" class="space-y-0.5">
-                            <?php foreach ($children as $child): ?>
+                            <?php foreach ($visibleChildren as $child): ?>
                                 <?php
                                 $cLabel = $child[0];
                                 $cPath = $child[1];
                                 $cIcon = $child[3] ?? 'dashboard';
-                                if (!$canSee($child[2] ?? null)) { continue; }
                                 ?>
                                 <?php if ($isActive($cPath)): ?>
                                     <div class="relative">
