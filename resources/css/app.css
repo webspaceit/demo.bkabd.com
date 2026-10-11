@@ -197,3 +197,26 @@
 .table tbody tr .row-actions.pinned::before {
     display: none;
 }
+
+/* ------------------------------------------------------------------ *
+ * Sidebar shell. The panel is always opaque, so the off-canvas drawer
+ * (below lg) never lets the light canvas show through. Under lg it
+ * reads as a rounded drawer with a soft edge; at lg it stays flush
+ * against the dark backdrop exactly as before.
+ * ------------------------------------------------------------------ */
+#sidebar {
+    background-color: #064e3b;
+}
+@media (max-width: 1023.98px) {
+    #sidebar {
+        border-top-right-radius: 1.25rem;
+        border-bottom-right-radius: 1.25rem;
+        border-right: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 24px 60px -18px rgba(2, 20, 14, 0.85), 0 8px 24px -12px rgba(2, 20, 14, 0.55);
+    }
+    /* Soften the page behind the open drawer. */
+    #sidebar-overlay {
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+}
