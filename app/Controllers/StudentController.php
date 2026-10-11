@@ -35,6 +35,10 @@ use App\Core\View;
  */
 final class StudentController extends Controller
 {
+    /** Student photo: ceiling for the stored image (30 KB) and its longest side. */
+    private const PHOTO_MAX_BYTES = 30 * 1024;
+    private const PHOTO_MAX_DIM   = 600;
+
     /** List students with filters. GET /api/students */
     public function index(Request $request): array
     {
@@ -272,7 +276,9 @@ final class StudentController extends Controller
         }
 
         // --- Photo upload (optional) ---
-        $photoPath = $request->hasFile('photo') ? $this->savePhoto($request->file('photo')) : null;
+        $photoPath = $request->hasFile('photo')
+            ? $this->savePhoto($request->file('photo'), 'photo', self::PHOTO_MAX_BYTES, self::PHOTO_MAX_DIM)
+            : null;
 
         // --- Insert student ---
         $studentId = Student::create(array_filter([
@@ -547,7 +553,7 @@ final class StudentController extends Controller
             if ($student['photo']) {
                 @unlink(BASE_PATH . '/public/' . $student['photo']);
             }
-            $photoPath = $this->savePhoto($request->file('photo'));
+            $photoPath = $this->savePhoto($request->file('photo'), 'photo', self::PHOTO_MAX_BYTES, self::PHOTO_MAX_DIM);
             if ($photoPath !== null) {
                 $merge['photo'] = $photoPath;
             }
@@ -644,7 +650,7 @@ final class StudentController extends Controller
      * @throws \App\Core\HttpException       500 (storage failures)
      * @return string|null relative path like uploads/students/std_ab12….jpg
      */
-    private function savePhoto(?array $file, string $field = 'photo'): ?string
+    private function savePhoto(?array $file, string $field = 'photo', int $maxBytes = 0, int $maxDim = 0): ?string
     {
         if ($file === null || (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
             return null;
@@ -662,12 +668,10 @@ final class StudentController extends Controller
             throw new \App\Core\ValidationException([$field => ["The $label must be an image."]]);
         }
         $ext = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_GIF => 'gif'][(int) $info[2]];
-        $name = 'std_' . bin2hex(random_bytes(12)) . '.' . $ext;
         $dir = BASE_PATH . '/public/uploads/students/';
         if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
             throw new \App\Core\HttpException(500, 'Unable to create the upload directory.');
         }
-        $target = $dir . $name;
 
         // Prefer GD: decode + re-encode so the stored bytes are a pure decoded
         // image and any PHP/HTML payload in a polyglot file is dropped.
@@ -677,25 +681,88 @@ final class StudentController extends Controller
             if ($img === false) {
                 throw new \App\Core\ValidationException([$field => ["The $label must be an image."]]);
             }
-            $encoder = [IMAGETYPE_JPEG => 'imagejpeg', IMAGETYPE_PNG => 'imagepng', IMAGETYPE_GIF => 'imagegif'][(int) $info[2]];
-            ob_start();
-            $encoded = $encoder($img);
-            $out = ob_get_clean();
-            imagedestroy($img);
-            if (!$encoded || $out === '') {
+            if ($maxBytes > 0) {
+                // Photos are downscaled and re-encoded as JPEG until they fit
+                // the byte budget (e.g. <= 30 KB), keeping the stored file small.
+                $out = $this->encodeJpegWithin($img, $maxBytes, $maxDim);
+                $ext = 'jpg';
+            } else {
+                $encoder = [IMAGETYPE_JPEG => 'imagejpeg', IMAGETYPE_PNG => 'imagepng', IMAGETYPE_GIF => 'imagegif'][(int) $info[2]];
+                ob_start();
+                $encoded = $encoder($img);
+                $out = (string) ob_get_clean();
+                imagedestroy($img);
+                if (!$encoded || $out === '') {
+                    $out = null;
+                }
+            }
+            if ($out === null || $out === '') {
                 throw new \App\Core\HttpException(500, 'Unable to process the uploaded image.');
             }
-            $ok = @file_put_contents($target, $out) !== false;
+            $name = 'std_' . bin2hex(random_bytes(12)) . '.' . $ext;
+            $ok = @file_put_contents($dir . $name, $out) !== false;
         } else {
             // GD unavailable — store the validated upload byte-for-byte with the
             // detected-type extension (never the client extension). The upload
             // dir .htaccess / nginx guards still block script execution.
-            $ok = @move_uploaded_file((string) ($file['tmp_name'] ?? ''), $target);
+            $name = 'std_' . bin2hex(random_bytes(12)) . '.' . $ext;
+            $ok = @move_uploaded_file((string) ($file['tmp_name'] ?? ''), $dir . $name);
         }
         if (!$ok) {
             throw new \App\Core\HttpException(500, 'Unable to store the uploaded file.');
         }
         return 'uploads/students/' . $name;
+    }
+
+    /**
+     * Downscale + re-encode an image as JPEG until it fits $maxBytes.
+     *
+     * Consumes (and frees) the passed GD image. Transparency is flattened onto
+     * white first, so converting a PNG/GIF photo never produces black areas.
+     *
+     * @param  \GdImage $img
+     * @return string|null encoded JPEG bytes, or null when encoding fails
+     */
+    private function encodeJpegWithin($img, int $maxBytes, int $maxDim): ?string
+    {
+        $srcW = imagesx($img);
+        $srcH = imagesy($img);
+        $scale = ($maxDim > 0 && max($srcW, $srcH) > $maxDim) ? $maxDim / max($srcW, $srcH) : 1.0;
+        $w = max(1, (int) round($srcW * $scale));
+        $h = max(1, (int) round($srcH * $scale));
+
+        $canvas = imagecreatetruecolor($w, $h);
+        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
+        imagecopyresampled($canvas, $img, 0, 0, 0, 0, $w, $h, $srcW, $srcH);
+        imagedestroy($img);
+        $img = $canvas;
+
+        $quality = 82;
+        $out = null;
+        for ($i = 0; $i < 12; $i++) {
+            ob_start();
+            $ok = imagejpeg($img, null, $quality);
+            $out = (string) ob_get_clean();
+            if ($ok && $out !== '' && strlen($out) <= $maxBytes) {
+                break;
+            }
+            if ($quality > 45) {
+                $quality -= 7;
+                continue;
+            }
+            // Still too large at low quality — shrink and retry.
+            $w = max(60, (int) round($w * 0.85));
+            $h = max(60, (int) round($h * 0.85));
+            $next = imagecreatetruecolor($w, $h);
+            imagefill($next, 0, 0, imagecolorallocate($next, 255, 255, 255));
+            imagecopyresampled($next, $img, 0, 0, 0, 0, $w, $h, imagesx($img), imagesy($img));
+            imagedestroy($img);
+            $img = $next;
+            $quality = 75;
+        }
+        imagedestroy($img);
+
+        return ($out === null || $out === '') ? null : $out;
     }
 
     /**
