@@ -206,11 +206,6 @@
  * ------------------------------------------------------------------ */
 #sidebar {
     background-color: #064e3b;
-    /* The active nav pill intentionally bleeds ~1.25rem past the content edge
-       (see .active-nav-notch margin-right) so it melts into the light canvas.
-       The panel is a vertical scroll container, so without clipping the x axis
-       that bleed shows up as a horizontal scrollbar along the bottom. */
-    overflow-x: hidden;
 }
 @media (max-width: 1023.98px) {
     #sidebar {
