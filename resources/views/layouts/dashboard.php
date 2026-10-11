@@ -22,11 +22,12 @@ $nav = [
     ['Institute Registration', '/institute-registration', 'institute-create', 'building-plus'],
     ['Institute Details', '/institutes', 'institute-list', 'building'],
     ['Manage Center', '/centers', 'center-list', 'layers'],
-    ['group:Manage Area', '#', 'manage-area', 'arrow'],
-    ['Divisions Info', '/divisions', 'division-list', 'map'],
-    ['District Info', '/districts', 'district-list', 'map-pin'],
-    ['Upazila Info', '/upazilas', 'upazila-list', 'navigation'],
-    ['Union Info', '/unions', 'union-list', 'navigation'],
+    ['group:Manage Area', '#', 'manage-area', 'arrow', [
+        ['Divisions Info', '/divisions', 'division-list', 'map'],
+        ['District Info', '/districts', 'district-list', 'map-pin'],
+        ['Upazila Info', '/upazilas', 'upazila-list', 'navigation'],
+        ['Union Info', '/unions', 'union-list', 'navigation'],
+    ]],
     ['SMS Dashboard', '/sms', 'sms', 'message'],
     ["Mark's Entry", '/markentry', 'mark-entry', 'clipboard'],
     ['Grade Assign', '/gradeassign', 'grade-assign', 'badge-check'],
@@ -136,26 +137,66 @@ $activeSession = Auth::activeSession();
             </div>
 
             <nav id="sidebar-nav" class="space-y-0.5 text-[13px] font-medium">
-                <?php foreach ($nav as [$label, $path, $perm, $icon]): ?>
+                <?php foreach ($nav as $entry): ?>
+                    <?php
+                    $label = $entry[0];
+                    $path = $entry[1] ?? '#';
+                    $perm = $entry[2] ?? null;
+                    $icon = $entry[3] ?? 'dashboard';
+                    $children = $entry[4] ?? [];
+                    ?>
                     <?php if (str_starts_with($label, 'group:')) { ?>
                         <?php if (!$canSee($perm)) { continue; } ?>
-                        <div data-nav-header class="pt-4 pb-1.5 px-3 text-[11px] uppercase tracking-wider text-emerald-200/60 font-semibold"><?= e(substr($label, 6)) ?></div>
+                        <?php
+                        $groupName = substr($label, 6);
+                        $groupId = 'nav-group-' . preg_replace('/[^a-z0-9]+/', '-', strtolower($groupName));
+                        ?>
+                        <button type="button" data-nav-header data-nav-group-toggle aria-controls="<?= e($groupId) ?>"
+                                aria-expanded="true"
+                                class="w-full flex items-center justify-between gap-2 pt-5 pb-2 px-3 text-sm font-bold uppercase tracking-wider text-emerald-50 hover:text-white transition">
+                            <span><?= e($groupName) ?></span>
+                            <svg data-nav-chevron class="w-4 h-4 shrink-0" style="transition: transform .15s; transform: rotate(90deg)" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                        </button>
+                        <div id="<?= e($groupId) ?>" data-nav-group data-open="1" class="space-y-0.5">
+                            <?php foreach ($children as $child): ?>
+                                <?php
+                                $cLabel = $child[0];
+                                $cPath = $child[1];
+                                $cIcon = $child[3] ?? 'dashboard';
+                                if (!$canSee($child[2] ?? null)) { continue; }
+                                ?>
+                                <?php if ($isActive($cPath)): ?>
+                                    <div class="relative">
+                                        <a href="<?= e($cPath) ?>" data-nav-item
+                                           class="active-nav-notch flex items-center gap-3 pl-4 py-3 ml-4">
+                                            <?= nav_icon($cIcon) ?>
+                                            <span class="truncate"><?= e($cLabel) ?></span>
+                                        </a>
+                                    </div>
+                                <?php else: ?>
+                                    <a href="<?= e($cPath) ?>" data-nav-item
+                                       class="group flex items-center gap-3 px-4 py-2.5 rounded-full text-emerald-50/90 hover:text-white hover:bg-white/10 transition ml-4">
+                                        <?= nav_icon($cIcon, 'text-emerald-200/70 group-hover:text-white transition-colors') ?>
+                                        <span class="truncate"><?= e($cLabel) ?></span>
+                                    </a>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
                         <?php continue; ?>
                     <?php } ?>
                     <?php if (!$canSee($perm)) { continue; } ?>
                     <?php $active = $isActive($path); ?>
-                    <?php $sub = in_array($path, ['/divisions', '/districts', '/upazilas', '/unions'], true) ? 'ml-4' : ''; ?>
                     <?php if ($active): ?>
                         <div class="relative">
                             <a href="<?= e($path) ?>" data-nav-item
-                               class="active-nav-notch flex items-center gap-3 pl-4 py-3 <?= $sub ?>">
+                               class="active-nav-notch flex items-center gap-3 pl-4 py-3">
                                 <?= nav_icon($icon) ?>
                                 <span class="truncate"><?= e($label) ?></span>
                             </a>
                         </div>
                     <?php else: ?>
                         <a href="<?= e($path) ?>" data-nav-item
-                           class="group flex items-center gap-3 px-4 py-2.5 rounded-full text-emerald-50/90 hover:text-white hover:bg-white/10 transition <?= $sub ?>">
+                           class="group flex items-center gap-3 px-4 py-2.5 rounded-full text-emerald-50/90 hover:text-white hover:bg-white/10 transition">
                             <?= nav_icon($icon, 'text-emerald-200/70 group-hover:text-white transition-colors') ?>
                             <span class="truncate"><?= e($label) ?></span>
                         </a>

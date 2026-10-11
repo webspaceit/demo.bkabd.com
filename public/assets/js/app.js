@@ -319,35 +319,82 @@ window.BK = (function () {
         });
     }
 
-    // Sidebar menu filter (client-side, no backend call).
+    // Sidebar: collapsible groups + client-side menu filter (no backend call).
     const navSearch = document.getElementById('nav-search');
     const navEl = document.getElementById('sidebar-nav');
-    if (navSearch && navEl) {
-        const entries = Array.from(navEl.querySelectorAll('[data-nav-item],[data-nav-header]'));
-        const empty = navEl.querySelector('[data-nav-empty]');
-        navSearch.addEventListener('input', function () {
-            const q = navSearch.value.trim().toLowerCase();
-            entries.forEach(function (el) {
-                if (!el.hasAttribute('data-nav-item')) { return; }
-                const match = q === '' || (el.textContent || '').toLowerCase().indexOf(q) !== -1;
-                el.classList.toggle('hidden', !match);
-            });
-            // Hide section headers that have no visible items under them.
-            entries.forEach(function (el, i) {
-                if (!el.hasAttribute('data-nav-header')) { return; }
-                let has = false;
-                for (let j = i + 1; j < entries.length; j++) {
-                    if (entries[j].hasAttribute('data-nav-header')) { break; }
-                    if (!entries[j].classList.contains('hidden')) { has = true; break; }
-                }
-                el.classList.toggle('hidden', !has);
-            });
-            let anyVisible = false;
-            entries.forEach(function (el) {
-                if (el.hasAttribute('data-nav-item') && !el.classList.contains('hidden')) { anyVisible = true; }
-            });
-            if (empty) { empty.classList.toggle('hidden', anyVisible || q === ''); }
+
+    function setGroupOpen(group, open, persist) {
+        group.classList.toggle('hidden', !open);
+        group.dataset.open = open ? '1' : '0';
+        const toggle = navEl.querySelector('[data-nav-group-toggle][aria-controls="' + group.id + '"]');
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            const chev = toggle.querySelector('[data-nav-chevron]');
+            if (chev) { chev.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)'; }
+        }
+        if (persist) {
+            try { localStorage.setItem('nav-group:' + group.id, open ? '1' : '0'); } catch (e) { /* ignore */ }
+        }
+    }
+
+    if (navEl) {
+        const groups = Array.from(navEl.querySelectorAll('[data-nav-group]'));
+        groups.forEach(function (group) {
+            let open = group.dataset.open !== '0';
+            try {
+                const saved = localStorage.getItem('nav-group:' + group.id);
+                if (saved !== null) { open = saved === '1'; }
+            } catch (e) { /* ignore */ }
+            setGroupOpen(group, open, false);
+            const toggle = navEl.querySelector('[data-nav-group-toggle][aria-controls="' + group.id + '"]');
+            if (toggle) {
+                toggle.addEventListener('click', function () {
+                    setGroupOpen(group, group.classList.contains('hidden'), true);
+                });
+            }
         });
+
+        if (navSearch) {
+            const empty = navEl.querySelector('[data-nav-empty]');
+            navSearch.addEventListener('input', function () {
+                const q = navSearch.value.trim().toLowerCase();
+                navEl.querySelectorAll('[data-nav-item]').forEach(function (el) {
+                    const match = q === '' || (el.textContent || '').toLowerCase().indexOf(q) !== -1;
+                    el.classList.toggle('hidden', !match);
+                });
+                // Reveal collapsed groups holding a match; restore the user's
+                // open/closed choice once the box is cleared.
+                groups.forEach(function (group) {
+                    if (q === '') {
+                        setGroupOpen(group, group.dataset.open === '1', false);
+                        return;
+                    }
+                    const hasMatch = Array.prototype.some.call(
+                        group.querySelectorAll('[data-nav-item]'),
+                        function (it) { return !it.classList.contains('hidden'); }
+                    );
+                    setGroupOpen(group, hasMatch, false);
+                });
+                // Hide headers (incl. the group toggle) with no visible items.
+                navEl.querySelectorAll('[data-nav-header]').forEach(function (el) {
+                    if (q === '') { el.classList.remove('hidden'); return; }
+                    let has = false;
+                    if (el.hasAttribute('data-nav-group-toggle')) {
+                        const group = document.getElementById(el.getAttribute('aria-controls'));
+                        has = !!group && Array.prototype.some.call(
+                            group.querySelectorAll('[data-nav-item]'),
+                            function (it) { return !it.classList.contains('hidden'); }
+                        );
+                    }
+                    el.classList.toggle('hidden', !has);
+                });
+                const anyVisible = Array.prototype.some.call(
+                    navEl.querySelectorAll('[data-nav-item]'),
+                    function (el) { return !el.classList.contains('hidden'); }
+                );
+                if (empty) { empty.classList.toggle('hidden', anyVisible || q === ''); }
+            });
+        }
     }
 })();
 
