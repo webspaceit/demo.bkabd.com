@@ -37,7 +37,7 @@ $args = array_slice($argv, 1);
 $flags = array_values(array_filter($args, static fn ($a) => str_starts_with($a, '--')));
 $file = '';
 foreach ($args as $a) {
-    if (!str_starts_with($a, '--')) { $file = $a; break; }
+    if (!str_starts_with($a, '--')) { $file = trim($a, "\"'"); break; }
 }
 $dryRun = in_array('--dry-run', $flags, true);
 $truncate = in_array('--truncate', $flags, true);
