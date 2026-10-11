@@ -9,6 +9,7 @@
  * $v(key) = old input (validation round-trip) falling back to the student row.
  */
 $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
+$currentSession = (string) ($activeSession ?? ''); // only the current session is selectable
 ?>
 <div class="max-w-2xl mx-auto">
     <div class="flex items-center justify-between mb-6">
@@ -46,6 +47,19 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
             </div>
         </div>
 
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="label">Present Address <span class="text-red-500">*</span></label>
+                <input type="text" name="present_address" class="input" data-field="present_address" placeholder="Present address" value="<?= $v('present_address') ?>" required>
+                <p class="field-error hidden" data-error-for="present_address"></p>
+            </div>
+            <div>
+                <label class="label">Permanent Address</label>
+                <input type="text" name="permanent_address" class="input" data-field="permanent_address" placeholder="Permanent address" value="<?= $v('permanent_address') ?>">
+                <p class="field-error hidden" data-error-for="permanent_address"></p>
+            </div>
+        </div>
+
         <div class="grid grid-cols-3 gap-4">
             <div>
                 <label class="label">Class <span class="text-red-500">*</span></label>
@@ -60,10 +74,9 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
             <div>
                 <label class="label">Session <span class="text-red-500">*</span></label>
                 <select name="session" class="input" data-field="session" required>
-                    <option value="">Select</option>
-                    <?php foreach ($sessions as $s): ?>
-                        <option value="<?= e($s['session']) ?>" <?= $v('session') == $s['session'] ? 'selected' : '' ?>>
-                            <?= e($s['session']) ?> <?= (int) $s['active'] === 1 ? ' (active)' : '' ?>
+                    <?php foreach ($sessions as $s): $isCurrent = (string) $s['session'] === $currentSession; $isStudent = (string) ($student['session'] ?? '') === (string) $s['session']; $enabled = $isCurrent || $isStudent; ?>
+                        <option value="<?= e($s['session']) ?>"<?= $isStudent ? ' selected' : '' ?><?= $enabled ? '' : ' disabled' ?>>
+                            <?= e($s['session']) ?><?= $isCurrent ? ' (current)' : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -155,11 +168,12 @@ $v = fn (string $key) => e((string) (old($key, $student[$key] ?? '') ?? ''));
 
         <div>
             <label class="label">Gender <span class="text-red-500">*</span></label>
-            <div class="grid grid-cols-3 gap-2">
-                <label class="radio-item"><input type="radio" name="gender" value="1" class="radio" data-field="gender" <?= $v('gender') == 1 ? 'checked' : '' ?> required> Male</label>
-                <label class="radio-item"><input type="radio" name="gender" value="2" class="radio" data-field="gender" <?= $v('gender') == 2 ? 'checked' : '' ?> > Female</label>
-                <label class="radio-item"><input type="radio" name="gender" value="3" class="radio" data-field="gender" <?= $v('gender') == 3 ? 'checked' : '' ?> > Others</label>
-            </div>
+            <select name="gender" class="input" data-field="gender" required>
+                <option value="">Select</option>
+                <option value="1" <?= $v('gender') == 1 ? 'selected' : '' ?>>Male</option>
+                <option value="2" <?= $v('gender') == 2 ? 'selected' : '' ?>>Female</option>
+                <option value="3" <?= $v('gender') == 3 ? 'selected' : '' ?>>Others</option>
+            </select>
             <p class="field-error hidden" data-error-for="gender"></p>
         </div>
 

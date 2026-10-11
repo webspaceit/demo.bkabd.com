@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\Config;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Validator;
@@ -201,6 +202,8 @@ final class StudentController extends Controller
             'dob'                  => 'nullable|date_format:Y-m-d',
             'gender'               => 'required|in:1,2,3',        // 1=Male 2=Female 3=Others
             'religion'             => 'nullable',
+            'present_address'      => 'required|string|max:255',
+            'permanent_address'    => 'nullable|string|max:255',
             'education_type'       => 'nullable|in:1,2,3',      // 1=Bangla 2=English 3=Arabic
             'class'                => 'required|in:1,2,3,4,5,6',
             'session'              => 'required|integer',
@@ -216,7 +219,9 @@ final class StudentController extends Controller
         ];
 
         try {
-            $data = Validator::validate($request, $rules);
+            $data = Validator::validate($request, $rules, [
+                'present_address.required' => 'The present address field is required.',
+            ]);
         } catch (\App\Core\ValidationException $e) {
             Response::validationError($e->errors, $e->getMessage());
         }
@@ -277,6 +282,8 @@ final class StudentController extends Controller
             'dob'                => $data['dob'] ?? null,
             'gender'             => (int) $data['gender'],
             'religion'           => $data['religion'] ?? '',
+            'present_address'    => $data['present_address'] ?? '',
+            'permanent_address'  => $data['permanent_address'] ?? '',
             'education_type'     => $data['education_type'] ?? '',
             'class'              => (int) $data['class'],
             'session'            => (int) $data['session'],
@@ -432,6 +439,8 @@ final class StudentController extends Controller
             'dob'                  => 'nullable|date_format:Y-m-d',
             'gender'               => 'nullable|in:1,2,3',
             'religion'             => 'nullable',
+            'present_address'      => 'nullable|string|max:255',
+            'permanent_address'    => 'nullable|string|max:255',
             'education_type'       => 'nullable|in:1,2,3',
             'class'                => 'nullable|in:1,2,3,4,5,6',
             'session'              => 'nullable|integer',
@@ -471,6 +480,8 @@ final class StudentController extends Controller
             'dob'                => $data['dob'] ?? $student['dob'],
             'gender'             => $data['gender'] !== null ? (int) $data['gender'] : (int) $student['gender'],
             'religion'           => $data['religion'] ?? $student['religion'],
+            'present_address'    => $data['present_address'] ?? $student['present_address'],
+            'permanent_address'  => $data['permanent_address'] ?? $student['permanent_address'],
             'education_type'     => $data['education_type'] ?? $student['education_type'],
             'class'              => $data['class'] !== null ? (int) $data['class'] : (int) $student['class'],
             'session'            => $data['session'] !== null ? (int) $data['session'] : (int) $student['session'],

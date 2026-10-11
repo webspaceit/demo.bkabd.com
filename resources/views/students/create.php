@@ -8,7 +8,8 @@
  * printable registration card link in a toast and resets for the next
  * student (keeping the chosen session).
  */
-$selSession = (string) (old('session') ?: ($activeSession ?? ''));
+$currentSession = (string) ($activeSession ?? '');
+$selSession = $currentSession; // only the current session is selectable
 $req = '<span class="text-red-500">*</span>';
 ?>
 <div class="max-w-4xl mx-auto">
@@ -70,7 +71,9 @@ $req = '<span class="text-red-500">*</span>';
                         <input type="text" id="mother_name" name="mother_name" class="input" data-field="mother_name" placeholder="Mother's name" value="<?= e((string) old('mother_name')) ?>">
                         <p class="field-error hidden" data-error-for="mother_name"></p>
                     </div>
+                </div>
 
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
                     <div>
                         <label class="label" for="phone">Phone <?= $req ?></label>
                         <input type="text" id="phone" name="phone" class="input" data-field="phone" placeholder="01XXXXXXXXX" maxlength="11" inputmode="numeric" autocomplete="tel" value="<?= e((string) old('phone')) ?>" required>
@@ -92,22 +95,29 @@ $req = '<span class="text-red-500">*</span>';
                         </select>
                         <p class="field-error hidden" data-error-for="religion"></p>
                     </div>
+                    <div>
+                        <label class="label" for="gender">Gender <?= $req ?></label>
+                        <select id="gender" name="gender" class="input" data-field="gender" required>
+                            <option value="">Select</option>
+                            <option value="1" <?= old('gender') == 1 ? 'selected' : '' ?>>Male</option>
+                            <option value="2" <?= old('gender') == 2 ? 'selected' : '' ?>>Female</option>
+                            <option value="3" <?= old('gender') == 3 ? 'selected' : '' ?>>Others</option>
+                        </select>
+                        <p class="field-error hidden" data-error-for="gender"></p>
+                    </div>
                 </div>
 
-                <div class="mt-4">
-                    <label class="label">Gender <?= $req ?></label>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 max-w-xl">
-                        <label class="flex items-center justify-center gap-2 cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50 has-[:checked]:font-medium has-[:checked]:text-emerald-800">
-                            <input type="radio" name="gender" value="1" class="accent-emerald-600" data-field="gender" <?= old('gender') == 1 ? 'checked' : '' ?> required> Male
-                        </label>
-                        <label class="flex items-center justify-center gap-2 cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50 has-[:checked]:font-medium has-[:checked]:text-emerald-800">
-                            <input type="radio" name="gender" value="2" class="accent-emerald-600" data-field="gender" <?= old('gender') == 2 ? 'checked' : '' ?>> Female
-                        </label>
-                        <label class="flex items-center justify-center gap-2 cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50 has-[:checked]:font-medium has-[:checked]:text-emerald-800">
-                            <input type="radio" name="gender" value="3" class="accent-emerald-600" data-field="gender" <?= old('gender') == 3 ? 'checked' : '' ?>> Others
-                        </label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="label" for="present_address">Present Address <?= $req ?></label>
+                        <input type="text" id="present_address" name="present_address" class="input" data-field="present_address" placeholder="Present address" value="<?= e((string) old('present_address')) ?>" required>
+                        <p class="field-error hidden" data-error-for="present_address"></p>
                     </div>
-                    <p class="field-error hidden" data-error-for="gender"></p>
+                    <div>
+                        <label class="label" for="permanent_address">Permanent Address</label>
+                        <input type="text" id="permanent_address" name="permanent_address" class="input" data-field="permanent_address" placeholder="Permanent address" value="<?= e((string) old('permanent_address')) ?>">
+                        <p class="field-error hidden" data-error-for="permanent_address"></p>
+                    </div>
                 </div>
             </section>
 
@@ -135,10 +145,9 @@ $req = '<span class="text-red-500">*</span>';
                     <div>
                         <label class="label" for="session">Session <?= $req ?></label>
                         <select id="session" name="session" class="input" data-field="session" required>
-                            <option value="">Select</option>
-                            <?php foreach ($sessions as $s): ?>
-                                <option value="<?= e($s['session']) ?>" <?= old('session') == $s['session'] || $selSession === (string) $s['session'] ? 'selected' : '' ?>>
-                                    <?= e($s['session']) ?> <?= (int) $s['active'] === 1 ? ' (active)' : '' ?>
+                            <?php foreach ($sessions as $s): $isCurrent = (string) $s['session'] === $currentSession; ?>
+                                <option value="<?= e($s['session']) ?>"<?= $isCurrent ? ' selected' : '' ?><?= $isCurrent ? '' : ' disabled' ?>>
+                                    <?= e($s['session']) ?><?= $isCurrent ? ' (current)' : ((int) $s['active'] === 1 ? ' (active)' : '') ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
