@@ -81,7 +81,7 @@ $req = '<span class="text-red-500">*</span>';
                     </div>
                     <div>
                         <label class="label" for="dob">Date of Birth</label>
-                        <input type="date" id="dob" name="dob" class="input" data-field="dob" value="<?= e((string) old('dob')) ?>">
+                        <input type="text" id="dob" name="dob" class="input" data-field="dob" data-datepicker autocomplete="off" placeholder="DD-MM-YYYY" value="<?= e((string) old('dob')) ?>">
                         <p class="field-error hidden" data-error-for="dob"></p>
                     </div>
                     <div>
@@ -433,6 +433,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var sessionValue = sessionEl ? sessionEl.value : '';
             form.reset();
+            // form.reset() clears the hidden field, not flatpickr's visible input.
+            document.querySelectorAll('input[data-datepicker]').forEach(function (el) {
+                if (el._flatpickr) { el._flatpickr.clear(); }
+            });
             if (sessionValue && sessionEl) { sessionEl.value = sessionValue; }
             fillOptions(instituteEl, [], 'Select a Center first');
             fillOptions(districtEl, [], 'Select Division first');

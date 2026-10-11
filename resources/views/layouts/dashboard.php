@@ -123,6 +123,9 @@ $activeSession = Auth::activeSession();
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title><?= e($title ?? 'Dashboard') ?> | <?= e(\App\Core\Config::get('APP_NAME', 'BKABD')) ?></title>
     <link rel="stylesheet" href="/assets/css/app.css?v=<?= (int) @filemtime(__DIR__ . '/../../../public/assets/css/app.css') ?>">
+<?php foreach ((array) ($pageStyles ?? []) as $href): ?>
+    <link rel="stylesheet" href="<?= e($href) ?>">
+<?php endforeach; ?>
 </head>
 <body class="bg-[#064e3b] text-slate-700 antialiased selection:bg-emerald-600 selection:text-white">
 <div class="flex min-h-screen bg-[#064e3b]">

@@ -202,7 +202,7 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
 
         <div>
             <label class="label">DOB</label>
-            <input type="date" name="dob" class="input" data-field="dob" placeholder="Date of Birth" value="<?= $v('dob') ?>">
+            <input type="text" name="dob" class="input" data-field="dob" data-datepicker autocomplete="off" placeholder="DD-MM-YYYY" value="<?= $v('dob') ?>">
             <p class="field-error hidden" data-error-for="dob"></p>
         </div>
 

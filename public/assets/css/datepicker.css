@@ -1,0 +1,57 @@
+/*
+ * Date picker theme — pairs with the vendored flatpickr.min.css and the
+ * `data-datepicker` initialiser (datepicker.js). Loaded after flatpickr's own
+ * stylesheet so these rules win, and only on pages that opt in via $pageStyles.
+ */
+
+/* Visible field keeps the .input look and gains an emerald calendar glyph. */
+input.datepicker-input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23059669' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 1.05rem 1.05rem;
+    padding-right: 2.4rem;
+    cursor: pointer;
+}
+
+/* Popover shell */
+.flatpickr-calendar {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 32px rgba(2, 44, 34, 0.16);
+    font-family: inherit;
+    padding-bottom: 0.35rem;
+}
+.flatpickr-calendar.arrowTop:after { border-bottom-color: #fff; }
+.flatpickr-calendar.arrowTop:before { border-bottom-color: #e2e8f0; }
+.flatpickr-calendar.arrowBottom:after { border-top-color: #fff; }
+.flatpickr-calendar.arrowBottom:before { border-top-color: #e2e8f0; }
+
+/* Header — month/year + arrows in the brand green */
+.flatpickr-months { border-radius: 0.75rem 0.75rem 0 0; }
+.flatpickr-months .flatpickr-month { color: #064e3b; fill: #064e3b; }
+.flatpickr-current-month { font-weight: 600; }
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month input.cur-year { color: #064e3b; font-weight: 600; }
+.flatpickr-current-month .flatpickr-monthDropdown-months:hover { background: #ecfdf5; border-radius: 0.375rem; }
+.flatpickr-months .flatpickr-prev-month:hover,
+.flatpickr-months .flatpickr-next-month:hover { color: #059669; }
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg { fill: #059669; }
+
+/* Weekday row */
+span.flatpickr-weekday { color: #64748b; font-weight: 600; }
+
+/* Days */
+.flatpickr-day { color: #334155; border-radius: 0.5rem; }
+.flatpickr-day:hover,
+.flatpickr-day:focus { background: #ecfdf5; border-color: #ecfdf5; color: #065f46; }
+.flatpickr-day.today { border-color: #34d399; }
+.flatpickr-day.today:hover,
+.flatpickr-day.today:focus { background: #059669; border-color: #059669; color: #fff; }
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover,
+.flatpickr-day.selected:focus { background: #059669; border-color: #059669; color: #fff; }
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay { color: #cbd5e1; }
