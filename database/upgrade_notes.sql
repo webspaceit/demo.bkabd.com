@@ -48,3 +48,16 @@ WHERE NOT EXISTS (
 ALTER TABLE `users`
   ADD COLUMN `two_factor_secret` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   ADD COLUMN `two_factor_enabled` tinyint(1) NOT NULL DEFAULT '0';
+
+-- ---------------------------------------------------------------
+-- Unions — enable the Union cascade on the registration form.
+-- The original schema made `name` globally UNIQUE and left `id`
+-- without AUTO_INCREMENT, which blocks importing real union data
+-- (the same union name recurs in many upazilas). Relax to a
+-- per-upazila unique and let the id auto-increment. New installs get
+-- this from database/schema.sql. Safe on an empty or already-unique
+-- table. Import the rows with: php tools/import_unions.php <file>
+-- ---------------------------------------------------------------
+ALTER TABLE `unions` DROP INDEX `unions_name_unique`;
+ALTER TABLE `unions` MODIFY `id` bigint unsigned NOT NULL AUTO_INCREMENT;
+ALTER TABLE `unions` ADD UNIQUE KEY `unions_upozila_name_unique` (`upozila_id`, `name`);
