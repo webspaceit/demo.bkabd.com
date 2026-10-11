@@ -190,14 +190,14 @@ $activeSession = Auth::activeSession();
                                 <?php if ($isActive($cPath)): ?>
                                     <div class="relative">
                                         <a href="<?= e($cPath) ?>" data-nav-item
-                                           class="active-nav-notch flex items-center gap-3 pl-4 py-3 ml-4">
+                                           class="active-nav-notch flex items-center gap-3 pl-4 py-3">
                                             <?= nav_icon($cIcon) ?>
                                             <span class="truncate"><?= e($cLabel) ?></span>
                                         </a>
                                     </div>
                                 <?php else: ?>
                                     <a href="<?= e($cPath) ?>" data-nav-item
-                                       class="group flex items-center gap-3 px-4 py-2.5 rounded-full text-emerald-50/90 hover:text-white hover:bg-white/10 transition ml-4">
+                                       class="group flex items-center gap-3 px-4 py-2.5 rounded-full text-emerald-50/90 hover:text-white hover:bg-white/10 transition">
                                         <?= nav_icon($cIcon, 'text-emerald-200/70 group-hover:text-white transition-colors') ?>
                                         <span class="truncate"><?= e($cLabel) ?></span>
                                     </a>
