@@ -22,57 +22,56 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
         <?= csrf_field() ?>
 
         <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="label">Name <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <input type="text" name="name" class="input" data-field="name" placeholder="Student Name" value="<?= $v('name') ?>" required>
+                <label>Name <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="name"></p>
             </div>
-            <div>
-                <label class="label">Father's Name <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <input type="text" name="father_name" class="input" data-field="father_name" placeholder="Father's Name" value="<?= $v('father_name') ?>" required>
+                <label>Father's Name <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="father_name"></p>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="label">Mother's Name</label>
+            <div class="fl">
                 <input type="text" name="mother_name" class="input" data-field="mother_name" placeholder="Mother's Name" value="<?= $v('mother_name') ?>">
+                <label>Mother's Name</label>
                 <p class="field-error hidden" data-error-for="mother_name"></p>
             </div>
-            <div>
-                <label class="label">Phone <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <input type="text" name="phone" class="input" data-field="phone" placeholder="Phone (11 digits)" maxlength="11" value="<?= $v('phone') ?>" required>
+                <label>Phone <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="phone"></p>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="label">Present Address <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <input type="text" name="present_address" class="input" data-field="present_address" placeholder="Present address" value="<?= $v('present_address') ?>" required>
+                <label>Present Address <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="present_address"></p>
             </div>
-            <div>
-                <label class="label">Permanent Address</label>
+            <div class="fl">
                 <input type="text" name="permanent_address" class="input" data-field="permanent_address" placeholder="Permanent address" value="<?= $v('permanent_address') ?>">
+                <label>Permanent Address</label>
                 <p class="field-error hidden" data-error-for="permanent_address"></p>
             </div>
         </div>
 
         <div class="grid grid-cols-3 gap-4">
-            <div>
-                <label class="label">Class <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <select name="class" class="input" data-field="class" required>
                     <option value="">Select</option>
                     <?php foreach ([1=>'ONE',2=>'TWO',3=>'THREE',4=>'FOUR',5=>'FIVE',6=>'KG'] as $code=>$name): ?>
                         <option value="<?= $code ?>" <?= $v('class') == $code ? 'selected' : '' ?>><?= $name ?></option>
                     <?php endforeach; ?>
                 </select>
+                <label>Class <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="class"></p>
             </div>
-            <div>
-                <label class="label">Session <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <select name="session" class="input" data-field="session" required>
                     <?php foreach ($sessions as $s): $isCurrent = (string) $s['session'] === $currentSession; $isStudent = (string) ($student['session'] ?? '') === (string) $s['session']; $enabled = $isCurrent || $isStudent; ?>
                         <option value="<?= e($s['session']) ?>"<?= $isStudent ? ' selected' : '' ?><?= $enabled ? '' : ' disabled' ?>>
@@ -80,10 +79,10 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <label>Session <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="session"></p>
             </div>
-            <div>
-                <label class="label">Center <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <select name="center_id" class="input" data-field="center_id" required>
                     <option value="">Select</option>
                     <?php foreach ($centers as $c): ?>
@@ -92,13 +91,13 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <label>Center <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="center_id"></p>
             </div>
         </div>
 
         <div class="grid grid-cols-3 gap-4">
-            <div>
-                <label class="label">Institute <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <select name="institute_id" class="input" data-field="institute_id" required>
                     <option value="">Select</option>
                     <?php if ($v('center_id')): ?>
@@ -111,10 +110,10 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
                         <option value="">Loading...</option>
                     <?php endif; ?>
                 </select>
+                <label>Institute <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="institute_id"></p>
             </div>
-            <div>
-                <label class="label">Division <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <select name="division_id" class="input" data-field="division_id" required>
                     <option value="">Select</option>
                     <?php foreach ($divisions as $d): ?>
@@ -123,13 +122,13 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <label>Division <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="division_id"></p>
             </div>
         </div>
 
         <div class="grid grid-cols-3 gap-4">
-            <div>
-                <label class="label">District</label>
+            <div class="fl">
                 <select name="district_id" class="input" data-field="district_id">
                     <option value="">Select</option>
                     <?php foreach ($districts as $d): ?>
@@ -138,10 +137,10 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <label>District</label>
                 <p class="field-error hidden" data-error-for="district_id"></p>
             </div>
-            <div>
-                <label class="label">Upazila</label>
+            <div class="fl">
                 <select name="upazila_id" class="input" data-field="upazila_id">
                     <option value="">Select</option>
                     <?php foreach ($upazilas as $u): ?>
@@ -150,10 +149,10 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <label>Upazila</label>
                 <p class="field-error hidden" data-error-for="upazila_id"></p>
             </div>
-            <div>
-                <label class="label">Union</label>
+            <div class="fl">
                 <select name="union_id" class="input" data-field="union_id">
                     <option value="">Select</option>
                     <?php foreach ($unions as $un): ?>
@@ -162,34 +161,34 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <label>Union</label>
                 <p class="field-error hidden" data-error-for="union_id"></p>
             </div>
         </div>
 
-        <div>
-            <label class="label">Gender <span class="text-red-500">*</span></label>
+        <div class="fl">
             <select name="gender" class="input" data-field="gender" required>
                 <option value="">Select</option>
                 <option value="1" <?= $v('gender') == 1 ? 'selected' : '' ?>>Male</option>
                 <option value="2" <?= $v('gender') == 2 ? 'selected' : '' ?>>Female</option>
                 <option value="3" <?= $v('gender') == 3 ? 'selected' : '' ?>>Others</option>
             </select>
+            <label>Gender <span class="text-red-500">*</span></label>
             <p class="field-error hidden" data-error-for="gender"></p>
         </div>
 
-        <div>
-            <label class="label">Education Type</label>
+        <div class="fl">
             <select name="education_type" class="input" data-field="education_type">
                 <option value="">Select</option>
                 <option value="1" <?= $v('education_type') == 1 ? 'selected' : '' ?>>Bangla Medium</option>
                 <option value="2" <?= $v('education_type') == 2 ? 'selected' : '' ?>>English Version</option>
                 <option value="3" <?= $v('education_type') == 3 ? 'selected' : '' ?>>Arabic Version</option>
             </select>
+            <label>Education Type</label>
             <p class="field-error hidden" data-error-for="education_type"></p>
         </div>
 
-        <div>
-            <label class="label">Religion <span class="text-red-500">*</span></label>
+        <div class="fl">
             <select name="religion" class="input" data-field="religion" required>
                 <option value="">Select</option>
                 <option value="1" <?= $v('religion') == 1 ? 'selected' : '' ?>>Islam</option>
@@ -197,24 +196,25 @@ $currentSession = (string) ($activeSession ?? ''); // only the current session i
                 <option value="3" <?= $v('religion') == 3 ? 'selected' : '' ?>>Buddhist</option>
                 <option value="4" <?= $v('religion') == 4 ? 'selected' : '' ?>>Christian</option>
             </select>
+            <label>Religion <span class="text-red-500">*</span></label>
             <p class="field-error hidden" data-error-for="religion"></p>
         </div>
 
-        <div>
-            <label class="label">DOB</label>
-            <input type="text" name="dob" class="input" data-field="dob" data-datepicker autocomplete="off" placeholder="DD-MM-YYYY" value="<?= $v('dob') ?>">
+        <div class="fl">
+            <input type="date" name="dob" class="input" data-field="dob" max="<?= date('Y-m-d') ?>" value="<?= $v('dob') ?>">
+            <label>DOB</label>
             <p class="field-error hidden" data-error-for="dob"></p>
         </div>
 
-        <div>
-            <label class="label">Principal Name</label>
+        <div class="fl">
             <input type="text" name="principal_name" class="input" data-field="principal_name" placeholder="Principal Name" value="<?= $v('principal_name') ?>">
+            <label>Principal Name</label>
             <p class="field-error hidden" data-error-for="principal_name"></p>
         </div>
 
-        <div>
-            <label class="label">Notes</label>
+        <div class="fl">
             <textarea name="note" class="input" data-field="note" placeholder="Note (optional)" rows="3"><?= $v('note') ?></textarea>
+            <label>Notes</label>
             <p class="field-error hidden" data-error-for="note"></p>
         </div>
 

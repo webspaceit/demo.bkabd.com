@@ -132,10 +132,10 @@ $activeSession = Auth::activeSession();
 
     <!-- Sidebar -->
     <aside id="sidebar"
-           class="fixed lg:sticky top-0 left-0 z-40 h-screen w-64 shrink-0 -translate-x-full lg:translate-x-0 transition-transform
-                  bg-[#064e3b] flex flex-col justify-between pt-6 pb-5 pl-5 pr-0 text-white overflow-y-auto"
+           class="fixed lg:sticky top-0 left-0 z-40 h-screen w-80 shrink-0 -translate-x-full lg:translate-x-0 transition-transform
+                  bg-[#064e3b] flex flex-col pt-6 pb-5 pl-2 pr-0 text-white overflow-y-auto"
            aria-label="Main navigation">
-        <div>
+        <div class="flex flex-col">
             <div class="flex items-center gap-3 px-3 mb-5">
                 <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center border border-white/30 shrink-0">
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/></svg>

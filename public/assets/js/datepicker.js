@@ -3,8 +3,11 @@
  *
  * Displays DD-MM-YYYY for people while still submitting ISO Y-m-d, which is
  * what the server validates (`date_format:Y-m-d`). Loaded only on the pages
- * that opt in via `$pageScripts` (student registration + edit), together with
- * the vendored flatpickr runtime and `datepicker.css`.
+ * that opt in via $pageScripts (student registration + edit), together with
+ * the vendored flatpickr runtime and datepicker.css.
+ *
+ * appendTo: document.body is critical — it moves the calendar popup out of
+ * the grid/flex DOM so it never pushes sibling cells down in Chrome.
  */
 (function () {
     'use strict';
@@ -18,14 +21,15 @@
                 return;
             }
             flatpickr(el, {
-                dateFormat: 'Y-m-d',                 // value written to the real (hidden) field
+                dateFormat: 'Y-m-d',
                 altInput: true,
-                altFormat: 'd-m-Y',                  // value shown to the user
+                altFormat: 'd-m-Y',
                 altInputClass: 'input datepicker-input',
-                allowInput: true,                    // typing is allowed; bad input clears the value
-                maxDate: 'today',                    // a date of birth cannot be in the future
-                disableMobile: false,                // keep the native picker on touch devices
-                position: 'auto'
+                allowInput: true,
+                maxDate: 'today',
+                disableMobile: false,
+                position: 'auto',
+                appendTo: document.body
             });
         });
     }

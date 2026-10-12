@@ -7,6 +7,7 @@
         @apply text-sm;
         font-family: "Inter", "Noto Sans Bengali", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
+
     /* Uniform form control look. Plain element selectors (specificity 0,0,1) so
        utility classes such as bg-white/10, rounded-full or text-xs can override
        the defaults. Checkboxes/radios are reset back to their native look below. */
@@ -15,6 +16,7 @@
     textarea {
         @apply w-full rounded border border-slate-300 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none;
     }
+
     input[type="checkbox"],
     input[type="radio"] {
         @apply w-auto rounded-none border-0 p-0 bg-transparent focus:ring-0;
@@ -25,70 +27,92 @@
     .card {
         @apply bg-white border border-slate-200 rounded-xl;
     }
+
     .card-header {
         @apply px-5 py-4 border-b border-slate-100 font-semibold text-slate-800 flex flex-wrap items-center justify-between gap-2;
     }
+
     .card-body {
         @apply p-5;
     }
+
     .btn {
         @apply inline-flex items-center justify-center gap-1.5 rounded px-4 py-2 text-sm font-medium transition disabled:opacity-60 disabled:cursor-not-allowed;
     }
+
     .btn-primary {
         @apply btn bg-emerald-600 text-white hover:bg-emerald-700;
     }
+
     .btn-dark {
         @apply btn bg-slate-800 text-white hover:bg-slate-700;
     }
+
     .btn-light {
         @apply btn bg-white border border-slate-300 text-slate-700 hover:bg-slate-50;
     }
+
     .btn-danger {
         @apply btn bg-red-600 text-white hover:bg-red-700;
     }
+
     .btn-sm {
         @apply px-2.5 py-1 text-xs;
     }
+
     .label {
         @apply block text-sm font-medium text-slate-700 mb-1;
     }
+
     .table {
         @apply w-full text-sm border-collapse;
     }
+
     .table thead th {
         @apply bg-slate-50 text-left font-semibold text-xs tracking-wide text-slate-500 px-4 py-3 border-b-2 border-slate-200 whitespace-nowrap;
     }
+
     .table tbody td {
         @apply px-4 py-3 border-b border-slate-100 align-middle;
     }
+
     .table tbody tr {
         @apply transition-colors duration-150;
     }
+
     .table tbody tr:hover {
         @apply bg-emerald-50/50;
     }
+
     .table tbody tr:last-child td {
         @apply border-b-0;
     }
+
     .badge {
         @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium;
     }
+
     .badge-green {
         @apply bg-emerald-100 text-emerald-700;
     }
+
     .badge-red {
         @apply bg-red-100 text-red-700;
     }
+
     .badge-gray {
         @apply bg-slate-100 text-slate-600;
     }
+
     .field-error {
         @apply text-red-600 text-xs mt-1 block;
     }
+
     .filter-bar {
         @apply flex flex-wrap items-end gap-3;
     }
-    .filter-bar > div {
+
+    .filter-bar>div {
         @apply min-w-[140px];
     }
 }
@@ -99,6 +123,7 @@
  * canvas to its right via two concave pseudo-element curves.
  * The colour must match the light canvas background (#f1f5f9).
  * ------------------------------------------------------------------ */
+
 .active-nav-notch {
     position: relative;
     background-color: #f1f5f9;
@@ -108,6 +133,7 @@
     padding-right: 1.5rem;
     z-index: 20;
 }
+
 .active-nav-notch::before,
 .active-nav-notch::after {
     content: "";
@@ -118,15 +144,73 @@
     background-color: transparent;
     pointer-events: none;
 }
+
 .active-nav-notch::before {
     top: -24px;
     border-bottom-right-radius: 20px;
     box-shadow: 8px 8px 0 8px #f1f5f9;
 }
+
 .active-nav-notch::after {
     bottom: -24px;
     border-top-right-radius: 20px;
     box-shadow: 8px -8px 0 8px #f1f5f9;
+}
+
+/* ------------------------------------------------------------------ *
+ * Floating / outlined label fields  (.fl)
+ * Matches the style in the screenshot: label sits on the top border.
+ * ------------------------------------------------------------------ */
+.fl {
+    position: relative;
+    margin-top: 0.5rem;
+    /* room for the label to sit on the border */
+}
+
+.fl label {
+    position: absolute;
+    top: -0.6rem;
+    left: 0.75rem;
+    padding: 0 0.25rem;
+    background: #fff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #475569;
+    line-height: 1;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1;
+}
+
+.fl .input,
+.fl select.input {
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+}
+
+/* Keep the label colour on focus */
+.fl .input:focus~label,
+.fl select.input:focus~label {
+    color: #059669;
+}
+
+/* The notch bleeds right causing horizontal overflow — allow it visually
+   but hide the scrollbar completely. */
+#sidebar {
+    scrollbar-width: none;
+    /* Firefox */
+    overflow-x: auto;
+}
+
+#sidebar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+/* Hover: extend background to the right edge, matching the active notch */
+#sidebar [data-nav-item]:not(.active-nav-notch):hover {
+    margin-right: -1.25rem;
+    padding-right: 1.5rem;
 }
 
 /* Slim scrollbars (shell-wide). */
@@ -134,9 +218,11 @@
     width: 6px;
     height: 6px;
 }
+
 ::-webkit-scrollbar-track {
     background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 4px;
@@ -153,17 +239,20 @@
     .table tbody tr .row-actions {
         position: relative;
     }
-    .table tbody tr .row-actions > * {
+
+    .table tbody tr .row-actions>* {
         visibility: hidden;
         opacity: 0;
         transition: opacity .15s ease, visibility 0s linear .15s;
     }
-    .table tbody tr:hover .row-actions > *,
-    .table tbody tr:focus-within .row-actions > * {
+
+    .table tbody tr:hover .row-actions>*,
+    .table tbody tr:focus-within .row-actions>* {
         visibility: visible;
         opacity: 1;
         transition: opacity .15s ease;
     }
+
     .table tbody tr .row-actions::before {
         content: "⋮";
         display: inline-flex;
@@ -178,22 +267,26 @@
         font-size: 18px;
         line-height: 1;
     }
+
     .table tbody tr:hover .row-actions::before,
     .table tbody tr:focus-within .row-actions::before {
         display: none;
     }
+
     .table tbody tr .row-actions:empty::before {
         display: none;
     }
 }
+
 /* Pinned (kebab tapped/clicked): keep the buttons visible. Placed after
  * the hover block so it also wins on a hovered row. */
-.table tbody tr .row-actions.pinned > *,
-.table tbody tr:focus-within .row-actions.pinned > * {
+.table tbody tr .row-actions.pinned>*,
+.table tbody tr:focus-within .row-actions.pinned>* {
     visibility: visible;
     opacity: 1;
     transition: opacity .15s ease;
 }
+
 .table tbody tr .row-actions.pinned::before {
     display: none;
 }
@@ -207,6 +300,7 @@
 #sidebar {
     background-color: #064e3b;
 }
+
 @media (max-width: 1023.98px) {
     #sidebar {
         border-top-right-radius: 1.25rem;
@@ -214,6 +308,7 @@
         border-right: 1px solid rgba(255, 255, 255, 0.12);
         box-shadow: 0 24px 60px -18px rgba(2, 20, 14, 0.85), 0 8px 24px -12px rgba(2, 20, 14, 0.55);
     }
+
     /* Soften the page behind the open drawer. */
     #sidebar-overlay {
         backdrop-filter: blur(2px);
