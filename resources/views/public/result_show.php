@@ -20,9 +20,12 @@ if ($resultTime) {
 }
 $fm = fn(string $subject): string => (string) (($fullMarks ?? [])[$subject] ?? '-');
 
-$th = 'border border-black px-2 py-1 text-left';
-$td = 'border border-black px-2 py-1 font-normal';
-$mTh = 'border border-black px-2 py-1';
+// Cells are compact on phones (dense tables cannot shrink below their content
+// width) and full-size from the sm breakpoint up, so the print/PDF layout is
+// unchanged.
+$th = 'border border-black px-1 py-0.5 text-left sm:px-2 sm:py-1';
+$td = 'border border-black px-1 py-0.5 font-normal sm:px-2 sm:py-1';
+$mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 ?>
 <style>
     @media print {
@@ -31,8 +34,8 @@ $mTh = 'border border-black px-2 py-1';
     }
 </style>
 
-<div class="mx-auto max-w-4xl px-4 py-6 print:max-w-none print:px-0 print:py-0">
-    <div class="border-2 border-black bg-white p-4">
+<div class="mx-auto max-w-4xl px-3 py-6 print:max-w-none print:px-0 print:py-0">
+    <div class="border-2 border-black bg-white p-3 sm:p-4">
         <img src="/assets/img/result/logo.png" alt="BKABD" class="mx-auto block w-20 rounded-full">
 
         <h1 class="mt-2 text-center text-2xl font-bold">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
@@ -49,7 +52,8 @@ $mTh = 'border border-black px-2 py-1';
             Student Details Information
         </div>
 
-        <table class="w-full border-collapse text-sm">
+        <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-[10px] sm:text-sm">
             <tr>
                 <th class="<?= $th ?>" width="20%">Division</th>
                 <th class="<?= $th ?>" width="20%"><span class="font-normal"><?= e($student['division_name']) ?></span></th>
@@ -91,13 +95,15 @@ $mTh = 'border border-black px-2 py-1';
                 <th class="<?= $th ?>" colspan="3"><span class="font-normal"><?= e($student['institute_name']) ?></span></th>
             </tr>
         </table>
+        </div>
 
         <div class="mx-auto my-5 max-w-xs rounded-full text-center text-sm font-semibold text-white"
              style="background:linear-gradient(90deg,#1DB601,#138000);padding:.4rem 1rem;box-shadow:0 1px 3px rgba(19,128,0,.35)">
             Exam Marks &amp; Grade Sheet
         </div>
 
-        <table class="w-full border-collapse text-center text-sm">
+        <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-center text-[10px] sm:text-sm">
             <thead>
                 <tr class="bg-[#30b34b] text-white">
                     <th class="<?= $mTh ?>" width="4%">Sl.</th>
@@ -133,6 +139,7 @@ $mTh = 'border border-black px-2 py-1';
                 </tr>
             </tbody>
         </table>
+        </div>
 
         <div class="mt-6 text-center">
             <?php if (!empty($qrContent)): ?>
@@ -142,26 +149,28 @@ $mTh = 'border border-black px-2 py-1';
             <?php endif; ?>
         </div>
 
-        <table class="mt-1 w-full text-center text-xs">
+        <div class="overflow-x-auto">
+        <table class="mt-1 w-full text-center text-[10px] sm:text-xs">
             <tr>
-                <td class="p-2 align-top">
+                <td class="p-1 align-top sm:p-2">
                     <img src="<?= e(result_signature('chairman')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
                     MONOWARA BHUIYAN<br>Chairman
                 </td>
-                <td class="p-2 align-top">
+                <td class="p-1 align-top sm:p-2">
                     <img src="<?= e(result_signature('general_secretary')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
                     MD. MIZANUR RAHMAN<br>General Secretary
                 </td>
-                <td class="p-2 align-top">
+                <td class="p-1 align-top sm:p-2">
                     <img src="<?= e(result_signature('controller')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
                     MD. FARUK HOSSEN<br>Controller of Exam
                 </td>
-                <td class="p-2 align-top">
+                <td class="p-1 align-top sm:p-2">
                     <img src="<?= e(result_signature('education_secretary')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
                     MD. ABDUL ALIM<br>Education Secretary
                 </td>
             </tr>
         </table>
+        </div>
 
         <div class="mt-4 text-center text-[13px] leading-6">
             <span class="text-sm"><b>Note:</b> Any kind of objection this result should be reported to the authority within 7 days of published.</span><br>
