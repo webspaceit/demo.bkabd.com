@@ -28,14 +28,32 @@ $td = 'border border-black px-1 py-0.5 font-normal sm:px-2 sm:py-1';
 $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 ?>
 <style>
+    /* Always print on A4, portrait — regardless of the printer default. */
+    @page { size: A4 portrait; margin: 12mm; }
+
     @media print {
-        @page { size: A4; margin: 8mm; }
+        /* rem-based Tailwind sizes scale with the root, so a 13px root makes
+           the printed sheet land on a single A4 page and match the PDF
+           (h1 19.5px, h2 16px, tables 11.4px) almost exactly. */
+        html { font-size: 13px; }
+
+        html, body { background: #fff !important; }
         body > header, body > footer, #toast-stack { display: none !important; }
+
+        /* Keep the whole certificate together on one sheet. */
+        #result-sheet { break-inside: avoid; page-break-inside: avoid; }
+
+        /* Print the green bars / header exactly as shown. */
+        #result-sheet,
+        #result-sheet * {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
     }
 </style>
 
 <div class="mx-auto max-w-4xl px-3 py-6 print:max-w-none print:px-0 print:py-0">
-    <div class="border-2 border-black bg-white p-3 sm:p-4">
+    <div id="result-sheet" class="border-2 border-black bg-white p-3 sm:p-4">
         <img src="/assets/img/result/logo.png" alt="BKABD" class="mx-auto block w-20 rounded-full">
 
         <h1 class="mt-2 text-center text-2xl font-bold">BANGLADESH KINDERGARTEN ASSOCIATION</h1>

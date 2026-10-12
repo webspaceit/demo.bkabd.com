@@ -33,6 +33,8 @@ $img = static function (string $url): string {
 <head>
 <meta charset="utf-8">
 <style>
+    /* Always render on A4, portrait. */
+    @page { size: A4 portrait; margin: 12mm; }
     body { font-family: "DejaVu Sans", sans-serif; color: #000; font-size: 11px; }
     .sheet { border: 2px solid #000; padding: 14px; }
     .center { text-align: center; }

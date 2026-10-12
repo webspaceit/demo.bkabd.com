@@ -156,7 +156,8 @@ final class ResultPortalController extends Controller
 
         $dompdf = new \Dompdf\Dompdf($options);
         $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4');
+        // Always A4, portrait — also behind the QR link.
+        $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
         Response::inline(
