@@ -11,19 +11,18 @@
         <div class="card-body">
             <form id="student-certificate-form" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="label" for="sc-center">Center <span class="text-red-600">*</span></label>
-                        <select id="sc-center"><option value="">Select Center</option></select>
+                    <div class="fl">
+                        <select class="input" id="sc-center"><option value="">Select Center</option></select>
+                        <label for="sc-center">Center <span class="text-red-600">*</span></label>
                         <p class="field-error hidden" data-error-for="center_id"></p>
                     </div>
-                    <div>
-                        <label class="label" for="sc-institute">Institute <span class="text-red-600">*</span></label>
-                        <select id="sc-institute"><option value="">Select Institute</option></select>
+                    <div class="fl">
+                        <select class="input" id="sc-institute"><option value="">Select Institute</option></select>
+                        <label for="sc-institute">Institute <span class="text-red-600">*</span></label>
                         <p class="field-error hidden" data-error-for="institute_id"></p>
                     </div>
-                    <div>
-                        <label class="label" for="sc-class">Class <span class="text-red-600">*</span></label>
-                        <select id="sc-class">
+                    <div class="fl">
+                        <select class="input" id="sc-class">
                             <option value="">Select Class</option>
                             <option value="6">KG</option>
                             <option value="1">ONE</option>
@@ -32,6 +31,7 @@
                             <option value="4">FOUR</option>
                             <option value="5">FIVE</option>
                         </select>
+                        <label for="sc-class">Class <span class="text-red-600">*</span></label>
                         <p class="field-error hidden" data-error-for="class"></p>
                     </div>
                 </div>

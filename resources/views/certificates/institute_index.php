@@ -11,13 +11,13 @@
         <div class="card-body">
             <form id="institute-certificate-form" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="label" for="ic-center">Center <span class="text-red-600">*</span></label>
-                        <select id="ic-center"><option value="">Select Center</option></select>
+                    <div class="fl">
+                        <select class="input" id="ic-center"><option value="">Select Center</option></select>
+                        <label for="ic-center">Center <span class="text-red-600">*</span></label>
                     </div>
-                    <div>
-                        <label class="label" for="ic-institute">Institute <span class="text-red-600">*</span></label>
-                        <select id="ic-institute"><option value="">Select Institute</option></select>
+                    <div class="fl">
+                        <select class="input" id="ic-institute"><option value="">Select Institute</option></select>
+                        <label for="ic-institute">Institute <span class="text-red-600">*</span></label>
                     </div>
                 </div>
                 <div class="mt-5 flex flex-wrap gap-2">

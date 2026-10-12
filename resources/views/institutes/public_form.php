@@ -24,173 +24,173 @@ $val = fn(string $f, string $d = '') => (string) ($old[$f] ?? $d);
             <form id="institute-register-form" class="grid gap-4 sm:grid-cols-2" enctype="multipart/form-data">
                 <?= csrf_field() ?>
 
-                <div class="sm:col-span-2">
-                    <label class="label" for="name">Name of Institute <span class="text-red-500">*</span></label>
-                    <input type="text" id="name" name="name" data-field="name" placeholder="Institute Name" required value="<?= e($val('name')) ?>">
+                <div class="sm:col-span-2 fl">
+                    <input class="input" type="text" id="name" name="name" data-field="name" placeholder="Institute Name" required value="<?= e($val('name')) ?>">
+                    <label for="name">Name of Institute <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="name"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="director_name">Representative / Director Name <span class="text-red-500">*</span></label>
-                    <input type="text" id="director_name" name="director_name" data-field="director_name" placeholder="Director Name" required value="<?= e($val('director_name')) ?>">
+                <div class="fl">
+                    <input class="input" type="text" id="director_name" name="director_name" data-field="director_name" placeholder="Director Name" required value="<?= e($val('director_name')) ?>">
+                    <label for="director_name">Representative / Director Name <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="director_name"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="phone">Mobile Number <span class="text-red-500">*</span></label>
-                    <input type="text" id="phone" name="phone" data-field="phone" placeholder="Mobile Number" required value="<?= e($val('phone')) ?>">
+                <div class="fl">
+                    <input class="input" type="text" id="phone" name="phone" data-field="phone" placeholder="Mobile Number" required value="<?= e($val('phone')) ?>">
+                    <label for="phone">Mobile Number <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="phone"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="email">Email Address <span class="text-red-500">*</span></label>
-                    <input type="email" id="email" name="email" data-field="email" placeholder="Email Address" required value="<?= e($val('email')) ?>">
+                <div class="fl">
+                    <input class="input" type="email" id="email" name="email" data-field="email" placeholder="Email Address" required value="<?= e($val('email')) ?>">
+                    <label for="email">Email Address <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="email"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="website">Website (If Any)</label>
-                    <input type="text" id="website" name="website" data-field="website" placeholder="Website (if any)" value="<?= e($val('website')) ?>">
+                <div class="fl">
+                    <input class="input" type="text" id="website" name="website" data-field="website" placeholder="Website (if any)" value="<?= e($val('website')) ?>">
+                    <label for="website">Website (If Any)</label>
                     <p class="field-error hidden" data-error-for="website"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="division_id">Division <span class="text-red-500">*</span></label>
-                    <select id="division-dropdown" name="division_id" data-field="division_id" required>
+                <div class="fl">
+                    <select class="input" id="division-dropdown" name="division_id" data-field="division_id" required>
                         <option value="">Select Division</option>
                         <?php foreach ($divisions as $d): ?>
                             <option value="<?= e($d['id']) ?>"><?= e($d['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <label for="division_id">Division <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="division_id"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="district_id">District <span class="text-red-500">*</span></label>
-                    <select id="district-dropdown" name="district_id" data-field="district_id" required>
+                <div class="fl">
+                    <select class="input" id="district-dropdown" name="district_id" data-field="district_id" required>
                         <option value="">Select District</option>
                     </select>
+                    <label for="district_id">District <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="district_id"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="upazila_id">Upazila <span class="text-red-500">*</span></label>
-                    <select id="upazila-dropdown" name="upazila_id" data-field="upazila_id" required>
+                <div class="fl">
+                    <select class="input" id="upazila-dropdown" name="upazila_id" data-field="upazila_id" required>
                         <option value="">Select Upazila</option>
                     </select>
+                    <label for="upazila_id">Upazila <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="upazila_id"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="zip">Postal Code <span class="text-red-500">*</span></label>
-                    <input type="text" id="zip" name="zip" data-field="zip" placeholder="Postal Code" required value="<?= e($val('zip')) ?>">
+                <div class="fl">
+                    <input class="input" type="text" id="zip" name="zip" data-field="zip" placeholder="Postal Code" required value="<?= e($val('zip')) ?>">
+                    <label for="zip">Postal Code <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="zip"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="established_date">Established Date <span class="text-red-500">*</span></label>
-                    <input type="date" id="established_date" name="established_date" data-field="established_date" placeholder="Established Date" required value="<?= e($val('established_date')) ?>">
+                <div class="fl">
+                    <input class="input" type="date" id="established_date" name="established_date" data-field="established_date" placeholder="Established Date" required value="<?= e($val('established_date')) ?>">
+                    <label for="established_date">Established Date <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="established_date"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="total_students">Total Students <span class="text-red-500">*</span></label>
-                    <input type="number" id="total_students" name="total_students" data-field="total_students" min="0" placeholder="e.g. 120" required value="<?= e($val('total_students')) ?>">
+                <div class="fl">
+                    <input class="input" type="number" id="total_students" name="total_students" data-field="total_students" min="0" placeholder="e.g. 120" required value="<?= e($val('total_students')) ?>">
+                    <label for="total_students">Total Students <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="total_students"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="total_teachers">Total Teachers <span class="text-red-500">*</span></label>
-                    <input type="number" id="total_teachers" name="total_teachers" data-field="total_teachers" min="0" placeholder="e.g. 8" required value="<?= e($val('total_teachers')) ?>">
+                <div class="fl">
+                    <input class="input" type="number" id="total_teachers" name="total_teachers" data-field="total_teachers" min="0" placeholder="e.g. 8" required value="<?= e($val('total_teachers')) ?>">
+                    <label for="total_teachers">Total Teachers <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="total_teachers"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="membership_type">Membership Type <span class="text-red-500">*</span></label>
-                    <select id="membership_type" name="membership_type" data-field="membership_type" required>
+                <div class="fl">
+                    <select class="input" id="membership_type" name="membership_type" data-field="membership_type" required>
                         <option value="">Select Membership Type</option>
                         <option value="1">Temporary (1500 BDT)</option>
                         <option value="2">Life Time (3000 BDT)</option>
                     </select>
+                    <label for="membership_type">Membership Type <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="membership_type"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="member_type">Member Type <span class="text-red-500">*</span></label>
-                    <select id="member_type" name="member_type" data-field="member_type" required>
+                <div class="fl">
+                    <select class="input" id="member_type" name="member_type" data-field="member_type" required>
                         <option value="">Select Member Type</option>
                         <option value="1">New Member</option>
                         <option value="2">Old Member</option>
                     </select>
+                    <label for="member_type">Member Type <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="member_type"></p>
                 </div>
 
-                <div id="cert-wrap" class="hidden">
-                    <label class="label" for="certificate_no">Membership Certificate No (If any)</label>
-                    <input type="text" id="certificate_no" name="certificate_no" data-field="certificate_no" placeholder="Certificate No (if any)">
+                <div id="cert-wrap" class="hidden fl">
+                    <input class="input" type="text" id="certificate_no" name="certificate_no" data-field="certificate_no" placeholder="Certificate No (if any)">
+                    <label for="certificate_no">Membership Certificate No (If any)</label>
                     <p class="field-error hidden" data-error-for="certificate_no"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="type">Version of Education Type <span class="text-red-500">*</span></label>
-                    <select id="type" name="type" data-field="type" required>
+                <div class="fl">
+                    <select class="input" id="type" name="type" data-field="type" required>
                         <option value="">Select Education Type</option>
                         <option value="1">Bangla Medium</option>
                         <option value="2">English Version</option>
                         <option value="3">Arabic Version</option>
                     </select>
+                    <label for="type">Version of Education Type <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="type"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="recognized">Is it Govt. Recognized / Approved? <span class="text-red-500">*</span></label>
-                    <select id="recognized" name="recognized" data-field="recognized" required>
+                <div class="fl">
+                    <select class="input" id="recognized" name="recognized" data-field="recognized" required>
                         <option value="">Select Recognized Status</option>
                         <option value="1">Yes</option>
                         <option value="2">No</option>
                     </select>
+                    <label for="recognized">Is it Govt. Recognized / Approved? <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="recognized"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="institution_run">How does the Institution Run? <span class="text-red-500">*</span></label>
-                    <select id="institution_run" name="institution_run" data-field="institution_run" required>
+                <div class="fl">
+                    <select class="input" id="institution_run" name="institution_run" data-field="institution_run" required>
                         <option value="">Select Institution Status</option>
                         <option value="1">Personal</option>
                         <option value="2">Committee</option>
                         <option value="3">Partnership</option>
                     </select>
+                    <label for="institution_run">How does the Institution Run? <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="institution_run"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="monthly_income">Monthly Income</label>
-                    <input type="text" id="monthly_income" name="monthly_income" data-field="monthly_income" placeholder="Monthly Income (BDT)">
+                <div class="fl">
+                    <input class="input" type="text" id="monthly_income" name="monthly_income" data-field="monthly_income" placeholder="Monthly Income (BDT)">
+                    <label for="monthly_income">Monthly Income</label>
                     <p class="field-error hidden" data-error-for="monthly_income"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="monthly_expense">Monthly Expense</label>
-                    <input type="text" id="monthly_expense" name="monthly_expense" data-field="monthly_expense" placeholder="Monthly Expense (BDT)">
+                <div class="fl">
+                    <input class="input" type="text" id="monthly_expense" name="monthly_expense" data-field="monthly_expense" placeholder="Monthly Expense (BDT)">
+                    <label for="monthly_expense">Monthly Expense</label>
                     <p class="field-error hidden" data-error-for="monthly_expense"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="logo">Institute Logo <span class="text-red-500">*</span></label>
-                    <input type="file" id="logo" name="logo" accept="image/*" required>
+                <div class="fl">
+                    <input type="file" id="logo" name="logo" class="input" accept="image/*" required>
+                    <label for="logo">Institute Logo <span class="text-red-500">*</span></label>
                     <img id="logo-preview" class="mt-2 hidden h-20 w-20 rounded object-cover" alt="">
                     <p class="field-error hidden" data-error-for="logo"></p>
                 </div>
 
-                <div>
-                    <label class="label" for="principal_photo">Principal Photo</label>
-                    <input type="file" id="principal_photo" name="principal_photo" accept="image/*">
+                <div class="fl">
+                    <input class="input" type="file" id="principal_photo" name="principal_photo" accept="image/*">
+                    <label for="principal_photo">Principal Photo</label>
                     <p class="field-error hidden" data-error-for="principal_photo"></p>
                 </div>
 
-                <div class="sm:col-span-2">
-                    <label class="label" for="note">Note (If Any)</label>
-                    <input type="text" id="note" name="note" data-field="note" placeholder="Note (if any)">
+                <div class="sm:col-span-2 fl">
+                    <input class="input" type="text" id="note" name="note" data-field="note" placeholder="Note (if any)">
+                    <label for="note">Note (If Any)</label>
                     <p class="field-error hidden" data-error-for="note"></p>
                 </div>
 

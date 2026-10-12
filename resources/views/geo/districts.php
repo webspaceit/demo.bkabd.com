@@ -34,16 +34,16 @@
             <div class="card-header" id="geo-form-title">Add District</div>
             <div class="card-body">
                 <form id="geo-form" novalidate>
-                    <div class="mb-4">
-                        <label class="label" for="geo-name">Name</label>
-                        <input type="text" id="geo-name" name="name" data-field="name" placeholder="District name" autocomplete="off">
+                    <div class="mb-4 fl">
+                        <input class="input" type="text" id="geo-name" name="name" data-field="name" placeholder="District name" autocomplete="off">
+                        <label for="geo-name">Name</label>
                         <p class="field-error hidden" data-error-for="name"></p>
                     </div>
-                    <div class="mb-4">
-                        <label class="label" for="geo-parent">Division</label>
-                        <select id="geo-parent" name="division_id" data-field="division_id">
+                    <div class="mb-4 fl">
+                        <select class="input" id="geo-parent" name="division_id" data-field="division_id">
                             <option value="">Select Division</option>
                         </select>
+                        <label for="geo-parent">Division</label>
                         <p class="field-error hidden" data-error-for="division_id"></p>
                     </div>
                     <div class="flex flex-wrap gap-2">

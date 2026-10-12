@@ -12,72 +12,72 @@ $isEdit = ($mode ?? 'create') === 'edit';
         <div class="card-body">
             <form id="institute-form" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="label" for="f-center_id">Center <span class="text-red-600">*</span></label>
-                        <select id="f-center_id" data-field="center_id"><option value="">Select Center</option></select>
+                    <div class="fl">
+                        <select class="input" id="f-center_id" data-field="center_id"><option value="">Select Center</option></select>
+                        <label for="f-center_id">Center <span class="text-red-600">*</span></label>
                         <p class="field-error hidden" data-error-for="center_id"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-name">Institute Name <span class="text-red-600">*</span></label>
-                        <input type="text" id="f-name" data-field="name" placeholder="Institute Name" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="text" id="f-name" data-field="name" placeholder="Institute Name" autocomplete="off">
+                        <label for="f-name">Institute Name <span class="text-red-600">*</span></label>
                         <p class="field-error hidden" data-error-for="name"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-director_name">Director Name</label>
-                        <input type="text" id="f-director_name" data-field="director_name" placeholder="Director Name" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="text" id="f-director_name" data-field="director_name" placeholder="Director Name" autocomplete="off">
+                        <label for="f-director_name">Director Name</label>
                         <p class="field-error hidden" data-error-for="director_name"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-phone">Phone</label>
-                        <input type="text" id="f-phone" data-field="phone" placeholder="Phone" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="text" id="f-phone" data-field="phone" placeholder="Phone" autocomplete="off">
+                        <label for="f-phone">Phone</label>
                         <p class="field-error hidden" data-error-for="phone"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-email">Email</label>
-                        <input type="email" id="f-email" data-field="email" placeholder="Email Address" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="email" id="f-email" data-field="email" placeholder="Email Address" autocomplete="off">
+                        <label for="f-email">Email</label>
                         <p class="field-error hidden" data-error-for="email"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-website">Website</label>
-                        <input type="text" id="f-website" data-field="website" placeholder="Website" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="text" id="f-website" data-field="website" placeholder="Website" autocomplete="off">
+                        <label for="f-website">Website</label>
                         <p class="field-error hidden" data-error-for="website"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-division_id">Division</label>
-                        <select id="f-division_id" data-field="division_id"><option value="">Select Division</option></select>
+                    <div class="fl">
+                        <select class="input" id="f-division_id" data-field="division_id"><option value="">Select Division</option></select>
+                        <label for="f-division_id">Division</label>
                         <p class="field-error hidden" data-error-for="division_id"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-district_id">District</label>
-                        <select id="f-district_id" data-field="district_id"><option value="">Select District</option></select>
+                    <div class="fl">
+                        <select class="input" id="f-district_id" data-field="district_id"><option value="">Select District</option></select>
+                        <label for="f-district_id">District</label>
                         <p class="field-error hidden" data-error-for="district_id"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-upazila_id">Upazila</label>
-                        <select id="f-upazila_id" data-field="upazila_id"><option value="">Select Upazila</option></select>
+                    <div class="fl">
+                        <select class="input" id="f-upazila_id" data-field="upazila_id"><option value="">Select Upazila</option></select>
+                        <label for="f-upazila_id">Upazila</label>
                         <p class="field-error hidden" data-error-for="upazila_id"></p>
                     </div>
-                    <div class="md:col-span-2">
-                        <label class="label" for="f-address">Address</label>
-                        <input type="text" id="f-address" data-field="address" placeholder="Address" autocomplete="off">
+                    <div class="md:col-span-2 fl">
+                        <input class="input" type="text" id="f-address" data-field="address" placeholder="Address" autocomplete="off">
+                        <label for="f-address">Address</label>
                         <p class="field-error hidden" data-error-for="address"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-certificate_no">Certificate No</label>
-                        <input type="text" id="f-certificate_no" data-field="certificate_no" placeholder="Certificate No" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="text" id="f-certificate_no" data-field="certificate_no" placeholder="Certificate No" autocomplete="off">
+                        <label for="f-certificate_no">Certificate No</label>
                         <p class="field-error hidden" data-error-for="certificate_no"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-established_date">Established Date</label>
-                        <input type="date" id="f-established_date" data-field="established_date" placeholder="Established Date">
+                    <div class="fl">
+                        <input class="input" type="date" id="f-established_date" data-field="established_date" placeholder="Established Date">
+                        <label for="f-established_date">Established Date</label>
                         <p class="field-error hidden" data-error-for="established_date"></p>
                     </div>
-                    <div>
-                        <label class="label" for="f-active">Status</label>
-                        <select id="f-active" data-field="active">
+                    <div class="fl">
+                        <select class="input" id="f-active" data-field="active">
                             <option value="1">Active</option>
                             <option value="0">Inactive</option>
                         </select>
+                        <label for="f-active">Status</label>
                         <p class="field-error hidden" data-error-for="active"></p>
                     </div>
                 </div>

@@ -5,19 +5,27 @@
  * to <body> at runtime, so it is positioned absolutely and never takes
  * part in the registration grid layout.
  * ------------------------------------------------------------------ */
-.dob-field__box { position: relative; }
-.dob-field__box input[data-dobpicker] { padding-right: 2.25rem; cursor: pointer; }
+/* Calendar trigger: the icon sits at the start of the input (Flowbite-style),
+   while the field keeps the form's .fl floating label. The glyph is positioned
+   inside a wrapper so it aligns to the input only. */
+.dob-field__wrap { position: relative; }
+input[data-dobpicker] { padding-left: 2.25rem; cursor: pointer; }
 .dob-field__icon {
     position: absolute;
     top: 0;
     bottom: 0;
-    right: .75rem;
+    left: 0;
     display: flex;
     align-items: center;
+    padding-left: .75rem;
     color: #94a3b8;
     pointer-events: none;
+    z-index: 1;
 }
 .dob-field__icon svg { width: 1rem; height: 1rem; }
+/* .fl tones the label on focus via a sibling selector, but the input now lives
+   inside a wrapper — use focus-within instead. */
+.fl.dob-field:focus-within label { color: #059669; }
 
 .dobp-popup {
     position: absolute;

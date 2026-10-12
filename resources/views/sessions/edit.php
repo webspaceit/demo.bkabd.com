@@ -12,23 +12,23 @@
         <div class="card-body">
             <form id="session-form" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="label" for="session-year">Session</label>
-                        <input type="number" id="session-year" name="session" data-field="session"
+                    <div class="fl">
+                        <input type="number" id="session-year" name="session" class="input" data-field="session"
                                min="2020" max="2050" placeholder="Session" autocomplete="off">
+                        <label for="session-year">Session</label>
                         <p class="field-error hidden" data-error-for="session"></p>
                     </div>
-                    <div>
-                        <label class="label" for="session-result">Result Published?</label>
-                        <select id="session-result" name="result" data-field="result">
+                    <div class="fl">
+                        <select id="session-result" name="result" class="input" data-field="result">
                             <option value="1">Yes</option>
                             <option value="0">No</option>
                         </select>
+                        <label for="session-result">Result Published?</label>
                         <p class="field-error hidden" data-error-for="result"></p>
                     </div>
-                    <div>
-                        <label class="label" for="session-result-time">Result Time</label>
-                        <input type="datetime-local" id="session-result-time" name="result_time" data-field="result_time" placeholder="Result Time">
+                    <div class="fl">
+                        <input type="datetime-local" id="session-result-time" name="result_time" class="input" data-field="result_time" placeholder="Result Time">
+                        <label for="session-result-time">Result Time</label>
                         <p class="field-error hidden" data-error-for="result_time"></p>
                     </div>
                 </div>

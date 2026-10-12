@@ -29,8 +29,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
         </div>
         <div class="card-body space-y-4">
             <div class="filter-bar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <div>
-                    <label class="label" for="f-session">Exam Session</label>
+                <div class="fl">
                     <select id="f-session" class="w-full">
                         <option value="">All Sessions</option>
                         <?php foreach ((array) $sessions as $s): ?>
@@ -39,9 +38,9 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <label for="f-session">Exam Session</label>
                 </div>
-                <div>
-                    <label class="label" for="f-center">Center</label>
+                <div class="fl">
                     <select id="f-center" class="w-full">
                         <option value="">All Centers</option>
                         <?php foreach ((array) $centers as $c): ?>
@@ -50,9 +49,9 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <label for="f-center">Center</label>
                 </div>
-                <div>
-                    <label class="label" for="f-institute">Institute</label>
+                <div class="fl">
                     <select id="f-institute" class="w-full">
                         <option value="">All Institutes</option>
                         <?php foreach ((array) $institutes as $i): ?>
@@ -61,9 +60,9 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <label for="f-institute">Institute</label>
                 </div>
-                <div>
-                    <label class="label" for="f-class">Class</label>
+                <div class="fl">
                     <select id="f-class" class="w-full">
                         <option value="">All Classes</option>
                         <?php foreach ($classes as $c): ?>
@@ -72,10 +71,11 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <label for="f-class">Class</label>
                 </div>
-                <div>
-                    <label class="label" for="f-search">Search</label>
+                <div class="fl">
                     <input type="search" id="f-search" class="w-full" placeholder="Name, reg. no, roll, institute..." value="<?= e($filters['search'] ?? '') ?>">
+                    <label for="f-search">Search</label>
                 </div>
             </div>
 

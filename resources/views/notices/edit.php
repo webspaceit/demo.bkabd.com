@@ -13,24 +13,24 @@
         <div class="card-body">
             <form id="notice-form" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="label" for="notice-center">Select Center</label>
-                        <select id="notice-center" name="center_id" data-field="center_id">
+                    <div class="fl">
+                        <select class="input" id="notice-center" name="center_id" data-field="center_id">
                             <option value="">Select Center</option>
                             <option value="0">All</option>
                         </select>
+                        <label for="notice-center">Select Center</label>
                         <p class="field-error hidden" data-error-for="center_id"></p>
                     </div>
-                    <div>
-                        <label class="label" for="notice-title">Title</label>
-                        <input type="text" id="notice-title" name="title" data-field="title"
+                    <div class="fl">
+                        <input class="input" type="text" id="notice-title" name="title" data-field="title"
                                placeholder="Title" autocomplete="off">
+                        <label for="notice-title">Title</label>
                         <p class="field-error hidden" data-error-for="title"></p>
                     </div>
-                    <div class="md:col-span-2">
-                        <label class="label" for="notice-description">Description</label>
-                        <textarea id="notice-description" name="description" data-field="description"
+                    <div class="md:col-span-2 fl">
+                        <textarea class="input" id="notice-description" name="description" data-field="description"
                                   rows="5" placeholder="Description"></textarea>
+                        <label for="notice-description">Description</label>
                         <p class="field-error hidden" data-error-for="description"></p>
                     </div>
                 </div>

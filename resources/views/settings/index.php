@@ -11,11 +11,11 @@ $canEdit = can('setting-edit');
     <div class="card max-w-3xl">
         <div class="card-header">Active Session</div>
         <div class="card-body">
-            <div class="max-w-xs">
-                <label class="label" for="settings-session">Session</label>
-                <select id="settings-session" data-field="session">
+            <div class="max-w-xs fl">
+                <select class="input" id="settings-session" data-field="session">
                     <option value="">Select Session</option>
                 </select>
+                <label for="settings-session">Session</label>
                 <p class="field-error hidden" data-error-for="session"></p>
             </div>
         </div>
@@ -27,16 +27,16 @@ $canEdit = can('setting-edit');
             <div class="card-body">
                 <form id="settings-form" novalidate>
                     <div class="space-y-4">
-                        <div>
-                            <label class="label" for="settings-title">Title</label>
-                            <input type="text" id="settings-title" name="title" data-field="title"
+                        <div class="fl">
+                            <input class="input" type="text" id="settings-title" name="title" data-field="title"
                                    placeholder="Title" autocomplete="off">
+                            <label for="settings-title">Title</label>
                             <p class="field-error hidden" data-error-for="title"></p>
                         </div>
-                        <div>
-                            <label class="label" for="settings-description">Description</label>
-                            <textarea id="settings-description" name="description" data-field="description" rows="8"
+                        <div class="fl">
+                            <textarea class="input" id="settings-description" name="description" data-field="description" rows="8"
                                       placeholder="Description"></textarea>
+                            <label for="settings-description">Description</label>
                             <p class="field-error hidden" data-error-for="description"></p>
                         </div>
                     </div>

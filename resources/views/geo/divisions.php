@@ -33,9 +33,9 @@
             <div class="card-header" id="geo-form-title">Add Division</div>
             <div class="card-body">
                 <form id="geo-form" novalidate>
-                    <div class="mb-4">
-                        <label class="label" for="geo-name">Name</label>
-                        <input type="text" id="geo-name" name="name" data-field="name" placeholder="Division name" autocomplete="off">
+                    <div class="mb-4 fl">
+                        <input class="input" type="text" id="geo-name" name="name" data-field="name" placeholder="Division name" autocomplete="off">
+                        <label for="geo-name">Name</label>
                         <p class="field-error hidden" data-error-for="name"></p>
                     </div>
                     <div class="flex flex-wrap gap-2">

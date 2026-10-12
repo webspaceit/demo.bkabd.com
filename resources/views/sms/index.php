@@ -25,55 +25,55 @@
             </div>
 
             <div class="tab-panel hidden space-y-4" data-panel="center">
-                <div class="max-w-md">
-                    <label class="label" for="sms-center">Center <span class="text-red-500">*</span></label>
-                    <select id="sms-center" data-field="center_id">
+                <div class="max-w-md fl">
+                    <select class="input" id="sms-center" data-field="center_id">
                         <option value="">Select Center</option>
                         <option value="0">All</option>
                     </select>
+                    <label for="sms-center">Center <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="center_id"></p>
                 </div>
             </div>
 
             <div class="tab-panel hidden space-y-4" data-panel="institute">
-                <div class="max-w-md">
-                    <label class="label" for="sms-ins-center">Center <span class="text-red-500">*</span></label>
-                    <select id="sms-ins-center" data-field="center_id">
+                <div class="max-w-md fl">
+                    <select class="input" id="sms-ins-center" data-field="center_id">
                         <option value="">Select Center</option>
                     </select>
+                    <label for="sms-ins-center">Center <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="center_id"></p>
                 </div>
-                <div class="max-w-md">
-                    <label class="label" for="sms-institute">Name of Institute <span class="text-red-500">*</span></label>
-                    <select id="sms-institute" data-field="institute_id">
+                <div class="max-w-md fl">
+                    <select class="input" id="sms-institute" data-field="institute_id">
                         <option value="">Select Institute</option>
                         <option value="0">All</option>
                     </select>
+                    <label for="sms-institute">Name of Institute <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="institute_id"></p>
                 </div>
             </div>
 
             <form id="sms-form" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="label" for="sms-phone">Phone Number <span class="text-red-500">*</span></label>
-                        <textarea id="sms-phone" name="phone" data-field="phone" rows="4"
+                    <div class="fl">
+                        <textarea class="input" id="sms-phone" name="phone" data-field="phone" rows="4"
                                   placeholder="Phone"></textarea>
+                        <label for="sms-phone">Phone Number <span class="text-red-500">*</span></label>
                         <p class="field-error hidden" data-error-for="phone"></p>
                     </div>
-                    <div>
-                        <label class="label" for="sms-message">Message <span class="text-red-500">*</span></label>
-                        <textarea id="sms-message" name="message" data-field="message" rows="4"
+                    <div class="fl">
+                        <textarea class="input" id="sms-message" name="message" data-field="message" rows="4"
                                   placeholder="Message"></textarea>
+                        <label for="sms-message">Message <span class="text-red-500">*</span></label>
                         <p class="field-error hidden" data-error-for="message"></p>
                     </div>
-                    <div>
-                        <label class="label" for="sms-type">SMS Type <span class="text-red-500">*</span></label>
-                        <select id="sms-type" name="type" data-field="type">
+                    <div class="fl">
+                        <select class="input" id="sms-type" name="type" data-field="type">
                             <option value="">Select Type</option>
                             <option value="1">Masking (BKABD)</option>
                             <option value="2">Numeric Sender</option>
                         </select>
+                        <label for="sms-type">SMS Type <span class="text-red-500">*</span></label>
                         <p class="field-error hidden" data-error-for="type"></p>
                     </div>
                     <div class="flex items-end">

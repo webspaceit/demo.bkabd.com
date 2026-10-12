@@ -14,31 +14,31 @@
         <div class="card-body">
             <form id="markdist-form" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="label" for="md-session">Session</label>
-                        <select id="md-session" name="session" data-field="session">
+                    <div class="fl">
+                        <select class="input" id="md-session" name="session" data-field="session">
                             <option value="">Select Session</option>
                         </select>
+                        <label for="md-session">Session</label>
                         <p class="field-error hidden" data-error-for="session"></p>
                     </div>
-                    <div>
-                        <label class="label" for="md-total">Total Mark</label>
-                        <input type="number" id="md-total" name="total" data-field="total" placeholder="Total Mark" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="number" id="md-total" name="total" data-field="total" placeholder="Total Mark" autocomplete="off">
+                        <label for="md-total">Total Mark</label>
                         <p class="field-error hidden" data-error-for="total"></p>
                     </div>
-                    <div>
-                        <label class="label" for="md-bangla">Bangla</label>
-                        <input type="number" id="md-bangla" name="bangla" data-field="bangla" placeholder="Bangla Mark" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="number" id="md-bangla" name="bangla" data-field="bangla" placeholder="Bangla Mark" autocomplete="off">
+                        <label for="md-bangla">Bangla</label>
                         <p class="field-error hidden" data-error-for="bangla"></p>
                     </div>
-                    <div>
-                        <label class="label" for="md-english">English</label>
-                        <input type="number" id="md-english" name="english" data-field="english" placeholder="English Mark" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="number" id="md-english" name="english" data-field="english" placeholder="English Mark" autocomplete="off">
+                        <label for="md-english">English</label>
                         <p class="field-error hidden" data-error-for="english"></p>
                     </div>
-                    <div>
-                        <label class="label" for="md-math">Mathematics</label>
-                        <input type="number" id="md-math" name="math" data-field="math" placeholder="Mathematics Mark" autocomplete="off">
+                    <div class="fl">
+                        <input class="input" type="number" id="md-math" name="math" data-field="math" placeholder="Mathematics Mark" autocomplete="off">
+                        <label for="md-math">Mathematics</label>
                         <p class="field-error hidden" data-error-for="math"></p>
                     </div>
                 </div>

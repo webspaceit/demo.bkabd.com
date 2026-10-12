@@ -36,22 +36,22 @@
             <div class="card-header" id="geo-form-title">Add Upazila</div>
             <div class="card-body">
                 <form id="geo-form" novalidate>
-                    <div class="mb-4">
-                        <label class="label" for="geo-name">Upazila Name</label>
-                        <input type="text" id="geo-name" name="name" data-field="name" placeholder="Upazila name" autocomplete="off">
+                    <div class="mb-4 fl">
+                        <input class="input" type="text" id="geo-name" name="name" data-field="name" placeholder="Upazila name" autocomplete="off">
+                        <label for="geo-name">Upazila Name</label>
                         <p class="field-error hidden" data-error-for="name"></p>
                     </div>
-                    <div class="mb-4">
-                        <label class="label" for="geo-parent">Division</label>
-                        <select id="geo-parent" name="division_id">
+                    <div class="mb-4 fl">
+                        <select class="input" id="geo-parent" name="division_id">
                             <option value="">Select Division</option>
                         </select>
+                        <label for="geo-parent">Division</label>
                     </div>
-                    <div class="mb-4">
-                        <label class="label" for="geo-child">District</label>
-                        <select id="geo-child" name="district_id" data-field="district_id">
+                    <div class="mb-4 fl">
+                        <select class="input" id="geo-child" name="district_id" data-field="district_id">
                             <option value="">Select District</option>
                         </select>
+                        <label for="geo-child">District</label>
                         <p class="field-error hidden" data-error-for="district_id"></p>
                     </div>
                     <div class="flex flex-wrap gap-2">

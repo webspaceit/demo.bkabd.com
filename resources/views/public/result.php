@@ -36,10 +36,10 @@ $hdrV = (int) @filemtime(BASE_PATH . '/public/assets/img/result/header.png');
                 <h1 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Scholarship Exam Result</h1>
                 <p class="mx-auto mt-2 max-w-md text-sm text-emerald-50/90">Enter your registration number to view the published result.</p>
             </div>
-            <div class="bg-white px-4 py-4 text-center sm:px-6">
+            <!-- <div class="bg-white px-4 py-4 text-center sm:px-6">
                 <img src="/assets/img/result/header.png?v=<?= $hdrV ?>" alt="BKABD"
                      class="mx-auto block w-full" width="1920" height="184">
-            </div>
+            </div> -->
         </div>
 
         <!-- Search card -->
@@ -66,11 +66,11 @@ $hdrV = (int) @filemtime(BASE_PATH . '/public/assets/img/result/header.png');
                     <?= csrf_field() ?>
 
                     <!-- Primary: registration number (unique) -->
-                    <div>
-                        <label class="label" for="registration">Registration No</label>
-                        <input type="text" id="registration" name="registration" data-field="registration"
+                    <div class="fl">
+                        <input type="text" id="registration" name="registration" class="input" data-field="registration"
                                placeholder="e.g. 2300300012001" autocomplete="off" autofocus
                                value="<?= e($val('registration')) ?>">
+                        <label for="registration">Registration No</label>
                         <?= $fieldError('registration') ?>
                         <p class="mt-1 text-xs text-slate-400">Printed on your admit card / registration certificate.</p>
                     </div>
@@ -82,32 +82,32 @@ $hdrV = (int) @filemtime(BASE_PATH . '/public/assets/img/result/header.png');
                         </summary>
 
                         <div class="mt-4 grid gap-4 sm:grid-cols-3">
-                            <div>
-                                <label class="label" for="session_id">Session</label>
-                                <select id="session_id" name="session_id" data-field="session_id" class="uppercase">
+                            <div class="fl">
+                                <select id="session_id" name="session_id" data-field="session_id" class="uppercase input">
                                     <option value="">Select Session</option>
                                     <?php foreach ($sessions as $s): ?>
                                         <option value="<?= e($s['session']) ?>" <?= (string) $val('session_id') === (string) $s['session'] ? 'selected' : '' ?>><?= e($s['session']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <label for="session_id">Session</label>
                                 <?= $fieldError('session_id') ?>
                             </div>
 
-                            <div>
-                                <label class="label" for="class">Class</label>
-                                <select id="class" name="class" data-field="class" class="uppercase">
+                            <div class="fl">
+                                <select id="class" name="class" data-field="class" class="uppercase input">
                                     <option value="">Select Class</option>
                                     <?php foreach ([6 => 'Kg', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four', 5 => 'Five'] as $cv => $cl): ?>
                                         <option value="<?= $cv ?>" <?= (string) $val('class') === (string) $cv ? 'selected' : '' ?>><?= e($cl) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <label for="class">Class</label>
                                 <?= $fieldError('class') ?>
                             </div>
 
-                            <div>
-                                <label class="label" for="roll">Roll No</label>
-                                <input type="text" id="roll" name="roll" data-field="roll"
+                            <div class="fl">
+                                <input type="text" id="roll" name="roll" class="input" data-field="roll"
                                        placeholder="Roll No" autocomplete="off" value="<?= e($val('roll')) ?>">
+                                <label for="roll">Roll No</label>
                                 <?= $fieldError('roll') ?>
                             </div>
                         </div>

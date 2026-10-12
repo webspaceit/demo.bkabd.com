@@ -11,14 +11,14 @@
         <div class="card-body">
             <form id="institute-validity-form" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="label" for="v-last_renewal_date">Last Renewal Date <span class="text-red-600">*</span></label>
-                        <input type="date" id="v-last_renewal_date" data-field="last_renewal_date" placeholder="Last Renewal Date">
+                    <div class="fl">
+                        <input class="input" type="date" id="v-last_renewal_date" data-field="last_renewal_date" placeholder="Last Renewal Date">
+                        <label for="v-last_renewal_date">Last Renewal Date <span class="text-red-600">*</span></label>
                         <p class="field-error hidden" data-error-for="last_renewal_date"></p>
                     </div>
-                    <div>
-                        <label class="label" for="v-validity_date">Validity Date <span class="text-red-600">*</span></label>
-                        <input type="date" id="v-validity_date" data-field="validity_date" placeholder="Validity Date">
+                    <div class="fl">
+                        <input class="input" type="date" id="v-validity_date" data-field="validity_date" placeholder="Validity Date">
+                        <label for="v-validity_date">Validity Date <span class="text-red-600">*</span></label>
                         <p class="field-error hidden" data-error-for="validity_date"></p>
                     </div>
                 </div>

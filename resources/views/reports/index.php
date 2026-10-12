@@ -174,13 +174,13 @@ foreach ($globalReports as $r) {
         </div>
         <div class="card-body">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="label" for="rp-center">Center</label>
-                    <select id="rp-center"><option value="">Select Center</option></select>
+                <div class="fl">
+                    <select class="input" id="rp-center"><option value="">Select Center</option></select>
+                    <label for="rp-center">Center</label>
                 </div>
-                <div>
-                    <label class="label" for="rp-institute">Institute</label>
-                    <select id="rp-institute"><option value="">Select Institute</option></select>
+                <div class="fl">
+                    <select class="input" id="rp-institute"><option value="">Select Institute</option></select>
+                    <label for="rp-institute">Institute</label>
                 </div>
             </div>
         </div>

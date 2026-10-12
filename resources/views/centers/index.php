@@ -21,9 +21,9 @@ $flag = fn(string $p): string => !empty($perms[$p]) ? '1' : '0';
             <?php endif; ?>
         </div>
         <div class="card-body space-y-4">
-            <div>
-                <label class="label" for="center-search">Search</label>
+            <div class="fl">
                 <input type="search" id="center-search" class="max-w-md" placeholder="Search Here...">
+                <label for="center-search">Search</label>
             </div>
 
             <div class="overflow-x-auto">

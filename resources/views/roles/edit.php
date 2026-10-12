@@ -11,9 +11,9 @@
         <div class="card-header">Edit Role</div>
         <div class="card-body">
             <form id="role-form" novalidate>
-                <div class="max-w-md">
-                    <label class="label" for="role-name">Role Name</label>
-                    <input type="text" id="role-name" name="name" data-field="name" placeholder="Enter Role Name" autocomplete="off">
+                <div class="fl max-w-md">
+                    <input type="text" id="role-name" name="name" class="input" data-field="name" placeholder="Enter Role Name" autocomplete="off">
+                    <label for="role-name">Role Name</label>
                     <p class="field-error hidden" data-error-for="name"></p>
                 </div>
 

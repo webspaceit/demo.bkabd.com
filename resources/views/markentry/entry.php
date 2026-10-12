@@ -29,23 +29,22 @@ $activeSession = $activeSession ?? '';
             <p class="text-base font-semibold text-slate-800 text-center mb-4"><?= e($heading) ?></p>
             <form id="entry-filter" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                        <label class="label" for="entry-center">Center <span class="text-red-500">*</span></label>
-                        <select id="entry-center" data-field="center_id">
+                    <div class="fl">
+                        <select class="input" id="entry-center" data-field="center_id">
                             <option value="">Select Center</option>
                         </select>
+                        <label for="entry-center">Center <span class="text-red-500">*</span></label>
                         <p class="field-error hidden" data-error-for="center_id"></p>
                     </div>
-                    <div>
-                        <label class="label" for="entry-institute">Institute <span class="text-red-500">*</span></label>
-                        <select id="entry-institute" data-field="institute_id">
+                    <div class="fl">
+                        <select class="input" id="entry-institute" data-field="institute_id">
                             <option value="">Select Institute</option>
                         </select>
+                        <label for="entry-institute">Institute <span class="text-red-500">*</span></label>
                         <p class="field-error hidden" data-error-for="institute_id"></p>
                     </div>
-                    <div>
-                        <label class="label" for="entry-class">Class <span class="text-red-500">*</span></label>
-                        <select id="entry-class" data-field="class">
+                    <div class="fl">
+                        <select class="input" id="entry-class" data-field="class">
                             <option value="">Select Exam Class</option>
                             <option value="6">KG</option>
                             <option value="1">One</option>
@@ -54,6 +53,7 @@ $activeSession = $activeSession ?? '';
                             <option value="4">Four</option>
                             <option value="5">Five</option>
                         </select>
+                        <label for="entry-class">Class <span class="text-red-500">*</span></label>
                         <p class="field-error hidden" data-error-for="class"></p>
                     </div>
                     <div class="flex items-end">

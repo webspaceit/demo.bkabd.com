@@ -11,19 +11,19 @@
         <div class="card-body">
             <form id="passchange-form" novalidate>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="label" for="pc-password">Previous Password</label>
-                        <input type="password" id="pc-password" name="password" data-field="password" placeholder="Previous Password" autocomplete="current-password">
+                    <div class="fl">
+                        <input class="input" type="password" id="pc-password" name="password" data-field="password" placeholder="Previous Password" autocomplete="current-password">
+                        <label for="pc-password">Previous Password</label>
                         <p class="field-error hidden" data-error-for="password"></p>
                     </div>
-                    <div>
-                        <label class="label" for="pc-npassword">New Password</label>
-                        <input type="password" id="pc-npassword" name="npassword" data-field="npassword" placeholder="New Password" autocomplete="new-password">
+                    <div class="fl">
+                        <input class="input" type="password" id="pc-npassword" name="npassword" data-field="npassword" placeholder="New Password" autocomplete="new-password">
+                        <label for="pc-npassword">New Password</label>
                         <p class="field-error hidden" data-error-for="npassword"></p>
                     </div>
-                    <div>
-                        <label class="label" for="pc-cnpassword">Confirm New Password</label>
-                        <input type="password" id="pc-cnpassword" name="cnpassword" data-field="cnpassword" placeholder="Confirm Password" autocomplete="new-password">
+                    <div class="fl">
+                        <input class="input" type="password" id="pc-cnpassword" name="cnpassword" data-field="cnpassword" placeholder="Confirm Password" autocomplete="new-password">
+                        <label for="pc-cnpassword">Confirm New Password</label>
                         <p class="field-error hidden" data-error-for="cnpassword"></p>
                     </div>
                 </div>

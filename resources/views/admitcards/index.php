@@ -9,27 +9,26 @@
     </div>
     <div class="card-body">
         <form id="admitcard-form" class="filter-bar grid grid-cols-1 md:grid-cols-3 gap-4" data-form>
-            <div>
-                <label class="label">Exam Session</label>
+            <div class="fl">
                 <select class="input" data-field="session" disabled>
                     <option value="<?= e($activeSession) ?>"><?= e($activeSession) ?></option>
                 </select>
+                <label>Exam Session</label>
             </div>
-            <div>
-                <label class="label">Center <span class="text-red-500">*</span></label>
+            <div class="fl">
                 <select class="input" data-field="center_id" required>
                     <option value="">Select Center</option>
                 </select>
+                <label>Center <span class="text-red-500">*</span></label>
                 <p class="field-error hidden" data-error-for="center_id"></p>
             </div>
-            <div>
-                <label class="label">Institute</label>
+            <div class="fl">
                 <select class="input" data-field="institute_id">
                     <option value="">Select Institute</option>
                 </select>
+                <label>Institute</label>
             </div>
-            <div>
-                <label class="label">Class</label>
+            <div class="fl">
                 <select class="input" data-field="class">
                     <option value="">Select Class</option>
                     <option value="6">KG</option>
@@ -39,6 +38,7 @@
                     <option value="4">Four</option>
                     <option value="5">Five</option>
                 </select>
+                <label>Class</label>
             </div>
             <div class="flex items-end gap-2">
                 <button type="submit" class="btn btn-primary">Search</button>
