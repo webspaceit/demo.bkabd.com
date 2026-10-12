@@ -70,7 +70,7 @@ $wmUrl = str_replace('\\', '/', $img('/assets/img/result/logo-watermark.png'));
     .sig-img img { height: 34px; }
     .sig-line { border-top: 1px solid #000; margin-top: 4px; padding-top: 3px; }
     .sig-name { font-weight: bold; font-size: 11.55px; }
-    .sig-role { color: #000; font-size: 9px; }
+    .sig-role { color: #000; font-size: 9.9px; }
     .note { text-align: center; font-size: 10px; line-height: 1.6; margin-top: 12px; }
     table.dates { margin-top: 8px; }
     table.dates td { border: 0; font-size: 9px; padding: 0; }

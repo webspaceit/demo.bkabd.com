@@ -76,7 +76,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
     .sig-img img { height: 2.5rem; width: auto; margin: 0 auto; }
     .sig-line { border-top: 1px solid #000; margin-top: .25rem; padding-top: .25rem; }
     .sig-name { font-weight: 600; font-size: 1.1em; line-height: 1.2; color: #000; }
-    .sig-role { color: #000; font-size: 90%; line-height: 1.2; }
+    .sig-role { color: #000; font-size: 99%; line-height: 1.2; }
 
     @media print {
         /* rem-based Tailwind sizes scale with the root, so a 13px root makes
