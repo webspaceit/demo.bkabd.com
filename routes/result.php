@@ -16,3 +16,6 @@ Router::post('/result/search', [ResultPortalController::class, 'search']);
 
 /** Deep link with ?data={json} (original show()). */
 Router::get('/result/show', [ResultPortalController::class, 'show']);
+
+/** The same sheet as a real PDF — what the result QR points at. */
+Router::get('/result/pdf', [ResultPortalController::class, 'pdf']);

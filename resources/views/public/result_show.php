@@ -37,14 +37,15 @@ $mTh = 'border border-black px-2 py-1';
 
         <h1 class="mt-2 text-center text-2xl font-bold">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
         <p class="text-center font-semibold">Govt. Reg. No.: S-1028/98</p>
-        <p class="my-3 text-center text-xs leading-relaxed">
+        <p class="my-3 text-center text-xs leading-relaxed mt-1 mb-1">
             59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009<br>
             Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd
         </p>
 
         <h2 class="text-center text-xl font-extrabold">SCHOLARSHIP RESULT - <?= e($student['session']) ?></h2>
 
-        <div class="mx-auto my-3 max-w-xs rounded-full bg-black py-1 text-center text-sm font-semibold text-white">
+        <div class="mx-auto my-3 max-w-xs rounded-full text-center text-sm font-semibold text-white"
+             style="background:linear-gradient(90deg,#1DB601,#138000);padding:.4rem 1rem;box-shadow:0 1px 3px rgba(19,128,0,.35)">
             Student Details Information
         </div>
 
@@ -91,7 +92,8 @@ $mTh = 'border border-black px-2 py-1';
             </tr>
         </table>
 
-        <div class="mx-auto my-5 max-w-xs rounded-full bg-black py-1 text-center text-sm font-semibold text-white">
+        <div class="mx-auto my-5 max-w-xs rounded-full text-center text-sm font-semibold text-white"
+             style="background:linear-gradient(90deg,#1DB601,#138000);padding:.4rem 1rem;box-shadow:0 1px 3px rgba(19,128,0,.35)">
             Exam Marks &amp; Grade Sheet
         </div>
 
@@ -133,10 +135,14 @@ $mTh = 'border border-black px-2 py-1';
         </table>
 
         <div class="mt-6 text-center">
-            <img src="/assets/img/result/qrcode.png" alt="QR code" class="mx-auto w-24">
+            <?php if (!empty($qrContent)): ?>
+                <div id="result-qr" class="inline-block" data-qr-content="<?= e($qrContent) ?>"></div>
+            <?php else: ?>
+                <img src="/assets/img/result/qrcode.png" alt="QR code" class="mx-auto w-24">
+            <?php endif; ?>
         </div>
 
-        <table class="mt-5 w-full text-center text-xs">
+        <table class="mt-1 w-full text-center text-xs">
             <tr>
                 <td class="p-2 align-top">
                     <img src="<?= e(result_signature('chairman')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
@@ -173,3 +179,25 @@ $mTh = 'border border-black px-2 py-1';
         <button type="button" onclick="window.print();" class="btn bg-emerald-500 text-white hover:bg-emerald-600">Print</button>
     </div>
 </div>
+
+<?php if (!empty($qrContent)): ?>
+<script src="/assets/js/vendor/qrcode.min.js"></script>
+<script>
+(function () {
+    var box = document.getElementById('result-qr');
+    if (!box || typeof QRCode === 'undefined') { return; }
+    new QRCode(box, {
+        text: box.getAttribute('data-qr-content'),
+        width: 256,
+        height: 256,
+        correctLevel: QRCode.CorrectLevel.M
+    });
+    // Drawn at 256px for a crisp print; qrcodejs emits a canvas and/or an
+    // <img>, so size every render target to a 100x100 thumbnail.
+    Array.prototype.forEach.call(box.querySelectorAll('canvas, img, table'), function (el) {
+        el.style.width = '100px';
+        el.style.height = '100px';
+    });
+})();
+</script>
+<?php endif; ?>
