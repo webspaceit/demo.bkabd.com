@@ -36,7 +36,9 @@ $img = static function (string $url): string {
     /* Always render on A4, portrait. */
     @page { size: A4 portrait; margin: 12mm; }
     body { font-family: "DejaVu Sans", sans-serif; color: #000; font-size: 11px; }
-    .sheet { border: 2px solid #000; padding: 14px; }
+    /* Double-ruled frame: 2px line, 4px gap, 2px line (matches the on-screen sheet). */
+    .sheet { border: 2px solid #000; padding: 4px; }
+    .inner { border: 2px solid #000; padding: 10px; }
     .center { text-align: center; }
     .logo { width: 68px; }
     h1 { font-size: 19px; margin: 6px 0 2px; }
@@ -61,6 +63,7 @@ $img = static function (string $url): string {
 </head>
 <body>
 <div class="sheet">
+<div class="inner">
     <div class="center"><img class="logo" src="<?= e($img('/assets/img/result/logo.png')) ?>" alt="BKABD"></div>
     <h1 class="center">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
     <div class="center regno">Govt. Reg. No.: S-1028/98</div>
@@ -143,6 +146,7 @@ $img = static function (string $url): string {
             <td style="text-align:right">Print Date &amp; Time: <?= e(date('d F Y, h:i A')) ?></td>
         </tr>
     </table>
+</div>
 </div>
 </body>
 </html>

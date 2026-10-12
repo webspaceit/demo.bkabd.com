@@ -53,7 +53,8 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 </style>
 
 <div class="mx-auto max-w-4xl px-3 py-6 print:max-w-none print:px-0 print:py-0">
-    <div id="result-sheet" class="border-2 border-black bg-white p-3 sm:p-4">
+    <div id="result-sheet" class="border-2 border-black bg-white p-1">
+        <div class="border-2 border-black p-3 sm:p-4">
         <img src="/assets/img/result/logo.png" alt="BKABD" class="mx-auto block w-20 rounded-full">
 
         <h1 class="mt-2 text-center text-2xl font-bold">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
@@ -198,6 +199,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
         <div class="mt-2 flex w-full justify-between text-[11px]">
             <div><?php if ($pubDate): ?>Result Publication Date: <?= e($pubDate) ?><?php endif; ?></div>
             <div>Print Date &amp; Time: <?= e(date('d F Y, h:i A')) ?></div>
+        </div>
         </div>
     </div>
 
