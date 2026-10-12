@@ -31,6 +31,53 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
     /* Always print on A4, portrait — regardless of the printer default. */
     @page { size: A4 portrait; margin: 12mm; }
 
+    /* Page frame: a slightly wider gap between the outer and inner black rules
+       (Tailwind p-1 was .25rem/4px). rem-based so print scales the same way.
+       The faded logo watermark sits centred behind the sheet content. */
+    #result-sheet {
+        padding: .4125rem;
+        background-image: url("/assets/img/result/logo-watermark.png");
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-size: 40%;
+    }
+
+    /* Association name — larger, stands out as the certificate heading. */
+    .rs-org     { font-size: 2rem;    line-height: 1.2; }   /* 24px -> 32px   */
+
+    /* Header / title text +20% (rem-based so print/PDF scale too). */
+    .rs-regno   { font-size: 1.05rem; line-height: 1.3; }   /* 14px -> 16.8px */
+    .rs-contact { font-size: 0.9rem;  line-height: 1.35; }  /* 12px -> 14.4px */
+    .rs-h2      { font-size: 1.5rem;  line-height: 1.2; }   /* 20px -> 24px   */
+    .rs-bar     { font-size: 1.05rem; line-height: 1.3; }   /* 14px -> 16.8px */
+
+    /* Green divider under the address block, separating it from the title
+       (mirrors the rule in the PDF). */
+    .rs-rule {
+        height: 1px;
+        border: 0;
+        border-radius: 1px;
+        background: #000;
+        margin: .65rem 0 .5rem;
+    }
+
+    /* Student Details table: label columns (1st & 3rd) get a light-green tint
+       so the sheet matches the PDF. nth-child is per-row, so the label+colspan
+       rows (which have no 3rd cell) are unaffected. */
+    .rs-details th:nth-child(1),
+    .rs-details th:nth-child(3) { background: #EEF7EA; }
+
+    /* Exam Marks table: columns 5-7 (Total / Percentage / Grade) use the same tint. */
+    .rm-fill { background: #EEF7EA; }
+
+    /* Signature block */
+    .sig-tbl td { vertical-align: bottom; text-align: center; padding: 0 1rem; }
+    .sig-img { height: 2.5rem; }
+    .sig-img img { height: 2.5rem; width: auto; margin: 0 auto; }
+    .sig-line { border-top: 1px solid #000; margin-top: .25rem; padding-top: .25rem; }
+    .sig-name { font-weight: 600; font-size: 1.1em; line-height: 1.2; color: #000; }
+    .sig-role { color: #000; font-size: 90%; line-height: 1.2; }
+
     @media print {
         /* rem-based Tailwind sizes scale with the root, so a 13px root makes
            the printed sheet land on a single A4 page and match the PDF
@@ -53,26 +100,28 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 </style>
 
 <div class="mx-auto max-w-4xl px-3 py-6 print:max-w-none print:px-0 print:py-0">
-    <div id="result-sheet" class="border-2 border-black bg-white p-1">
+    <div id="result-sheet" class="border-2 border-black bg-white">
         <div class="border-2 border-black p-3 sm:p-4">
         <img src="/assets/img/result/logo.png" alt="BKABD" class="mx-auto block w-20 rounded-full">
 
-        <h1 class="mt-2 text-center text-2xl font-bold">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
-        <p class="text-center font-semibold">Govt. Reg. No.: S-1028/98</p>
-        <p class="my-3 text-center text-xs leading-relaxed mt-1 mb-1">
+        <h1 class="rs-org mt-2 text-center font-bold">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
+        <p class="rs-regno text-center font-semibold">Govt. Reg. No.: S-1028/98</p>
+        <p class="rs-contact my-3 text-center leading-relaxed mt-1 mb-1">
             59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009<br>
             Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd
         </p>
 
-        <h2 class="text-center text-xl font-extrabold">SCHOLARSHIP RESULT - <?= e($student['session']) ?></h2>
+        <hr class="rs-rule">
 
-        <div class="mx-auto my-3 max-w-xs rounded-full text-center text-sm font-semibold text-white"
-             style="background:linear-gradient(90deg,#1DB601,#138000);padding:.4rem 1rem;box-shadow:0 1px 3px rgba(19,128,0,.35)">
+        <h2 class="rs-h2 text-center mt-4 font-extrabold">SCHOLARSHIP RESULT - <?= e($student['session']) ?></h2>
+
+        <div class="mx-auto my-3  mb-5 max-w-xs rounded-full text-center rs-bar font-semibold text-white"
+             style="background:#00A550;padding:.4rem 1rem;box-shadow:0 1px 3px rgba(0,110,54,.35)">
             Student Details Information
         </div>
 
         <div class="overflow-x-auto">
-        <table class="w-full border-collapse text-[10px] sm:text-sm">
+        <table class="rs-details w-full border-collapse text-[10px] sm:text-sm">
             <tr>
                 <th class="<?= $th ?>" width="20%">Division</th>
                 <th class="<?= $th ?>" width="20%"><span class="font-normal"><?= e($student['division_name']) ?></span></th>
@@ -116,15 +165,15 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
         </table>
         </div>
 
-        <div class="mx-auto my-5 max-w-xs rounded-full text-center text-sm font-semibold text-white"
-             style="background:linear-gradient(90deg,#1DB601,#138000);padding:.4rem 1rem;box-shadow:0 1px 3px rgba(19,128,0,.35)">
+        <div class="mx-auto my-5 max-w-xs rounded-full text-center rs-bar font-semibold text-white"
+             style="background:#00A550;padding:.4rem 1rem;box-shadow:0 1px 3px rgba(0,110,54,.35)">
             Exam Marks &amp; Grade Sheet
         </div>
 
         <div class="overflow-x-auto">
         <table class="w-full border-collapse text-center text-[10px] sm:text-sm">
             <thead>
-                <tr class="bg-[#30b34b] text-white">
+                <tr class="text-white" style="background:#00A550">
                     <th class="<?= $mTh ?>" width="4%">Sl.</th>
                     <th class="<?= $mTh ?>" width="15%">Subject Name</th>
                     <th class="<?= $mTh ?>" width="15%">Full Marks</th>
@@ -140,9 +189,9 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
                     <td class="<?= $mTh ?>">Bangla</td>
                     <td class="<?= $mTh ?>"><?= e($fm('bangla')) ?></td>
                     <td class="<?= $mTh ?>"><?= e($student['bangla']) ?></td>
-                    <td class="<?= $mTh ?>" rowspan="3"><?= e($student['total']) ?></td>
-                    <td class="<?= $mTh ?>" rowspan="3"><?= e($student['percentage']) ?>%</td>
-                    <td class="<?= $mTh ?>" rowspan="3"><?= e($gradeText) ?></td>
+                    <td class="<?= $mTh ?> rm-fill" rowspan="3"><?= e($student['total']) ?></td>
+                    <td class="<?= $mTh ?> rm-fill" rowspan="3"><?= e($student['percentage']) ?>%</td>
+                    <td class="<?= $mTh ?> rm-fill" rowspan="3"><?= e($gradeText) ?></td>
                 </tr>
                 <tr>
                     <td class="<?= $mTh ?>">02</td>
@@ -169,24 +218,22 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
         </div>
 
         <div class="overflow-x-auto">
-        <table class="mt-1 w-full text-center text-[10px] sm:text-xs">
+        <table class="sig-tbl mt-6 w-full text-[10px] sm:text-xs">
             <tr>
-                <td class="p-1 align-top sm:p-2">
-                    <img src="<?= e(result_signature('chairman')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
-                    MONOWARA BHUIYAN<br>Chairman
+                <?php foreach ([
+                    ['chairman',           'MONOWARA BHUIYAN',   'Chairman'],
+                    ['general_secretary',  'MD. MIZANUR RAHMAN', 'General Secretary'],
+                    ['controller',         'MD. FARUK HOSSEN',  'Controller of Exam'],
+                    ['education_secretary','MD. ABDUL ALIM',    'Education Secretary'],
+                ] as [$signKey, $signName, $signRole]): ?>
+                <td>
+                    <div class="sig-img"><img src="<?= e(result_signature($signKey)) ?>" alt=""></div>
+                    <div class="sig-line">
+                        <div class="sig-name"><?= e($signName) ?></div>
+                        <div class="sig-role"><?= e($signRole) ?></div>
+                    </div>
                 </td>
-                <td class="p-1 align-top sm:p-2">
-                    <img src="<?= e(result_signature('general_secretary')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
-                    MD. MIZANUR RAHMAN<br>General Secretary
-                </td>
-                <td class="p-1 align-top sm:p-2">
-                    <img src="<?= e(result_signature('controller')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
-                    MD. FARUK HOSSEN<br>Controller of Exam
-                </td>
-                <td class="p-1 align-top sm:p-2">
-                    <img src="<?= e(result_signature('education_secretary')) ?>" alt="" class="mx-auto h-10 w-auto"><br>
-                    MD. ABDUL ALIM<br>Education Secretary
-                </td>
+                <?php endforeach; ?>
             </tr>
         </table>
         </div>

@@ -27,6 +27,9 @@ $img = static function (string $url): string {
     $path = BASE_PATH . '/public/' . ltrim($url, '/');
     return is_file($path) ? $path : $url;
 };
+
+// Faded logo watermark, as a forward-slash path (CSS url() treats "\" as an escape).
+$wmUrl = str_replace('\\', '/', $img('/assets/img/result/logo-watermark.png'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,27 +38,39 @@ $img = static function (string $url): string {
 <style>
     /* Always render on A4, portrait. */
     @page { size: A4 portrait; margin: 12mm; }
-    body { font-family: "DejaVu Sans", sans-serif; color: #000; font-size: 11px; }
+    body { font-family: "DejaVu Sans", sans-serif; color: #000; font-size: 11px;
+           background-image: url("<?= e($wmUrl) ?>");
+           background-repeat: no-repeat;
+           background-position: center center;
+           background-size: 40%; }
     /* Double-ruled frame: 2px line, 4px gap, 2px line (matches the on-screen sheet). */
-    .sheet { border: 2px solid #000; padding: 4px; }
+    .sheet { border: 2px solid #000; padding: 6.6px; }
     .inner { border: 2px solid #000; padding: 10px; }
     .center { text-align: center; }
     .logo { width: 68px; }
-    h1 { font-size: 19px; margin: 6px 0 2px; }
-    .regno { font-size: 12px; font-weight: bold; margin-bottom: 4px; }
-    .contact { font-size: 9.5px; line-height: 1.5; margin: 4px 0; }
-    h2 { font-size: 16px; margin: 8px 0 10px; }
-    .bar { background: #1DB601; color: #fff; font-weight: bold; font-size: 12px;
+    h1 { font-size: 24px; margin: 6px 0 2px; }
+    .regno { font-size: 14.4px; font-weight: bold; margin-bottom: 4px; }
+    .contact { font-size: 11.4px; line-height: 1.5; margin: 4px 0; }
+    /* Green divider under the address block (matches the on-screen sheet). */
+    .rule { height: 1px; background: #000; margin: 10px 0 4px; font-size: 0; line-height: 0; }
+    h2 { font-size: 19.2px; margin: 8px 0 10px; }
+    .bar { background: #00A550; color: #fff; font-weight: bold; font-size: 14.4px;
            text-align: center; padding: 5px 12px; margin: 12px auto; width: 45%;
            border-radius: 999px; }
     table { width: 100%; border-collapse: collapse; }
     table.details th, table.details td { border: 1px solid #000; padding: 4px; font-size: 11px; }
-    table.details th { width: 20%; text-align: left; }
+    table.details th { width: 20%; text-align: left; background: #EEF7EA; }
     table.marks th, table.marks td { border: 1px solid #000; padding: 5px; font-size: 11px; text-align: center; }
-    table.marks th { background: #30b34b; color: #fff; }
-    table.sig { margin-top: 16px; }
-    table.sig td { border: 0; text-align: center; font-size: 10px; vertical-align: top; }
-    table.sig img { height: 34px; }
+    table.marks th { background: #00A550; color: #fff; }
+    /* Columns 5-7 (Total / Percentage / Grade) share the details-table tint. */
+    table.marks td.fill { background: #EEF7EA; }
+    table.sig { margin-top: 18px; }
+    table.sig td { border: 0; text-align: center; font-size: 10px; vertical-align: bottom; padding: 0 18px; }
+    .sig-img { height: 34px; }
+    .sig-img img { height: 34px; }
+    .sig-line { border-top: 1px solid #000; margin-top: 4px; padding-top: 3px; }
+    .sig-name { font-weight: bold; font-size: 11.55px; }
+    .sig-role { color: #000; font-size: 9px; }
     .note { text-align: center; font-size: 10px; line-height: 1.6; margin-top: 12px; }
     table.dates { margin-top: 8px; }
     table.dates td { border: 0; font-size: 9px; padding: 0; }
@@ -72,6 +87,7 @@ $img = static function (string $url): string {
         Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd
     </div>
 
+    <div class="rule"></div>
     <h2 class="center">SCHOLARSHIP RESULT - <?= e($student['session']) ?></h2>
 
     <div class="bar">Student Details Information</div>
@@ -117,9 +133,9 @@ $img = static function (string $url): string {
             <tr>
                 <td>01</td><td>Bangla</td>
                 <td><?= e($fm('bangla')) ?></td><td><?= e($student['bangla']) ?></td>
-                <td rowspan="3"><?= e($student['total']) ?></td>
-                <td rowspan="3"><?= e($student['percentage']) ?>%</td>
-                <td rowspan="3"><?= e($gradeText) ?></td>
+                <td rowspan="3" class="fill"><?= e($student['total']) ?></td>
+                <td rowspan="3" class="fill"><?= e($student['percentage']) ?>%</td>
+                <td rowspan="3" class="fill"><?= e($gradeText) ?></td>
             </tr>
             <tr><td>02</td><td>English</td><td><?= e($fm('english')) ?></td><td><?= e($student['english']) ?></td></tr>
             <tr><td>03</td><td>Mathematics</td><td><?= e($fm('math')) ?></td><td><?= e($student['math']) ?></td></tr>
@@ -128,10 +144,20 @@ $img = static function (string $url): string {
 
     <table class="sig">
         <tr>
-            <td><img src="<?= e($img(result_signature('chairman'))) ?>" alt=""><br>MONOWARA BHUIYAN<br>Chairman</td>
-            <td><img src="<?= e($img(result_signature('general_secretary'))) ?>" alt=""><br>MD. MIZANUR RAHMAN<br>General Secretary</td>
-            <td><img src="<?= e($img(result_signature('controller'))) ?>" alt=""><br>MD. FARUK HOSSEN<br>Controller of Exam</td>
-            <td><img src="<?= e($img(result_signature('education_secretary'))) ?>" alt=""><br>MD. ABDUL ALIM<br>Education Secretary</td>
+            <?php foreach ([
+                ['chairman',           'MONOWARA BHUIYAN',   'Chairman'],
+                ['general_secretary',  'MD. MIZANUR RAHMAN', 'General Secretary'],
+                ['controller',         'MD. FARUK HOSSEN',  'Controller of Exam'],
+                ['education_secretary','MD. ABDUL ALIM',    'Education Secretary'],
+            ] as [$signKey, $signName, $signRole]): ?>
+            <td>
+                <div class="sig-img"><img src="<?= e($img(result_signature($signKey))) ?>" alt=""></div>
+                <div class="sig-line">
+                    <div class="sig-name"><?= e($signName) ?></div>
+                    <div class="sig-role"><?= e($signRole) ?></div>
+                </div>
+            </td>
+            <?php endforeach; ?>
         </tr>
     </table>
 
