@@ -28,8 +28,9 @@ $img = static function (string $url): string {
     return is_file($path) ? $path : $url;
 };
 
-// Faded logo watermark, as a forward-slash path (CSS url() treats "\" as an escape).
-$wmUrl = str_replace('\\', '/', $img('/assets/img/result/logo-watermark.png'));
+// Pre-faded logo watermark, as a forward-slash path (CSS url() treats "\" as an escape).
+$wmUrl = str_replace('\\', '/', $img('/assets/img/result/water-mark.webp'));
+$patUrl = str_replace('\\', '/', $img('/assets/img/result/pattern.png'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -38,14 +39,20 @@ $wmUrl = str_replace('\\', '/', $img('/assets/img/result/logo-watermark.png'));
 <style>
     /* Always render on A4, portrait. */
     @page { size: A4 portrait; margin: 12mm; }
-    body { font-family: "DejaVu Sans", sans-serif; color: #000; font-size: 11px;
-           background-image: url("<?= e($wmUrl) ?>");
-           background-repeat: no-repeat;
-           background-position: center center;
-           background-size: 40%; }
-    /* Double-ruled frame: 2px line, 4px gap, 2px line (matches the on-screen sheet). */
-    .sheet { border: 2px solid #000; padding: 6.6px; }
-    .inner { border: 2px solid #000; padding: 10px; }
+    body { font-family: "DejaVu Sans", sans-serif; color: #000; font-size: 11px; }
+    /* Double-ruled frame: 2px line, 6.6px gap, 2px line (matches the on-screen sheet).
+       The user-supplied repeating pattern fills the sheet; the watermark logo is
+       painted on top of it (see .inner) so neither hides the other. */
+    .sheet { border: 2px solid #000; padding: 6.6px;
+             background-image: url("<?= e($patUrl) ?>");
+             background-repeat: repeat;
+             background-position: 0 0;
+             background-size: 424px 424px; }
+    .inner { border: 2px solid #000; padding: 10px;
+             background-image: url("<?= e($wmUrl) ?>");
+             background-repeat: no-repeat;
+             background-position: center center;
+             background-size: 400px 400px; }
     .center { text-align: center; }
     .logo { width: 68px; }
     h1 { font-size: 24px; margin: 6px 0 2px; }

@@ -33,13 +33,22 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 
     /* Page frame: a slightly wider gap between the outer and inner black rules
        (Tailwind p-1 was .25rem/4px). rem-based so print scales the same way.
-       The faded logo watermark sits centred behind the sheet content. */
+       The user-supplied repeating pattern fills the sheet; the watermark logo is
+       painted on top of it (see .rs-inner) so neither hides the other. */
     #result-sheet {
         padding: .4125rem;
-        background-image: url("/assets/img/result/logo-watermark.png");
+        background-image: url("/assets/img/result/pattern.png");
+        background-repeat: repeat;
+        background-position: 0 0;
+        background-size: 424px 424px;
+    }
+
+    /* Watermark logo, centred and painted over the pattern. */
+    .rs-inner {
+        background-image: url("/assets/img/result/water-mark.webp");
         background-repeat: no-repeat;
         background-position: center center;
-        background-size: 40%;
+        background-size: 400px 400px;
     }
 
     /* Association name — larger, stands out as the certificate heading. */
@@ -101,7 +110,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 
 <div class="mx-auto max-w-4xl px-3 py-6 print:max-w-none print:px-0 print:py-0">
     <div id="result-sheet" class="border-2 border-black bg-white">
-        <div class="border-2 border-black p-3 sm:p-4">
+        <div class="rs-inner border-2 border-black p-3 sm:p-4">
         <img src="/assets/img/result/logo.png" alt="BKABD" class="mx-auto block w-20 rounded-full">
 
         <h1 class="rs-org mt-2 text-center font-bold">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
