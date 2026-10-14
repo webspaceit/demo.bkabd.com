@@ -101,7 +101,9 @@ final class MarkEntryController extends Controller
             ->select('id', 'name', 'registration', 'roll', 'bangla', 'english', 'math', 'total', 'percentage', 'ml', 'grade')
             ->where('institute_id', $instituteId)
             ->where('class', $class)
-            ->where('session', Auth::activeSession());
+            ->where('session', Auth::activeSession())
+            // Approval workflow: pending registrations are not exam candidates.
+            ->where('active', 1);
 
         if ($highestFirst) {
             $q->orderBy('total', 'desc');

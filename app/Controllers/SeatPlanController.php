@@ -35,6 +35,8 @@ final class SeatPlanController extends Controller
             ->where('institute_id', $id)
             ->where('session', $activeSession)
             ->where('class', $class)
+            // Approval workflow: pending registrations get no seat.
+            ->where('active', 1)
             ->orderBy('roll', 'asc')
             ->get();
 
@@ -72,6 +74,8 @@ final class SeatPlanController extends Controller
             ->where('center_id', $centerId)
             ->where('session', $activeSession)
             ->where('class', $class)
+            // Approval workflow: pending registrations get no seat.
+            ->where('active', 1)
             ->orderBy('roll', 'asc')
             ->get();
 

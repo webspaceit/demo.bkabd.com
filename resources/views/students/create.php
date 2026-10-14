@@ -39,7 +39,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
                         <svg class="w-3.5 h-3.5 text-emerald-200" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
                         Session <?= e($currentSession !== '' ? $currentSession : '—') ?>
                     </span>
-                    <span class="text-xs text-emerald-100/70">Registration No. is generated automatically.</span>
+                    <span class="text-xs text-emerald-100/70">Registration No. is generated automatically. New registrations are submitted as Pending.</span>
                 </div>
             </div>
         </div>
@@ -472,9 +472,13 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         BK.submit(form, async function () {
             var json = await BK.post('/api/students', new FormData(form));
-            var id   = json && json.data ? json.data.id : null;
-            var link = id ? { href: '/api/registrationpdf/' + encodeURIComponent(id), label: 'Open card' } : null;
-            BK.toast('Student registered successfully.', 'success', link);
+            // The card endpoint resolves students by REGISTRATION number (the
+            // route segment is {id}, but it is not the row id).
+            var reg  = json && json.data ? json.data.registration : null;
+            var link = reg ? { href: '/api/registrationpdf/' + encodeURIComponent(reg), label: 'Open card' } : null;
+            // New registrations are created PENDING and wait in the
+            // /pending-students queue until they are approved.
+            BK.toast((json && json.message) || 'Student registered successfully.', 'success', link);
             var sv = sessionEl ? sessionEl.value : '';
             form.reset();
             if (sv && sessionEl) { sessionEl.value = sv; }

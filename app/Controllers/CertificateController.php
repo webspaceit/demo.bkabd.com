@@ -56,6 +56,9 @@ final class CertificateController extends Controller
             ->where('students.institute_id', (int) $request->params['instituteId'])
             ->where('students.session', $session)
             ->where('students.class', (int) $request->params['class'])
+            // Approval workflow: pending registrations get no certificate
+            // (qualified students are Active by definition).
+            ->where('students.active', 1)
             ->whereIn('students.grade', [1, 2, 3])
             ->orderBy('students.roll', 'asc')
             ->get();

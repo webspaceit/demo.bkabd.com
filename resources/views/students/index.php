@@ -91,7 +91,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             <th>Center</th>
                             <th>Institute</th>
                             <th>Status</th>
-                            <th style="width:210px">Action</th>
+                            <th style="width:240px">Action</th>
                         </tr>
                     </thead>
                     <tbody id="student-rows">
@@ -106,48 +106,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
 </div>
 
 <!-- Student details modal (data loaded from GET /api/students/{id}) -->
-<div id="student-modal" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
-    <div class="bg-white rounded-xl w-full max-w-2xl my-8 shadow-xl">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <h3 class="text-base font-semibold text-slate-800" id="modal-title">Student Info</h3>
-            <button type="button" class="p-2 rounded hover:bg-slate-100 text-slate-500" data-modal-close aria-label="Close">&#10005;</button>
-        </div>
-        <div class="p-5">
-            <div class="flex flex-col sm:flex-row gap-5">
-                <div class="shrink-0">
-                    <img id="modal-photo" src="" alt="Student Photo" class="w-32 h-36 object-cover rounded border border-slate-200 hidden">
-                </div>
-                <table class="table text-sm">
-                    <tr><th class="w-40 text-left">Name</th><td class="text-left">: <span id="m-name"></span></td></tr>
-                    <tr><th class="text-left">Registration</th><td class="text-left">: <span id="m-registration"></span></td></tr>
-                    <tr><th class="text-left">Roll</th><td class="text-left">: <span id="m-roll"></span></td></tr>
-                    <tr><th class="text-left">Father's Name</th><td class="text-left">: <span id="m-father_name"></span></td></tr>
-                    <tr><th class="text-left">Mother's Name</th><td class="text-left">: <span id="m-mother_name"></span></td></tr>
-                    <tr><th class="text-left">Center</th><td class="text-left">: <span id="m-center_name"></span></td></tr>
-                    <tr><th class="text-left">Institute</th><td class="text-left">: <span id="m-institute_name"></span></td></tr>
-                    <tr><th class="text-left">Email</th><td class="text-left">: <span id="m-email"></span></td></tr>
-                    <tr><th class="text-left">Phone</th><td class="text-left">: <span id="m-phone"></span></td></tr>
-                    <tr><th class="text-left">Religion</th><td class="text-left">: <span id="m-religion"></span></td></tr>
-                    <tr><th class="text-left">Present Address</th><td class="text-left">: <span id="m-present_address"></span></td></tr>
-                    <tr><th class="text-left">Permanent Address</th><td class="text-left">: <span id="m-permanent_address"></span></td></tr>
-                    <tr><th class="text-left">Date of Birth</th><td class="text-left">: <span id="m-dob"></span></td></tr>
-                    <tr><th class="text-left">Gender</th><td class="text-left">: <span id="m-gender"></span></td></tr>
-                    <tr><th class="text-left">Class</th><td class="text-left">: <span id="m-class"></span></td></tr>
-                    <tr><th class="text-left">Session</th><td class="text-left">: <span id="m-session"></span></td></tr>
-                    <tr><th class="text-left">Division</th><td class="text-left">: <span id="m-division_name"></span></td></tr>
-                    <tr><th class="text-left">District</th><td class="text-left">: <span id="m-district_name"></span></td></tr>
-                    <tr><th class="text-left">Upazila</th><td class="text-left">: <span id="m-upazila_name"></span></td></tr>
-                    <tr><th class="text-left">Education Type</th><td class="text-left">: <span id="m-education_type"></span></td></tr>
-                    <tr><th class="text-left">Principal Name</th><td class="text-left">: <span id="m-principal_name"></span></td></tr>
-                    <tr><th class="text-left">Note</th><td class="text-left">: <span id="m-note"></span></td></tr>
-                </table>
-            </div>
-        </div>
-        <div class="px-5 py-4 border-t border-slate-100 flex justify-end">
-            <button type="button" class="btn btn-primary btn-sm" data-modal-close>Close</button>
-        </div>
-    </div>
-</div>
+<?= partial('students._details_modal') ?>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -181,9 +140,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function rowHtml(rec, i) {
         const id = BK.esc(String(rec.id));
         const className = CLASS_NAMES[rec.class] || '';
+        // Status: students are created Pending (active = 0) and become Active
+        // once approved in the Pending Registration queue (/pending-students).
         const badge = String(rec.active) === '1'
             ? '<span class="badge badge-green">Active</span>'
-            : '<span class="badge badge-gray">Inactive</span>';
+            : '<span class="badge bg-amber-50 text-amber-800">Pending</span>';
 
         let actions = '<div class="row-actions flex items-center gap-1">';
         actions += '<button type="button" class="btn btn-sm btn-light" data-act="view" data-id="' + id + '" title="Preview">&#128065;</button>';
@@ -192,6 +153,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (can('delete')) {
             actions += '<button type="button" class="btn btn-sm btn-danger" data-act="delete" data-id="' + id + '" title="Delete">&#10005;</button>';
+        }
+        // Printable registration card — the endpoint resolves the REGISTRATION
+        // number (not the row id), so rows without one get no link.
+        if (rec.registration) {
+            actions += '<a class="btn btn-sm btn-light" target="_blank" rel="noopener" title="Registration card"'
+                + ' href="/api/registrationpdf/' + encodeURIComponent(String(rec.registration)) + '">&#128424;</a>';
         }
         actions += '</div>';
 

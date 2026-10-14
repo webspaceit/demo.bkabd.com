@@ -108,25 +108,7 @@ final class StudentController extends Controller
         // Free-text search: matches name, registration, roll, class words
         // (kg/one/two/...), center-user name and institute name — ported from
         // the original index(); class words matched case-insensitively.
-        $search = $request->input('search');
-        if ($search !== null && trim($search) !== '') {
-            $term = strtolower(trim($search));
-            $classWord = match ($term) {
-                'kg' => 6, 'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5,
-                default => null,
-            };
-            if ($classWord !== null) {
-                $q->where('students.class', $classWord);
-            } else {
-                $like = '%' . $search . '%';
-                // Search group; dotted columns quoted explicitly (see above).
-                $q->whereRaw(
-                    '(`students`.`name` LIKE ? OR `registration` LIKE ? OR `roll` LIKE ?'
-                    . ' OR `users`.`name` LIKE ? OR `institutes`.`name` LIKE ?)',
-                    [$like, $like, $like, $like, $like]
-                );
-            }
-        }
+        $this->applyStudentSearch($q, $request->input('search'));
 
         // Order: center_id → institute name → registration (original)
         $q->orderBy('center_id', 'asc')
@@ -137,6 +119,200 @@ final class StudentController extends Controller
         return $this->sendResponse(
             $q->paginate((int) ($request->input('per_page', 20)), null, '/api/students'),
             'Student list retrieved.'
+        );
+    }
+
+    // ---------------------------------------------------------------
+    // Pending registrations (approval queue)
+    // ---------------------------------------------------------------
+
+    /**
+     * Pending registrations page. GET /pending-students
+     * Same server-rendered filter data as the /students list page.
+     */
+    public function pagePending(Request $request): string
+    {
+        if (!Auth::check()) {
+            return Response::redirect('/login');
+        }
+
+        return View::render('students.pending', [
+            'title'        => 'Pending Registration',
+            'sessions'     => ExamSession::query()->orderBy('id', 'desc')->get(),
+            'classes'      => [1, 2, 3, 4, 5, 6],
+            // Center dropdown shows the center USER's name (centers table has
+            // no `name` column) — same shape as the /students list page.
+            'centers'      => Database::select(
+                'SELECT c.`id`, u.`name` FROM `centers` c
+                   JOIN `users` u ON u.`id` = c.`user_id`
+                  WHERE c.`active` = 1
+                  ORDER BY u.`name`'
+            ),
+            'institutes'   => (new Query('institutes'))->where('active', 1)->orderBy('name', 'asc')->get(),
+            'activeSession' => Auth::activeSession(),
+            'filters'      => [
+                'session'      => $request->query('session'),
+                'class'        => $request->query('class'),
+                'center_id'    => $request->query('center_id'),
+                'institute_id' => $request->query('institute_id'),
+                'search'       => $request->query('search'),
+            ],
+        ], 'layouts.dashboard');
+    }
+
+    /**
+     * Pending registration list (approval queue). GET /api/pending-students
+     * Students whose registration has not been approved yet (active = 0/NULL).
+     */
+    public function pending(Request $request): array
+    {
+        if (!Auth::check()) {
+            Response::json(['status' => 'errors'], 401);
+        }
+
+        $centerId = Auth::centerId();
+        $q = (new Query('students'))->select(
+            'students.*',
+            'users.name as center_name',
+            'institutes.name as institute_name',
+            'divisions.name as division_name',
+            'districts.name as district_name',
+            'upozilas.name as upazila_name',
+            'unions.name as union_name'
+        );
+
+        $q->leftJoin('centers', 'centers.id', '=', 'students.center_id')
+          ->leftJoin('users', 'users.id', '=', 'centers.user_id')
+          ->leftJoin('institutes', 'institutes.id', '=', 'students.institute_id')
+          ->leftJoin('divisions', 'divisions.id', '=', 'students.division_id')
+          ->leftJoin('districts', 'districts.id', '=', 'students.district_id')
+          ->leftJoin('upozilas', 'upozilas.id', '=', 'students.upazila_id')
+          ->leftJoin('unions', 'unions.id', '=', 'students.union_id');
+
+        // The queue itself: not yet approved. Explicit `table`.`column`
+        // quoting (active also exists on centers/institutes).
+        $q->whereRaw('(`students`.`active` = 0 OR `students`.`active` IS NULL)');
+
+        if ($centerId !== null && !Auth::isAdmin()) {
+            $q->where('students.center_id', $centerId);
+        }
+
+        // Same filters as the /students list (empty string = no filter).
+        $session = $request->input('session');
+        if ($session !== null && $session !== '') {
+            $q->where('session', (int) $session);
+        }
+        $class = $request->input('class');
+        if ($class !== null && $class !== '') {
+            $q->where('class', (int) $class);
+        }
+        $instituteId = $request->input('institute_id');
+        if ($instituteId !== null && $instituteId !== '') {
+            $q->where('institute_id', (int) $instituteId);
+        }
+        $centerFilter = $request->input('center_id');
+        if ($centerFilter !== null && $centerFilter !== '') {
+            $q->whereRaw('`students`.`center_id` = ?', [(int) $centerFilter]);
+        }
+
+        $this->applyStudentSearch($q, $request->input('search'));
+
+        // FIFO queue: oldest registrations first.
+        $q->orderBy('created_at', 'asc')->orderBy('id', 'asc');
+
+        return $this->sendResponse(
+            $q->paginate((int) ($request->input('per_page', 20)), null, '/api/pending-students'),
+            'Pending registration list retrieved.'
+        );
+    }
+
+    /**
+     * Approve a pending registration. POST /api/pending-students/{id}/approve
+     * Idempotent: approving an already-approved registration still succeeds.
+     */
+    public function approve(Request $request): array
+    {
+        if (!Auth::check()) {
+            Response::json(['status' => 'errors'], 401);
+        }
+
+        $id = (int) ($request->params['id'] ?? 0);
+        $student = Student::find($id);
+        if ($student === null) {
+            throw new \App\Core\HttpException(404, 'Student not found');
+        }
+
+        // RLS/BOLA: only the owner center user (or an admin) may approve.
+        Auth::assertStudentAccess($id);
+
+        if ((int) ($student['active'] ?? 0) !== 1) {
+            Student::updateRow($id, ['active' => 1, 'updated_at' => date('Y-m-d H:i:s')]);
+        }
+
+        return $this->sendResponse(
+            ['id' => $id, 'registration' => $student['registration'], 'active' => 1],
+            'Registration approved successfully.'
+        );
+    }
+
+    /**
+     * Reject a pending registration. POST /api/pending-students/{id}/reject
+     * The app has no soft-delete/audit trail for students, so rejecting removes
+     * the registration entirely (same as the list's Delete) after a UI confirm.
+     * Only PENDING rows may be rejected — deleting approved students stays on
+     * the regular delete endpoint (student-delete).
+     */
+    public function reject(Request $request): array
+    {
+        if (!Auth::check()) {
+            Response::json(['status' => 'errors'], 401);
+        }
+
+        $id = (int) ($request->params['id'] ?? 0);
+        $student = Student::find($id);
+        if ($student === null) {
+            throw new \App\Core\HttpException(404, 'Student not found');
+        }
+
+        // RLS/BOLA: only the owner center user (or an admin) may reject.
+        Auth::assertStudentAccess($id);
+
+        if ((int) ($student['active'] ?? 0) === 1) {
+            throw new \App\Core\HttpException(422, 'Only pending registrations can be rejected.');
+        }
+
+        if (!empty($student['photo'])) {
+            @unlink(BASE_PATH . '/public/' . $student['photo']);
+        }
+        Student::deleteRow($id);
+
+        return $this->sendResponse(
+            ['deleted' => $id],
+            'Registration rejected and removed.'
+        );
+    }
+
+    /** Shared free-text search for the student list queries (see index()). */
+    private function applyStudentSearch(Query $q, ?string $search): void
+    {
+        if ($search === null || trim($search) === '') {
+            return;
+        }
+        $term = strtolower(trim($search));
+        $classWord = match ($term) {
+            'kg' => 6, 'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5,
+            default => null,
+        };
+        if ($classWord !== null) {
+            $q->where('students.class', $classWord);
+            return;
+        }
+        $like = '%' . $search . '%';
+        // Search group; dotted columns quoted explicitly (see index()).
+        $q->whereRaw(
+            '(`students`.`name` LIKE ? OR `registration` LIKE ? OR `roll` LIKE ?'
+            . ' OR `users`.`name` LIKE ? OR `institutes`.`name` LIKE ?)',
+            [$like, $like, $like, $like, $like]
         );
     }
 
@@ -281,6 +457,15 @@ final class StudentController extends Controller
             : null;
 
         // --- Insert student ---
+        // `registration` (generated above), `active` and `paid` are part of the
+        // original Student::firstOrCreate() payload; the list, the registration
+        // card and the QR result lookups all read them, so a row inserted
+        // without them shows a blank registration number and "Inactive".
+        // Filter on null only — array_filter() without a callback would also
+        // drop the legitimate 0 for `paid`.
+        // Approval workflow: new registrations are created PENDING
+        // (active = 0) and appear in the Pending Registration queue until an
+        // admin approves them (POST /api/pending-students/{id}/approve).
         $studentId = Student::create(array_filter([
             'name'               => $data['name'],
             'father_name'        => $data['father_name'],
@@ -304,10 +489,13 @@ final class StudentController extends Controller
             'photo'              => $photoPath,
             'principal_name'     => $data['principal_name'] ?? '',
             'note'               => $data['note'] ?? '',
+            'registration'       => $registration,
+            'active'             => 0,
+            'paid'               => 0,
             'user_id'            => Auth::id(),
             'created_at'         => date('Y-m-d H:i:s'),
             'updated_at'         => date('Y-m-d H:i:s'),
-        ]));
+        ], static fn ($value): bool => $value !== null));
 
         // --- SMS notification (optional dry-run) ---
         if (Config::getBool('SMS_DRY_RUN', false) !== true) {
@@ -319,8 +507,8 @@ final class StudentController extends Controller
         }
 
         return $this->sendResponse(
-            ['id' => $studentId, 'registration' => $registration, 'regBase' => $regBase],
-            'Student registered successfully.'
+            ['id' => $studentId, 'registration' => $registration, 'regBase' => $regBase, 'active' => 0],
+            'Student registered successfully. Awaiting approval.'
         );
     }
 
@@ -819,6 +1007,9 @@ final class StudentController extends Controller
      * The original took the registration NUMBER (not the row id) and streamed a
      * PDF; like the certificates this clone renders printable HTML. Photos are
      * embedded from the same public path the rest of the app uses.
+     *
+     * The route segment is named {id}, so a row id is accepted as a fallback
+     * (registration wins). Any other app link must pass the registration number.
      */
     public function registrationpdf(Request $request): string
     {
@@ -826,9 +1017,8 @@ final class StudentController extends Controller
             Response::json(['status' => 'errors'], 401);
         }
 
-        $registration = (string) $request->params['id'];
-        $student = Database::selectOne(
-            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
+        $key = (string) $request->params['id'];
+        $select = "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
                     u.`name` AS center_name,
                     d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
                FROM `students` s
@@ -837,11 +1027,18 @@ final class StudentController extends Controller
           LEFT JOIN `users` u ON u.`id` = c.`user_id`
           LEFT JOIN `divisions` d ON d.`id` = s.`division_id`
           LEFT JOIN `districts` dt ON dt.`id` = s.`district_id`
-          LEFT JOIN `upozilas` uz ON uz.`id` = s.`upazila_id`
-              WHERE s.`registration` = ?
-              ORDER BY s.`id` ASC LIMIT 1",
-            [$registration]
+          LEFT JOIN `upozilas` uz ON uz.`id` = s.`upazila_id`";
+
+        $student = Database::selectOne(
+            $select . " WHERE s.`registration` = ? ORDER BY s.`id` ASC LIMIT 1",
+            [$key]
         );
+        if ($student === null && ctype_digit($key)) {
+            $student = Database::selectOne(
+                $select . " WHERE s.`id` = ? ORDER BY s.`id` ASC LIMIT 1",
+                [(int) $key]
+            );
+        }
         if ($student === null) {
             throw new \App\Core\HttpException(404, 'Student not found');
         }

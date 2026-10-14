@@ -40,6 +40,8 @@ final class AdmitCardController extends Controller
             ->where('institute_id', $id)
             ->where('session', $activeSession)
             ->where('class', $class)
+            // Approval workflow: pending registrations get no admit card.
+            ->where('active', 1)
             ->orderBy('roll', 'asc')
             ->get();
 
@@ -79,6 +81,8 @@ final class AdmitCardController extends Controller
             ->where('institute_id', $id)
             ->where('session', $activeSession)
             ->where('class', $class)
+            // Approval workflow: pending registrations get no admit card.
+            ->where('active', 1)
             ->orderBy('roll', 'asc')
             ->get();
 

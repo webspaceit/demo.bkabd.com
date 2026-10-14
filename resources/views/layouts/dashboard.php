@@ -21,6 +21,7 @@ $nav = [
     ['group:Students', '#', null, 'arrow', [
         ['Student Registration', '/student-registration', 'student-registration', 'userplus'],
         ['Student Details', '/students', 'student-list', 'users'],
+        ['Pending Registration', '/pending-students', 'student-list', 'clock'],
     ]],
     ['group:Institutes', '#', null, 'arrow', [
         ['Institute Registration', '/institute-registration', 'institute-create', 'building-plus'],
@@ -89,6 +90,7 @@ function nav_icon(string $name, string $cls = ''): string
         'shield' => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>',
         'settings' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
         'sliders' => '<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/>',
+        'clock' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
         'key' => '<circle cx="7.5" cy="15.5" r="3.5"/><path d="m10.5 12.5 8-8"/><path d="m16 4 3 3"/><path d="m13.5 6.5 3 3"/>',
         'book' => '<path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2Z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7Z"/>',
     ];
@@ -104,6 +106,23 @@ $isActive = function (string $path) use ($current): bool {
     return $path === '/'
         ? $current === '/'
         : ($current === $path || str_starts_with($current, $path . '/'));
+};
+
+// Sidebar count badges (path => pending registrations). Rendered only when > 0;
+// center users only see their own center's pending registrations.
+$navBadges = [];
+if ($canSee('student-list')) {
+    $navBadges['/pending-students'] = \App\Models\Student::pendingCount(
+        Auth::isAdmin() ? null : Auth::centerId()
+    );
+}
+$navBadge = function (string $path) use ($navBadges): string {
+    $count = (int) ($navBadges[$path] ?? 0);
+    if ($count < 1) {
+        return '';
+    }
+    return '<span data-nav-badge="' . e($path) . '" class="ml-auto shrink-0 badge bg-amber-50 text-amber-800 font-semibold"'
+        . ' title="Pending registrations">' . number_format($count) . '</span>';
 };
 
 $sessions = [];
@@ -193,6 +212,7 @@ $activeSession = Auth::activeSession();
                                            class="active-nav-notch flex items-center gap-3 pl-4 py-3 ml-4">
                                             <?= nav_icon($cIcon) ?>
                                             <span class="truncate"><?= e($cLabel) ?></span>
+                                            <?= $navBadge($cPath) ?>
                                         </a>
                                     </div>
                                 <?php else: ?>
@@ -200,6 +220,7 @@ $activeSession = Auth::activeSession();
                                        class="group flex items-center gap-3 px-4 py-2.5 rounded-full text-emerald-50/90 hover:text-white hover:bg-white/10 transition ml-4">
                                         <?= nav_icon($cIcon, 'text-emerald-200/70 group-hover:text-white transition-colors') ?>
                                         <span class="truncate"><?= e($cLabel) ?></span>
+                                        <?= $navBadge($cPath) ?>
                                     </a>
                                 <?php endif; ?>
                             <?php endforeach; ?>
@@ -214,6 +235,7 @@ $activeSession = Auth::activeSession();
                                class="active-nav-notch flex items-center gap-3 pl-4 py-3">
                                 <?= nav_icon($icon) ?>
                                 <span class="truncate"><?= e($label) ?></span>
+                                <?= $navBadge($path) ?>
                             </a>
                         </div>
                     <?php else: ?>
@@ -221,6 +243,7 @@ $activeSession = Auth::activeSession();
                            class="group flex items-center gap-3 px-4 py-2.5 rounded-full text-emerald-50/90 hover:text-white hover:bg-white/10 transition">
                             <?= nav_icon($icon, 'text-emerald-200/70 group-hover:text-white transition-colors') ?>
                             <span class="truncate"><?= e($label) ?></span>
+                            <?= $navBadge($path) ?>
                         </a>
                     <?php endif; ?>
                 <?php endforeach; ?>

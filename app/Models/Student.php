@@ -23,4 +23,18 @@ class Student extends Model
         'percentage' => 'float', 'grade' => 'int', 'ml' => 'int', 'place_id' => 'int',
         'paid' => 'int', 'active' => 'int', 'marker_id' => 'int', 'user_id' => 'int',
     ];
+
+    /**
+     * Registrations awaiting approval (active = 0 / NULL) — the sidebar badge
+     * count for the Pending Registration queue. Optional center scope for
+     * center users (admins see every pending row).
+     */
+    public static function pendingCount(?int $centerId = null): int
+    {
+        $q = static::query()->whereRaw('(`active` = 0 OR `active` IS NULL)');
+        if ($centerId !== null && $centerId > 0) {
+            $q->where('center_id', $centerId);
+        }
+        return $q->count();
+    }
 }
