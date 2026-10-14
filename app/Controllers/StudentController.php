@@ -612,6 +612,31 @@ final class StudentController extends Controller
         );
     }
 
+    /** Delete student photo only. POST /api/students/{id}/delete-photo */
+    public function deletePhoto(Request $request): array
+    {
+        if (!Auth::check()) {
+            Response::json(['status' => 'errors'], 401);
+        }
+
+        $id = (int) ($request->params['id'] ?? 0);
+        $student = Student::find($id);
+        if ($student === null) {
+            throw new \App\Core\HttpException(404, 'Student not found');
+        }
+
+        Auth::assertStudentAccess($id);
+
+        if (empty($student['photo'])) {
+            return $this->sendError('No photo to delete.', [], 422);
+        }
+
+        @unlink(BASE_PATH . '/public/' . $student['photo']);
+        Student::updateRow($id, ['photo' => null]);
+
+        return $this->sendResponse(['deleted' => true], 'Photo deleted successfully.');
+    }
+
     /** Photo upload. POST /api/uploadFile */
     public function uploadFile(Request $request): array
     {

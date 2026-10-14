@@ -50,6 +50,9 @@ Router::post('/api/students/{id}', [StudentController::class, 'update'], 'auth|p
 // Original: had GET /api/students/{id} delete route (bug) — we make it DELETE
 Router::delete('/api/students/{id}', [StudentController::class, 'destroy'], 'auth|permission:student-delete');
 
+// Delete student photo only
+Router::post('/api/students/{id}/delete-photo', [StudentController::class, 'deletePhoto'], 'auth|permission:student-edit');
+
 // Photo upload
 // Original: POST /api/uploadFile (was unauthenticated + had dd()) — requires
 // auth + one of the student write permissions; rate-limited in the controller.

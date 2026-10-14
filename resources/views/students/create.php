@@ -275,7 +275,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
                     </div>
 
                     <div>
-                        <label class="label" for="photo-input">Photo</label>
+                        <label class="label" for="photo-input">Student Photo</label>
                         <label for="photo-input" class="flex items-center gap-4 cursor-pointer rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/60 px-4 py-3 transition hover:border-emerald-400 hover:bg-emerald-50/40">
                             <input type="file" id="photo-input" name="photo" accept="image/jpeg,image/png,image/gif" data-field="photo" class="sr-only">
                             <img id="photo-preview" alt="Photo preview" class="hidden w-12 h-14 object-cover rounded-md ring-1 ring-slate-200 shrink-0">

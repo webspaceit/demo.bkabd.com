@@ -644,29 +644,54 @@ final class ReportController extends Controller
     /** Educational type student count. */
     public function EducationalTypeStudentCountReport(Request $request): string
     {
-        $session = $this->activeSession();
-        // RLS: center users' report covers their own center only.
-        $scopeCenter = $this->centerScopeOrNull();
-        $report = ReportSheetService::educationalType($session, $scopeCenter);
+        $session      = $this->activeSession();
+        $scopeCenter  = $this->centerScopeOrNull();
+        $report       = ReportSheetService::educationalType($session, $scopeCenter);
+
         if ($report === []) {
             ReportPdf::noData('Center');
         }
 
-        $headings = ['Sl', 'Center Name', 'Class', 'Bangla', 'English', 'Arabic', 'Total'];
-        $rows = [];
-        $i = 1;
+        // Build main rows and accumulate per-class totals for each education type.
+        $mainRows       = [];
+        $banglaByClass  = [];   // class => count
+        $englishByClass = [];
+        $arabicByClass  = [];
+        $grandTotal     = ['bangla' => 0, 'english' => 0, 'arabic' => 0, 'total' => 0];
+
         foreach ($report as $r) {
-            $rows[] = [
-                $i++, $r['center_name'] ?? '', ClassName($r['class'] ?? 0),
-                (int) $r['bangla'], (int) $r['english'], (int) $r['arabic'], (int) $r['total'],
+            $class   = (int) ($r['class']   ?? 0);
+            $bangla  = (int) ($r['bangla']  ?? 0);
+            $english = (int) ($r['english'] ?? 0);
+            $arabic  = (int) ($r['arabic']  ?? 0);
+            $total   = (int) ($r['total']   ?? 0);
+
+            $mainRows[] = [
+                'center_name' => $r['center_name'] ?? '',
+                'class_name'  => ClassName($class),
+                'bangla'      => $bangla,
+                'english'     => $english,
+                'arabic'      => $arabic,
+                'total'       => $total,
             ];
+
+            $banglaByClass[$class]  = ($banglaByClass[$class]  ?? 0) + $bangla;
+            $englishByClass[$class] = ($englishByClass[$class] ?? 0) + $english;
+            $arabicByClass[$class]  = ($arabicByClass[$class]  ?? 0) + $arabic;
+
+            $grandTotal['bangla']  += $bangla;
+            $grandTotal['english'] += $english;
+            $grandTotal['arabic']  += $arabic;
+            $grandTotal['total']   += $total;
         }
 
-        return $this->renderSheet([
-            'reportTitle' => 'Educational Type Student Count Report',
-            'scopeName' => $scopeCenter !== null ? 'Center Name: ' . ReportService::centerName($scopeCenter) : 'All Centers',
-            'headings' => $headings,
-            'rows' => $rows,
+        return View::render('reports.pdf.educational_type', [
+            'activeSession'  => $session,
+            'mainRows'       => $mainRows,       // view pads to 35 rows itself
+            'grandTotal'     => $grandTotal,
+            'banglaByClass'  => $banglaByClass,
+            'englishByClass' => $englishByClass,
+            'arabicByClass'  => $arabicByClass,
         ]);
     }
 
