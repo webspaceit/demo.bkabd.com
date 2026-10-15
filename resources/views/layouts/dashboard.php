@@ -280,6 +280,16 @@ $activeSession = Auth::activeSession();
                 </select>
                 <?php endif; ?>
 
+                <?php if ($canSee('student-list')): ?>
+                <a href="/pending-students" class="relative p-1 text-slate-500 hover:text-slate-700 transition shrink-0" title="Pending registrations" aria-label="Pending registrations">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    <span data-nav-badge="/pending-students"
+                          class="<?= ($navBadges['/pending-students'] ?? 0) > 0 ? '' : 'hidden' ?> absolute top-0.5 right-0.5 inline-flex items-center justify-center rounded-full ring-2 ring-white text-white h-4"
+                          style="background:#f59e0b;font-size:10px;line-height:1;padding:0 4px"
+                          title="Pending registrations"><?= number_format((int) ($navBadges['/pending-students'] ?? 0)) ?></span>
+                </a>
+                <?php endif; ?>
+
                 <?php if ($canSee('notice-list')): ?>
                 <a href="/notices" class="relative p-1 text-slate-500 hover:text-slate-700 transition shrink-0" title="Notices" aria-label="Notices">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-4-5.659V5a2 2 0 1 0-4 0v.341A6 6 0 0 0 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>
@@ -341,5 +351,47 @@ $activeSession = Auth::activeSession();
 <?php foreach ((array) ($pageScripts ?? []) as $src): ?>
 <script src="<?= e($src) ?>"></script>
 <?php endforeach; ?>
+<?php if ($canSee('student-list')): ?>
+<script>
+// Live pending-registration badges. Every tab shares the same DOM nodes and a
+// background poll keeps the count current without a full page reload.
+window.updatePendingBadges = function (total) {
+    total = Math.max(0, parseInt(total, 10) || 0);
+    var sel = '[data-nav-badge="/pending-students"]';
+    if (total > 0 && !document.querySelector(sel)) {
+        // The sidebar renders its badge server-side only when the count is
+        // non-zero at page load — inject one live if it appears afterwards.
+        var item = document.querySelector('a[href="/pending-students"]');
+        if (item) {
+            var span = document.createElement('span');
+            span.setAttribute('data-nav-badge', '/pending-students');
+            span.className = 'ml-auto shrink-0 badge bg-amber-50 text-amber-800 font-semibold';
+            span.title = 'Pending registrations';
+            item.appendChild(span);
+        }
+    }
+    document.querySelectorAll(sel).forEach(function (el) {
+        if (total > 0) {
+            el.textContent = total.toLocaleString('en-US');
+            el.classList.remove('hidden');
+        } else {
+            el.classList.add('hidden');
+        }
+    });
+};
+(function () {
+    var url = '/api/pending-students?per_page=1';
+    function refresh() {
+        BK.get(url).then(function (json) {
+            window.updatePendingBadges((json && json.data && json.data.total) || 0);
+        }).catch(function () { /* transient failure keeps the last count */ });
+    }
+    setInterval(refresh, 30000);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) { refresh(); }
+    });
+})();
+</script>
+<?php endif; ?>
 </body>
 </html>

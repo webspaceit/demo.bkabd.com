@@ -144,9 +144,8 @@ function send_sms($number, $msg)
     curl_setopt($ch, CURLOPT_TIMEOUT, 20);
     curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
     curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    return $response;
+    // curl_close() is a no-op since PHP 8.0 (deprecated in PHP 8.5) — skipped.
+    return curl_exec($ch);
 }
 
 function send_sms_mask($number, $msg)
@@ -169,9 +168,8 @@ function send_sms_mask($number, $msg)
     curl_setopt($ch, CURLOPT_TIMEOUT, 20);
     curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
     curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    return $response;
+    // curl_close() is a no-op since PHP 8.0 (deprecated in PHP 8.5) — skipped.
+    return curl_exec($ch);
 }
 
 // ---------------------------------------------------------------

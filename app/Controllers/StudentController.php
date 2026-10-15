@@ -916,7 +916,6 @@ final class StudentController extends Controller
                 ob_start();
                 $encoded = $encoder($img);
                 $out = (string) ob_get_clean();
-                imagedestroy($img);
                 if (!$encoded || $out === '') {
                     $out = null;
                 }
@@ -942,8 +941,10 @@ final class StudentController extends Controller
     /**
      * Downscale + re-encode an image as JPEG until it fits $maxBytes.
      *
-     * Consumes (and frees) the passed GD image. Transparency is flattened onto
-     * white first, so converting a PNG/GIF photo never produces black areas.
+     * Transparency is flattened onto white first, so converting a PNG/GIF
+     * photo never produces black areas. (imagedestroy() is deprecated in
+     * PHP 8.5 — GdImage objects free on reassignment, so the holders are
+     * simply overwritten instead.)
      *
      * @param  \GdImage $img
      * @return string|null encoded JPEG bytes, or null when encoding fails
@@ -959,7 +960,6 @@ final class StudentController extends Controller
         $canvas = imagecreatetruecolor($w, $h);
         imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
         imagecopyresampled($canvas, $img, 0, 0, 0, 0, $w, $h, $srcW, $srcH);
-        imagedestroy($img);
         $img = $canvas;
 
         $quality = 82;
@@ -981,11 +981,9 @@ final class StudentController extends Controller
             $next = imagecreatetruecolor($w, $h);
             imagefill($next, 0, 0, imagecolorallocate($next, 255, 255, 255));
             imagecopyresampled($next, $img, 0, 0, 0, 0, $w, $h, imagesx($img), imagesy($img));
-            imagedestroy($img);
             $img = $next;
             $quality = 75;
         }
-        imagedestroy($img);
 
         return ($out === null || $out === '') ? null : $out;
     }
@@ -1064,7 +1062,8 @@ final class StudentController extends Controller
         }
 
         return View::render('students.registration_card', [
+            'title'   => 'Registration Card ' . ($student['registration'] ?? ''),
             'student' => $student,
-        ]);
+        ], 'layouts.guest');
     }
 }

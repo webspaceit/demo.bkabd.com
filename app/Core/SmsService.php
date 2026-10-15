@@ -60,7 +60,7 @@ final class SmsService
         if ($response === false) {
             error_log('[sms] curl error: ' . curl_error($ch));
         }
-        curl_close($ch);
+        // curl_close() is a no-op since PHP 8.0 (deprecated in PHP 8.5) — skipped.
         return $response;
     }
 

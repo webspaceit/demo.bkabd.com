@@ -6,7 +6,7 @@
  * {id}/approve). Approved students become Active and join the exam documents
  * (mark entry, admit card, seat plan, certificates); rejecting removes the
  * registration. Columns mirror the students list plus a queue-specific
- * "Registered" date and Approve/Reject actions.
+ * "Submitted" date with a waiting-age hint and Approve/Reject actions.
  *
  * $sessions / $centers / $institutes are rendered server-side so the filter
  * bar works without extra API calls; $filters carries the query-string state.
@@ -19,13 +19,39 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
     ? (string) $filters['session']
     : $activeSession;
 ?>
+<style>
+/* Skeleton shimmer while rows load (animate-pulse is not in the prebuilt CSS). */
+#pending-rows .pending-skel {
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 300% 100%;
+    animation: pending-skel 1.2s ease infinite;
+}
+@keyframes pending-skel {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+</style>
 <div class="space-y-4">
     <div class="card" id="pending-list" data-perm-approve="<?= can('student-edit') ? '1' : '0' ?>">
         <div class="card-header">
-            <div class="min-w-0">
-                <h1 class="text-base font-semibold text-slate-800">Pending Registration (<span id="pending-total">0</span>)</h1>
-                <p class="text-xs text-slate-400 mt-1">New registrations wait here until they are approved. Approved students become Active and join the exam documents.</p>
+            <div class="flex items-center gap-3 min-w-0">
+                <span class="inline-flex items-center justify-center rounded-full bg-emerald-50 shrink-0" style="width:2.5rem;height:2.5rem" aria-hidden="true">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <div class="min-w-0">
+                    <h1 class="text-base font-semibold text-slate-800">Pending Registration</h1>
+                    <p class="text-xs text-slate-400 mt-0.5">New registrations wait here until they are approved. Approved students become Active and join the exam documents.</p>
+                </div>
             </div>
+            <span id="pending-count-chip"
+                  class="inline-flex items-center gap-2 shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-800"
+                  title="Registrations awaiting approval">
+                <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                <span id="pending-total">0</span>
+                <span class="hidden sm:inline font-medium">awaiting approval</span>
+            </span>
         </div>
         <div class="card-body space-y-4">
             <div class="filter-bar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -83,19 +109,20 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                 <table class="table">
                     <thead>
                         <tr>
-                            <th style="width:10px">Sl.</th>
+                            <th style="width:10px">#</th>
+                            <th>Student</th>
                             <th>Reg. No</th>
-                            <th>Name</th>
+                            <th>Roll No</th>
                             <th>Class</th>
                             <th>Center</th>
                             <th>Institute</th>
-                            <th>Registered</th>
+                            <th>Submitted</th>
                             <th>Status</th>
-                            <th style="width:240px">Action</th>
+                            <th style="width:220px">Action</th>
                         </tr>
                     </thead>
                     <tbody id="pending-rows">
-                        <tr><td colspan="9" class="text-center py-8 text-slate-400">Loading…</td></tr>
+                        <tr><td colspan="10" class="text-center py-8 text-slate-400">Loading…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -116,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const rowsEl = document.getElementById('pending-rows');
     if (!rowsEl || !listBox) { return; }
 
-    const totalEl = document.getElementById('pending-total');
+    const chipEl = document.getElementById('pending-count-chip');
     const pagerEl = document.getElementById('pending-pagination');
     const sessionEl = document.getElementById('f-session');
     const classEl = document.getElementById('f-class');
@@ -134,42 +161,178 @@ document.addEventListener('DOMContentLoaded', function () {
     const GENDERS = { 1: 'Male', 2: 'Female', 3: 'Others' };
     const RELIGIONS = { 1: 'Muslim', 2: 'Hindu', 3: 'Buddhist', 4: 'Christian' };
     const EDUCATION = { 1: 'Bangla Medium', 2: 'English Version', 3: 'Arabic Version' };
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     let pageNum = 1;
     let searchTimer = null;
 
+    // -----------------------------------------------------------------
+    // Inline SVG icons (same lucide-style language as the sidebar).
+    // -----------------------------------------------------------------
+    function svgIcon(paths, cls) {
+        return '<svg class="' + (cls || 'w-4 h-4') + '" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">' + paths + '</svg>';
+    }
+    const ICON = {
+        eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+        check: '<path d="m5 13 4 4L19 7"/>',
+        checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 5-5"/>',
+        x: '<path d="M18 6 6 18M6 6l12 12"/>',
+        printer: '<path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="2"/>',
+        search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+        person: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
+        clock: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', 'w-4 h-4 shrink-0')
+    };
+
+    // -----------------------------------------------------------------
+    // Header count chip: amber "N awaiting approval" or a green all-clear.
+    // -----------------------------------------------------------------
+    function renderCountChip(total) {
+        if (!chipEl) { return; }
+        if (total > 0) {
+            chipEl.className = 'inline-flex items-center gap-2 shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-800';
+            chipEl.innerHTML = svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', 'w-4 h-4 text-amber-500 shrink-0')
+                + '<span id="pending-total">' + Number(total).toLocaleString('en-US') + '</span>'
+                + '<span class="hidden sm:inline font-medium">awaiting approval</span>';
+        } else {
+            chipEl.className = 'inline-flex items-center gap-2 shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-600';
+            chipEl.innerHTML = svgIcon(ICON.checkCircle, 'w-4 h-4 shrink-0')
+                + '<span id="pending-total">0</span>'
+                + '<span class="hidden sm:inline font-medium">all caught up</span>';
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Date + waiting-age helpers (server timestamps are plain strings).
+    // -----------------------------------------------------------------
+    function utcDay(ts) {
+        const p = String(ts || '').slice(0, 10).split('-').map(Number);
+        return Date.UTC(p[0] || 0, (p[1] || 1) - 1, p[2] || 1);
+    }
+    function daysWaiting(ts) {
+        const now = new Date();
+        const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+        return Math.floor((today - utcDay(ts)) / 86400000);
+    }
+    function fmtDate(ts) {
+        const p = String(ts || '').slice(0, 10).split('-');
+        if (p.length !== 3) { return '—'; }
+        return (p[2] || '') + ' ' + (MONTHS[Number(p[1]) - 1] || '?') + ' ' + p[0];
+    }
+    function waitingLine(ts) {
+        const days = daysWaiting(ts);
+        const text = days <= 0 ? 'submitted today' : (days === 1 ? '1 day waiting' : days + ' days waiting');
+        const cls = days >= 3 ? 'text-amber-500 font-medium' : 'text-slate-400';
+        return '<div class="text-xs ' + cls + ' mt-0.5">' + text + '</div>';
+    }
+
+    // -----------------------------------------------------------------
+    // Photo avatar — uploaded photo or a soft emerald person placeholder.
+    // -----------------------------------------------------------------
+    function avatarHtml(rec) {
+        const size = 'width:2.5rem;height:2.5rem';
+        const box = 'inline-flex items-center justify-center rounded-full bg-emerald-50';
+        const fallback = '<span class="' + box + '" style="' + size + '" aria-hidden="true">'
+            + svgIcon(ICON.person, 'w-4 h-4 text-emerald-600') + '</span>';
+        let img = '';
+        if (rec.photo) {
+            img = '<img src="/' + BK.esc(rec.photo) + '" alt="" loading="lazy"'
+                + ' class="rounded-full object-cover border border-slate-200" style="' + size + '"'
+                + ' onerror="this.classList.add(\'hidden\');this.nextElementSibling.classList.remove(\'hidden\')">';
+        }
+        return '<span class="inline-flex shrink-0">'
+            + (img || fallback)
+            + (img ? fallback : '')
+            + '</span>';
+    }
+
+    // -----------------------------------------------------------------
+    // Loading skeletons + empty states.
+    // -----------------------------------------------------------------
+    function skeletonRows(count) {
+        const widths = [16, 110, 78, 40, 34, 96, 120, 66, 58, 88];
+        let out = '';
+        for (let r = 0; r < count; r++) {
+            out += '<tr>' + widths.map(function (w) {
+                return '<td><div class="pending-skel" style="width:' + w + 'px"></div></td>';
+            }).join('') + '</tr>';
+        }
+        return out;
+    }
+
+    function hasActiveFilters() {
+        return !!(val(sessionEl) || val(classEl) || val(centerEl) || val(instituteEl) || val(searchEl));
+    }
+
+    function emptyStateHtml() {
+        if (hasActiveFilters()) {
+            return '<tr><td colspan="10" class="px-4 py-10 text-center">'
+                + '<div class="inline-flex flex-col items-center gap-2 text-slate-400">'
+                + svgIcon(ICON.search, 'w-6 h-6')
+                + '<p class="text-sm font-medium text-slate-500">No pending registrations match the current filters</p>'
+                + '<p class="text-xs">Try changing or clearing them to see the rest of the queue.</p>'
+                + '<button type="button" class="btn btn-sm btn-light" data-act="reset-filters">Reset filters</button>'
+                + '</div></td></tr>';
+        }
+        return '<tr><td colspan="10" class="px-4 py-10 text-center">'
+            + '<div class="inline-flex flex-col items-center gap-2">'
+            + '<span class="inline-flex items-center justify-center rounded-full bg-emerald-50" style="width:3rem;height:3rem">'
+            + svgIcon(ICON.checkCircle, 'w-6 h-6 text-emerald-600') + '</span>'
+            + '<p class="text-sm font-medium text-slate-700">All caught up — no pending registrations</p>'
+            + '<p class="text-xs text-slate-400">New student registrations will appear here for your approval.</p>'
+            + '</div></td></tr>';
+    }
+
+    // -----------------------------------------------------------------
+    // Rows.
+    // -----------------------------------------------------------------
+    function dash(value) {
+        return (value === null || value === undefined || String(value) === '') ? '—' : BK.esc(String(value));
+    }
+
     function rowHtml(rec, i) {
         const id = BK.esc(String(rec.id));
         const className = CLASS_NAMES[rec.class] || '';
-        const registered = String(rec.created_at || '').slice(0, 10);
-        const badge = '<span class="badge bg-amber-50 text-amber-800">Pending</span>';
+
+        const statusBadge = '<span class="badge inline-flex items-center gap-1 border border-amber-200 bg-amber-50 text-amber-800">'
+            + '<span class="shrink-0 rounded-full" style="width:.375rem;height:.375rem;background:#f59e0b"></span>Pending</span>';
 
         let actions = '<div class="row-actions flex items-center gap-1">';
-        actions += '<button type="button" class="btn btn-sm btn-light" data-act="view" data-id="' + id + '" title="Preview">&#128065;</button>';
+        actions += '<button type="button" class="btn btn-sm btn-light" data-act="view" data-id="' + id + '" title="Preview" aria-label="Preview">'
+            + svgIcon(ICON.eye) + '</button>';
         if (canApprove) {
-            actions += '<button type="button" class="btn btn-sm btn-primary" data-act="approve" data-id="' + id + '" title="Approve">&#10003; Approve</button>';
-            actions += '<button type="button" class="btn btn-sm btn-danger" data-act="reject" data-id="' + id + '" title="Reject">&#10005;</button>';
+            actions += '<button type="button" class="btn btn-sm btn-primary inline-flex gap-1" data-act="approve" data-id="' + id + '" title="Approve">'
+                + svgIcon(ICON.check, 'w-3.5 h-3.5') + '<span class="hidden lg:inline">Approve</span></button>';
+            actions += '<button type="button" class="btn btn-sm btn-danger" data-act="reject" data-id="' + id + '" title="Reject" aria-label="Reject">'
+                + svgIcon(ICON.x) + '</button>';
         }
         // Printable registration card — the endpoint resolves the REGISTRATION
         // number (not the row id), so rows without one get no link.
         if (rec.registration) {
-            actions += '<a class="btn btn-sm btn-light" target="_blank" rel="noopener" title="Registration card"'
-                + ' href="/api/registrationpdf/' + encodeURIComponent(String(rec.registration)) + '">&#128424;</a>';
+            actions += '<a class="btn btn-sm btn-light" target="_blank" rel="noopener" title="Registration card" aria-label="Registration card"'
+                + ' href="/api/registrationpdf/' + encodeURIComponent(String(rec.registration)) + '">'
+                + svgIcon(ICON.printer) + '</a>';
         }
         actions += '</div>';
 
-        return '<tr><td>' + ((pageNum - 1) * PER_PAGE + i + 1) + '</td>' +
-            '<td>' + BK.esc(rec.registration) + '</td>' +
-            '<td>' + BK.esc(rec.name) + '</td>' +
-            '<td>' + BK.esc(className) + '</td>' +
-            '<td>' + BK.esc(rec.center_name) + '</td>' +
-            '<td>' + BK.esc(rec.institute_name) + '</td>' +
-            '<td>' + BK.esc(registered) + '</td>' +
-            '<td>' + badge + '</td>' +
-            '<td>' + actions + '</td></tr>';
+        return '<tr>'
+            + '<td class="text-slate-400">' + ((pageNum - 1) * PER_PAGE + i + 1) + '</td>'
+            + '<td><div class="flex items-center gap-2">'
+            + avatarHtml(rec)
+            + '<div class="min-w-0"><div class="font-medium text-slate-800">' + BK.esc(rec.name) + '</div>'
+            + (rec.phone ? '<div class="text-xs text-slate-400 mt-0.5">' + BK.esc(rec.phone) + '</div>' : '')
+            + '</div></div></td>'
+            + '<td><div class="font-semibold text-slate-800">' + BK.esc(rec.registration) + '</div></td>'
+            + '<td>' + dash(rec.roll) + '</td>'
+            + '<td><span class="badge badge-gray">' + BK.esc(className) + '</span></td>'
+            + '<td>' + BK.esc(rec.center_name) + '</td>'
+            + '<td>' + BK.esc(rec.institute_name) + '</td>'
+            + '<td><div class="text-slate-700">' + fmtDate(rec.created_at) + '</div>' + waitingLine(rec.created_at) + '</td>'
+            + '<td>' + statusBadge + '</td>'
+            + '<td>' + actions + '</td></tr>';
     }
 
     function reload() {
+        rowsEl.innerHTML = skeletonRows(5);
         const url = BK.qs('/api/pending-students', {
             page: pageNum,
             per_page: PER_PAGE,
@@ -182,26 +345,32 @@ document.addEventListener('DOMContentLoaded', function () {
         BK.get(url).then(function (json) {
             const pager = (json && json.data) || {};
             const rows = pager.data || [];
-            totalEl.textContent = pager.total || 0;
+            renderCountChip(pager.total || 0);
             rowsEl.innerHTML = rows.length
                 ? rows.map(rowHtml).join('')
-                : '<tr><td colspan="9" class="px-4 py-8 text-center text-slate-400">No pending registrations</td></tr>';
+                : emptyStateHtml();
             if (pager.current_page) { pageNum = pager.current_page; }
             if (pagerEl) {
                 pagerEl.innerHTML = '';
                 BK.renderPagination(pagerEl, pager);
             }
         }).catch(function (err) {
-            rowsEl.innerHTML = '<tr><td colspan="9" class="px-4 py-8 text-center text-red-500">Could not load the queue</td></tr>';
+            renderCountChip(0);
+            rowsEl.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-red-600">Could not load the queue</td></tr>';
             BK.toast(err.message || 'Could not load the queue', 'error');
         });
     }
 
-    // Keep the sidebar badge in sync after an approve/reject without a full
-    // page reload (unfiltered total = the badge count).
+    // Keep the badges (sidebar + top bar) in sync after an approve/reject
+    // without a full page reload (unfiltered total = the badge count).
+    // window.updatePendingBadges is defined in layouts/dashboard.php.
     function syncNavBadge() {
         BK.get('/api/pending-students?per_page=1').then(function (json) {
             const total = (json && json.data && json.data.total) || 0;
+            if (window.updatePendingBadges) {
+                window.updatePendingBadges(total);
+                return;
+            }
             document.querySelectorAll(BADGE_SEL).forEach(function (el) {
                 if (total > 0) {
                     el.textContent = total.toLocaleString('en-US');
@@ -319,6 +488,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (act === 'view') {
             openModal(id);
+            return;
+        }
+        if (act === 'reset-filters') {
+            [sessionEl, classEl, centerEl, instituteEl].forEach(function (el) {
+                if (el) { el.value = ''; }
+            });
+            if (searchEl) { searchEl.value = ''; }
+            syncInstitutes();
+            pageNum = 1;
+            reload();
             return;
         }
         if (act === 'approve') {

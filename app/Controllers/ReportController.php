@@ -1043,11 +1043,9 @@ final class ReportController extends Controller
                 $dst = imagecreatetruecolor($nw, $nh);
                 imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));
                 imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
-                imagedestroy($src);
                 ob_start();
                 imagejpeg($dst, null, 70);
                 $thumb = (string) ob_get_clean();
-                imagedestroy($dst);
                 if ($thumb !== '') {
                     return 'data:image/jpeg;base64,' . base64_encode($thumb);
                 }

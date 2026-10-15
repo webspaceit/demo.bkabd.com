@@ -545,13 +545,11 @@ class CenterController extends Controller
         imagesavealpha($dst, true);
         imagefilledrectangle($dst, 0, 0, $nw, $nh, imagecolorallocatealpha($dst, 0, 0, 0, 127));
         imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
-        imagedestroy($src);
         match ($type) {
             IMAGETYPE_JPEG => imagejpeg($dst, $path, 85),
             IMAGETYPE_PNG => imagepng($dst, $path),
             default => imagegif($dst, $path),
         };
-        imagedestroy($dst);
     }
 
     private function dropUpload(string $field, ?string $file): void
