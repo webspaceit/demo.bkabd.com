@@ -33,6 +33,15 @@ final class Validator
             $isNullable = in_array('nullable', $ruleList, true);
             $isRequired = in_array('required', $ruleList, true);
 
+            // ConvertEmptyStringsToNull (Laravel's default middleware): an
+            // unselected <select> or a cleared input posts ''. Rules must see
+            // '' as ABSENT so nullable fields store NULL — under strict MySQL
+            // (STRICT_TRANS_TABLES) an '' bound to an INT/DATE column is a
+            // hard error (1366/1292), and '' would also dodge unique: checks.
+            if ($value === '') {
+                $value = null;
+            }
+
             if ($value === null || $value === '') {
                 if ($isRequired) {
                     $errors[$field][] = self::message('required', $field, $messages, "The $field field is required.");

@@ -483,9 +483,14 @@ final class StudentController extends Controller
             'center_id'          => (int) $data['center_id'],
             'institute_id'       => (int) $data['institute_id'],
             'division_id'        => (int) $data['division_id'],
-            'district_id'        => $data['district_id'] ?? null,
-            'upazila_id'         => $data['upazila_id'] ?? null,
-            'union_id'           => $data['union_id'] ?? null,
+            // Geo dropdowns are optional, so '' (unselected) can arrive here as
+            // NULL after validation. district_id/upazila_id are NOT NULL ints
+            // (the original app relied on non-strict MySQL coercing NULL -> 0),
+            // so an unselected optional dropdown stores 0; union_id is
+            // nullable and stores NULL (the original's convention).
+            'district_id'        => (int) ($data['district_id'] ?? 0),
+            'upazila_id'         => (int) ($data['upazila_id'] ?? 0),
+            'union_id'           => $data['union_id'] !== null ? (int) $data['union_id'] : null,
             'photo'              => $photoPath,
             'principal_name'     => $data['principal_name'] ?? '',
             'note'               => $data['note'] ?? '',
@@ -685,27 +690,34 @@ final class StudentController extends Controller
             'session'            => $data['session'] !== null ? (int) $data['session'] : (int) $student['session'],
             'center_id'          => $data['center_id'] ?? $student['center_id'],
             'institute_id'       => $data['institute_id'] ?? $student['institute_id'],
-            'division_id'        => $data['division_id'] ?? $student['division_id'],
-            'district_id'        => $data['district_id'] ?? $student['district_id'],
-            'upazila_id'         => $data['upazila_id'] ?? $student['upazila_id'],
-            'union_id'           => $data['union_id'] ?? $student['union_id'],
+            'division_id'        => $data['division_id'] !== null ? (int) $data['division_id'] : (int) $student['division_id'],
+            // Same geo-id rules as store(): unselected ('' -> NULL after
+            // validation) keeps the student's current value, never '' into the
+            // NOT NULL int columns (strict-MySQL 1366).
+            'district_id'        => $data['district_id'] !== null ? (int) $data['district_id'] : (int) $student['district_id'],
+            'upazila_id'         => $data['upazila_id'] !== null ? (int) $data['upazila_id'] : (int) $student['upazila_id'],
+            'union_id'           => $data['union_id'] !== null ? (int) $data['union_id'] : $student['union_id'],
             'principal_name'     => $data['principal_name'] ?? $student['principal_name'],
             'note'               => $data['note'] ?? $student['note'],
             'updated_at'         => date('Y-m-d H:i:s'),
         ];
 
         // --- If center/institute/class changed, re-generate registration ---
+        // Validated data carries every rule key (null when absent/''), so the
+        // guards must match on null exactly like the $merge above — isset()
+        // alone would treat a null (field not sent) as a change to (int) null
+        // and silently move the student to center/institute 0.
         $regChanged = false;
         $newReg = $student['registration'];
-        if (isset($data['center_id']) && $data['center_id'] != $student['center_id']) {
+        if ($data['center_id'] !== null && (int) $data['center_id'] !== (int) $student['center_id']) {
             $merge['center_id'] = (int) $data['center_id'];
             $regChanged = true;
         }
-        if (isset($data['institute_id']) && $data['institute_id'] != $student['institute_id']) {
+        if ($data['institute_id'] !== null && (int) $data['institute_id'] !== (int) $student['institute_id']) {
             $merge['institute_id'] = (int) $data['institute_id'];
             $regChanged = true;
         }
-        if (isset($data['class']) && $data['class'] != $student['class']) {
+        if ($data['class'] !== null && (int) $data['class'] !== (int) $student['class']) {
             $merge['class'] = (int) $data['class'];
             $regChanged = true;
         }
