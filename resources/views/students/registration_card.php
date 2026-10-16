@@ -298,6 +298,55 @@ $row = static function (string $label, $value): string {
     .rc-note { font-size: .8rem; padding-top: .25rem; }
     .rc-foot { padding: .25rem 1rem .45rem; font-size: .68rem; }
 
+    /* ---- Phones / small tablets ----
+       The sheet is 210mm wide so print and desktop match the reference, but
+       that forces a horizontal scrollbar on a phone. Below 900px the layout
+       reflows to the viewport width instead: the banner heading wraps, the
+       Reg No / Exam Roll tags stack, the two detail columns become one, and
+       the four signatures go 2 x 2. (Paper is unaffected — the @media print
+       block below carries the 210mm sheet through to the printer.) */
+    @media screen and (max-width: 900px) {
+        .rc-page {
+            width: 100%;
+            min-height: 0;
+            padding: .5rem;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, .25);
+        }
+
+        .rc-banner { flex-wrap: wrap; gap: .5rem; padding: .5rem .5rem .4rem; margin-bottom: .6rem; }
+        .rc-logo img { width: 52px; height: 52px; }
+        .rc-banner h1 { font-size: 1.05rem; line-height: 1.2; white-space: normal; }
+        .rc-banner .rc-gov { font-size: .68rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
+        .rc-reg { font-size: .72rem; }
+        .rc-qr canvas, .rc-qr img, .rc-qr table { width: 64px !important; height: 64px !important; }
+
+        .rc-welcome { font-size: .7rem; padding: .4rem .5rem 0; }
+        .rc-exam-head { font-size: 1.05rem; margin: .5rem 0 .2rem; }
+
+        .rc-top { flex-direction: column; align-items: stretch; gap: .5rem; padding: .5rem .5rem .2rem; }
+        .rc-tags, .rc-roll { min-width: 0; }
+        .rc-roll { margin-left: 0; }
+        .rc-tag { white-space: normal; text-align: center; }
+        .rc-center { width: 100%; }
+        .rc-center .rc-pill { font-size: .95rem; padding: .3rem 1rem; }
+
+        .rc-body { flex-direction: column; gap: .75rem; padding: .5rem .5rem 0; margin-top: .25rem; }
+        .rc-col { width: 100%; }
+        .rc-row { grid-template-columns: 8rem .75rem 1fr; font-size: .82rem; }
+        .rc-body-wide { padding: 0 .5rem .4rem; }
+        .rc-body-wide .rc-val { white-space: normal; }
+        .rc-photo { align-self: center; }
+        .rc-photo img { width: 78px; height: 90px; }
+
+        /* Four signatures across would be cramped: 2 x 2. */
+        .sig-tbl { display: block; }
+        .sig-tbl tr { display: grid; grid-template-columns: 1fr 1fr; row-gap: .6rem; }
+        .sig-tbl td { padding: 0 .25rem; }
+
+        .rc-note { font-size: .72rem; padding: .5rem .5rem 0; }
+        .rc-foot { flex-direction: column; align-items: center; gap: .15rem; text-align: center; font-size: .65rem; padding: .25rem .5rem .45rem; }
+    }
+
     @media print {
         html, body { background: #fff !important; }
         body > header, body > footer, #toast-stack { display: none !important; }
