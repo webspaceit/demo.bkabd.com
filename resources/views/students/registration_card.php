@@ -32,15 +32,15 @@ if ($photoSrc === null) {
     $photoSrc = $resolve($placeholder);
 }
 
-// The QR opens this student's registration card (public route, keyed by the
-// registration number) — the card-side counterpart of the result sheet's
-// QR-to-PDF deep link. Scanning the card returns the card itself.
-$host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
-$https = (($_SERVER['HTTPS'] ?? '') === 'on')
-    || (strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https')
-    || ((int) ($_SERVER['SERVER_PORT'] ?? 0) === 443);
-$qrContent = ($https ? 'https://' : 'http://') . $host
-    . '/api/registrationpdf/' . rawurlencode((string) ($student['registration'] ?? ''));
+// The QR does not link back to this page (it is staff-only anyway): it carries
+// the association's identity and contact details — the same block the banner
+// prints — so scanning the card shows the office address, phone and sites.
+$qrContent = implode("\n", [
+    'BANGLADESH KINDERGARTEN ASSOCIATION',
+    'Govt. Reg. No.: S-1028/98',
+    '59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009',
+    'Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd',
+]);
 
 /** A "Label : value" details row. */
 $row = static function (string $label, $value): string {
@@ -202,8 +202,10 @@ $row = static function (string $label, $value): string {
     .rc-val { font-weight: 600; color: #111827; word-break: break-word; }
 
     /* ---- QR (banner right, on the blank space) ---- */
+    /* The QR payload is the whole contact block (~236 bytes -> 61 modules), so
+       it needs ~128px to stay scannable on paper (~0.55mm per module). */
     .rc-qr { text-align: center; margin-left: auto; align-self: center; flex-shrink: 0; }
-    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 88px !important; height: 88px !important; }
+    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 128px !important; height: 128px !important; }
 
     .rc-reg {
         margin: 0;
@@ -224,7 +226,7 @@ $row = static function (string $label, $value): string {
 
     /* ---- Signature block (natural image size, same signatories as the result sheet) ---- */
     .sig-tbl td { vertical-align: bottom; text-align: center; padding: 0 .75rem; }
-    .sig-img img { max-width: 100%; height: auto; margin: 0 auto; display: block; }
+    .sig-img img { max-width: 90px; height: auto; margin: 0 auto; display: block; }
     .sig-line { border-top: 1px solid #000; margin-top: .25rem; padding-top: .25rem; width: 82%; margin-left: auto; margin-right: auto; }
     .sig-name { font-weight: 600; font-size: 1.05em; line-height: 1.2; color: #000; }
     .sig-role { color: #000; font-size: 95%; line-height: 1.2; }
@@ -278,12 +280,17 @@ $row = static function (string $label, $value): string {
     }
 
     /* Compact print scale (applies everywhere so screens match the PDF).
-       Header text scaled so the contact lines fill the space up to the QR. */
+       Header text scaled so the contact lines fill the space up to the QR;
+       the QR keeps the 128px size set by the .rc-qr rule (its payload is the
+       whole contact block, so it needs the room to stay scannable). */
     .rc-banner { padding: .5rem 1rem .4rem; margin-bottom: 1rem; }
     .rc-logo img { width: 68px; height: 68px; }
-    .rc-banner h1 { font-size: 2rem; }
+    /* The QR now carries the whole contact block, so it is sized to 128px
+       (scannable on paper). The heading and the contact line are scaled down a
+       notch so the row (logo + text + QR) still fits inside the 210mm sheet. */
+    .rc-banner h1 { font-size: 1.8rem; }
     .rc-reg { font-size: .85rem; }
-    .rc-banner .rc-gov { font-size: .9rem; line-height: 1.6; white-space: nowrap; }
+    .rc-banner .rc-gov { font-size: .8rem; line-height: 1.6; white-space: nowrap; }
     .rc-top { padding: .45rem 1rem .1rem; }
     .rc-tag { padding: .15rem .75rem; font-size: .85rem; }
     .rc-exam-head { font-size: 1.5rem; margin-bottom: 1rem; }
@@ -291,7 +298,7 @@ $row = static function (string $label, $value): string {
     .rc-photo img { width: 74px; height: 84px; }
     .rc-body { padding: .35rem 1rem 0; column-gap: 1.8rem; row-gap: 0; }
     .rc-row { font-size: .8rem; padding: .06rem 0; grid-template-columns: 8.2rem 1rem 1fr; }
-    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 60px !important; height: 60px !important; }
+    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 128px !important; height: 128px !important; }
     .sig-tbl { margin-top: .2rem !important; }
     .sig-name { font-size: .95em; }
     .rc-welcome { font-size: .7rem; padding-top: .25rem; }
@@ -318,7 +325,7 @@ $row = static function (string $label, $value): string {
         .rc-banner h1 { font-size: 1.05rem; line-height: 1.2; white-space: normal; }
         .rc-banner .rc-gov { font-size: .68rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
         .rc-reg { font-size: .72rem; }
-        .rc-qr canvas, .rc-qr img, .rc-qr table { width: 64px !important; height: 64px !important; }
+        .rc-qr canvas, .rc-qr img, .rc-qr table { width: 112px !important; height: 112px !important; }
 
         .rc-welcome { font-size: .7rem; padding: .4rem .5rem 0; }
         .rc-exam-head { font-size: 1.05rem; margin: .5rem 0 .2rem; }
@@ -405,8 +412,8 @@ $row = static function (string $label, $value): string {
                 <?= $row("Father's Name", $student['father_name'] ?? '') ?>
                 <?= $row("Mother's Name", $student['mother_name'] ?? '') ?>
                 <?= $row('Exam Subject', 'Bangla, English, Mathematics') ?>
-                <?= $row('Institute Name', $student['institute_name'] ?? '') ?>
                 <?= $row('Exam Center', $student['center_name'] ?? '') ?>
+                <?= $row('Institute Name', $student['institute_name'] ?? '') ?>            
                 <?= $row('Institute Address', $student['institute_address'] ?? '') ?>
                 
             </div>
@@ -476,17 +483,19 @@ $row = static function (string $label, $value): string {
 (function () {
     var box = document.getElementById('reg-qr');
     if (!box || typeof QRCode === 'undefined') { return; }
+    // The payload is the association's whole contact block (237 bytes -> a
+    // 61x61 matrix), so it is drawn at 384px and displayed at 128px by the
+    // .rc-qr rule (which keeps the printed modules large enough to scan).
     new QRCode(box, {
         text: box.getAttribute('data-qr-content'),
-        width: 256,
-        height: 256,
+        width: 384,
+        height: 384,
         correctLevel: QRCode.CorrectLevel.M
     });
-    // Drawn at 256px for a crisp print; qrcodejs emits a canvas and/or an
-    // <img>, so size every render target to a 100x100 thumbnail.
+    // qrcodejs emits a canvas and/or an <img>; .rc-qr sizes every render target.
     Array.prototype.forEach.call(box.querySelectorAll('canvas, img, table'), function (el) {
-        el.style.width = '100px';
-        el.style.height = '100px';
+        el.style.width = '128px';
+        el.style.height = '128px';
     });
 })();
 </script>

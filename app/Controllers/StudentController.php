@@ -1014,24 +1014,18 @@ final class StudentController extends Controller
      * Printable student registration card.
      * GET /api/registrationpdf/{registration}
      *
-     * The original took the registration NUMBER (not the row id) and streamed a
-     * PDF; like the certificates this clone renders printable HTML. Photos are
-     * embedded from the same public path the rest of the app uses.
+     * Staff-only (route middleware): the authority prints the card, and the
+     * card's QR carries the association's contact details rather than a link
+     * back here. The original took the registration NUMBER (not the row id)
+     * and streamed a PDF; like the certificates this clone renders printable
+     * HTML. Photos are embedded from the same public path the rest of the app
+     * uses.
      *
      * The route segment is named {id}, so a row id is accepted as a fallback
      * (registration wins). Any other app link must pass the registration number.
      */
     public function registrationpdf(Request $request): string
     {
-        // Public by design: the registration card's QR points at this URL, so
-        // the visitor is usually the student (or anyone holding the card) with
-        // no account. Anonymous visitors are throttled per IP so the lookup is
-        // not a cheap enumeration oracle (same pattern as the institute card);
-        // signed-in staff are not limited.
-        if (!Auth::check()) {
-            RateLimiter::hit('student-registration-pdf', 30, 60);
-        }
-
         $key = (string) $request->params['id'];
         $select = "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
                     u.`name` AS center_name,
@@ -1058,10 +1052,9 @@ final class StudentController extends Controller
             throw new \App\Core\HttpException(404, 'Student not found');
         }
 
-        // Center-user scoping: a signed-in center user cannot print another
-        // center's student card. Anonymous visitors (the card's own QR) are
-        // allowed through — the card is keyed by its registration number.
-        if (Auth::check() && !Auth::isAdmin()) {
+        // Center-user scoping: a center user cannot print another center's
+        // student card (the route already requires a signed-in user).
+        if (!Auth::isAdmin()) {
             $authCenterId = Auth::centerId();
             if ($authCenterId !== null && (int) $authCenterId !== (int) $student['center_id']) {
                 Response::json(['message' => 'This action is unauthorized.'], 403);

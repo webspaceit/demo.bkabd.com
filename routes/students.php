@@ -33,10 +33,11 @@ Router::get('/api/totalStudent', [StudentController::class, 'totalStudent'], 'au
 
 // Printable registration card by registration number
 // Original: GET /api/registrationpdf/{registration} (public + dompdf stream).
-// Public on purpose (like the institute card): the card's own QR encodes this
-// URL so a student can open it without an account. The controller applies a
-// per-IP throttle so registration numbers cannot be enumerated cheaply.
-Router::get('/api/registrationpdf/{id}', [StudentController::class, 'registrationpdf']);
+// Staff-only: the card is an internal document the office prints, so it sits
+// behind auth (center users are scoped to their own students in the
+// controller). The card's QR no longer links back here — it carries the
+// association's address/contact text instead (see registration_card.php).
+Router::get('/api/registrationpdf/{id}', [StudentController::class, 'registrationpdf'], 'auth');
 
 // Edit student
 // Original: GET /edit-student/{id}  ->  edit (page)

@@ -180,6 +180,13 @@ $anon = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bk_contract_anon_' . bin2hex
 check('anonymous GET /api/totalInstitute -> 401', $st === 401, "status=$st");
 @unlink($anon);
 
+// The registration card is staff-only: the office prints it, and the card's QR
+// carries the association's contact text instead of a link back to the route.
+$anonCard = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bk_contract_anon_card_' . bin2hex(random_bytes(3));
+[$st] = pageReq("$base/api/registrationpdf/1", $anonCard);
+check('anonymous GET /api/registrationpdf/{id} -> 401', $st === 401, "status=$st");
+@unlink($anonCard);
+
 [$st, $body] = req('GET', "$base/api/totalStudent");
 check('GET /api/totalStudent -> totalstudents', $st === 200 && array_key_exists('totalstudents', json_decode($body, true) ?? []), "status=$st body=$body");
 
