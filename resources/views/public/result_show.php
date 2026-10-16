@@ -37,7 +37,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
        painted on top of it (see .rs-inner) so neither hides the other. */
     #result-sheet {
         padding: .4125rem;
-        background-image: url("/assets/img/result/pattern.png");
+        background-image: url("<?= asset_v('/assets/img/result/pattern.png') ?>");
         background-repeat: repeat;
         background-position: 0 0;
         background-size: 424px 424px;
@@ -45,7 +45,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 
     /* Watermark logo, centred and painted over the pattern. */
     .rs-inner {
-        background-image: url("/assets/img/result/water-mark.webp");
+        background-image: url("<?= asset_v('/assets/img/result/water-mark.webp') ?>");
         background-repeat: no-repeat;
         background-position: center center;
         background-size: 400px 400px;
@@ -111,7 +111,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 <div class="mx-auto max-w-4xl px-3 py-6 print:max-w-none print:px-0 print:py-0">
     <div id="result-sheet" class="border-2 border-black bg-white">
         <div class="rs-inner border-2 border-black p-3 sm:p-4">
-        <img src="/assets/img/result/logo.png" alt="BKABD" class="mx-auto block w-20 rounded-full">
+        <img src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD" class="mx-auto block w-20 rounded-full">
 
         <h1 class="rs-org mt-2 text-center font-bold">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
         <p class="rs-regno text-center font-semibold">Govt. Reg. No.: S-1028/98</p>
@@ -222,7 +222,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
             <?php if (!empty($qrContent)): ?>
                 <div id="result-qr" class="inline-block" data-qr-content="<?= e($qrContent) ?>"></div>
             <?php else: ?>
-                <img src="/assets/img/result/qrcode.png" alt="QR code" class="mx-auto w-24">
+                <img src="<?= e(asset_v('/assets/img/result/qrcode.png')) ?>" alt="QR code" class="mx-auto w-24">
             <?php endif; ?>
         </div>
 

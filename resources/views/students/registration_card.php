@@ -58,7 +58,7 @@ $row = static function (string $label, $value): string {
         max-width: 820px;
         margin: 0 auto;
         padding: .4125rem;
-        background-image: url("/assets/img/result/pattern.png");
+        background-image: url("<?= asset_v('/assets/img/result/pattern.png') ?>");
         background-repeat: repeat;
         background-position: 0 0;
         background-size: 424px 424px;
@@ -67,7 +67,7 @@ $row = static function (string $label, $value): string {
     /* Watermark logo, centred and painted over the pattern (same as the
        result sheet's .rs-inner). */
     .rc-inner {
-        background-image: url("/assets/img/result/for-registration.png");
+        background-image: url("<?= asset_v('/assets/img/result/for-registration.png') ?>");
         background-repeat: no-repeat;
         background-position: center center;
         background-size: 220px 220px;
@@ -338,10 +338,15 @@ $row = static function (string $label, $value): string {
         .rc-photo { align-self: center; }
         .rc-photo img { width: 78px; height: 90px; }
 
-        /* Four signatures across would be cramped: 2 x 2. */
-        .sig-tbl { display: block; }
-        .sig-tbl tr { display: grid; grid-template-columns: 1fr 1fr; row-gap: .6rem; }
-        .sig-tbl td { padding: 0 .25rem; }
+        /* Four signatures across would be cramped: 2 x 2. The tbody has to
+           follow the table into block flow, otherwise the browser wraps the
+           grid in an anonymous inline-table that shrink-wraps (the row came
+           out 234px inside a 353px sheet). Bottom-aligning each cell's
+           content reproduces the table's `vertical-align: bottom`, so the
+           four signature lines share a baseline as they do on desktop. */
+        .sig-tbl, .sig-tbl tbody { display: block; }
+        .sig-tbl tr { display: grid; grid-template-columns: 1fr 1fr; column-gap: .5rem; row-gap: .6rem; }
+        .sig-tbl td { display: flex; flex-direction: column; justify-content: flex-end; padding: 0 .25rem; }
 
         .rc-note { font-size: .72rem; padding: .5rem .5rem 0; }
         .rc-foot { flex-direction: column; align-items: center; gap: .15rem; text-align: center; font-size: .65rem; padding: .25rem .5rem .45rem; }
@@ -366,7 +371,7 @@ $row = static function (string $label, $value): string {
     <div id="reg-card" class="border-2 border-black bg-white">
         <div class="rc-inner border-2 border-black">
         <div class="rc-banner">
-            <span class="rc-logo"><img src="/assets/img/result/logo.png" alt="BKABD" onerror="this.style.display='none'"></span>
+            <span class="rc-logo"><img src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD" onerror="this.style.display='none'"></span>
             <div>
                 <h1>BANGLADESH KINDERGARTEN ASSOCIATION</h1>
                 <p class="rc-reg">Govt. Reg. No.: S-1028/98</p>

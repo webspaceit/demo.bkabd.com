@@ -326,6 +326,20 @@ if (!function_exists('form_close')) {
     }
 }
 
+if (!function_exists('asset_v')) {
+    /**
+     * Cache-busted URL for a file under public/. Static assets are served with
+     * a one-year immutable Cache-Control, so replacing a file under the same
+     * name is otherwise never picked up by a browser that already fetched it.
+     * The version query is derived from the file's mtime.
+     */
+    function asset_v(string $path): string
+    {
+        $abs = BASE_PATH . '/public/' . ltrim($path, '/');
+        return is_file($abs) ? $path . '?v=' . filemtime($abs) : $path;
+    }
+}
+
 if (!function_exists('result_signature')) {
     /**
      * URL for a result-sheet signature. Uses an uploaded file under
@@ -348,6 +362,6 @@ if (!function_exists('result_signature')) {
                 return '/images/result-signatures/' . $role . '.' . $ext . '?v=' . filemtime($base . '.' . $ext);
             }
         }
-        return '/assets/img/result/' . ($bundled[$role] ?? 'logo.png');
+        return asset_v('/assets/img/result/' . ($bundled[$role] ?? 'logo.png'));
     }
 }

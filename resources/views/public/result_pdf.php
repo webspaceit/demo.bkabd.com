@@ -24,7 +24,9 @@ $fm = fn(string $subject): string => (string) (($fullMarks ?? [])[$subject] ?? '
 
 // Public URL -> filesystem path (dompdf reads local files inside its chroot).
 $img = static function (string $url): string {
-    $path = BASE_PATH . '/public/' . ltrim($url, '/');
+    // Signatures carry a ?v= cache-buster; strip it to find the file on disk.
+    $rel = strtok($url, '?');
+    $path = BASE_PATH . '/public/' . ltrim((string) $rel, '/');
     return is_file($path) ? $path : $url;
 };
 
