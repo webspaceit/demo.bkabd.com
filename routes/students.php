@@ -92,10 +92,12 @@ Router::get('/students', function (Request $request) {
 // store() creates rows as PENDING (active = 0); the registration only
 // becomes Active when it is approved here. Until then the student is
 // excluded from the exam documents (mark entry, admit card, seat plan,
-// certificates). Approval/rejection is gated by student-edit — there is
-// no dedicated permission row (roles UI stays unchanged).
+// certificates). Viewing the queue needs student-list or student-approve;
+// approving/rejecting needs the dedicated student-approve permission
+// (database/student_approve_permission.sql grants it to roles that already
+// hold student-edit, so existing admins keep working).
 // ---------------------------------------------------------------
-Router::get('/pending-students', [StudentController::class, 'pagePending'], 'auth|permission:student-list');
-Router::get('/api/pending-students', [StudentController::class, 'pending'], 'auth|permission:student-list');
-Router::post('/api/pending-students/{id}/approve', [StudentController::class, 'approve'], 'auth|permission:student-edit');
-Router::post('/api/pending-students/{id}/reject', [StudentController::class, 'reject'], 'auth|permission:student-edit');
+Router::get('/pending-students', [StudentController::class, 'pagePending'], ['auth', 'permission:student-list|student-approve']);
+Router::get('/api/pending-students', [StudentController::class, 'pending'], ['auth', 'permission:student-list|student-approve']);
+Router::post('/api/pending-students/{id}/approve', [StudentController::class, 'approve'], 'auth|permission:student-approve');
+Router::post('/api/pending-students/{id}/reject', [StudentController::class, 'reject'], 'auth|permission:student-approve');

@@ -2,7 +2,7 @@
 /**
  * Pending registration queue — GET /pending-students.
  * Students are registered as PENDING (active = 0) and stay in this queue
- * until a user with student-edit approves them (POST /api/pending-students/
+ * until a user with student-approve approves them (POST /api/pending-students/
  * {id}/approve). Approved students become Active and join the exam documents
  * (mark entry, admit card, seat plan, certificates); rejecting removes the
  * registration. Columns mirror the students list plus a queue-specific
@@ -34,7 +34,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
 }
 </style>
 <div class="space-y-4">
-    <div class="card" id="pending-list" data-perm-approve="<?= can('student-edit') ? '1' : '0' ?>">
+    <div class="card" id="pending-list" data-perm-approve="<?= can('student-approve') ? '1' : '0' ?>">
         <div class="card-header">
             <div class="flex items-center gap-3 min-w-0">
                 <span class="inline-flex items-center justify-center rounded-full bg-emerald-50 shrink-0" style="width:2.5rem;height:2.5rem" aria-hidden="true">

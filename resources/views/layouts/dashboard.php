@@ -21,7 +21,7 @@ $nav = [
     ['group:Students', '#', null, 'arrow', [
         ['Student Registration', '/student-registration', 'student-registration', 'userplus'],
         ['Student Details', '/students', 'student-list', 'users'],
-        ['Pending Registration', '/pending-students', 'student-list', 'clock'],
+        ['Pending Registration', '/pending-students', 'student-list|student-approve', 'clock'],
     ]],
     ['group:Institutes', '#', null, 'arrow', [
         ['Institute Registration', '/institute-registration', 'institute-create', 'building-plus'],
@@ -98,8 +98,17 @@ function nav_icon(string $name, string $cls = ''): string
     return '<svg class="w-[18px] h-[18px] shrink-0 ' . $cls . '" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">' . $p . '</svg>';
 }
 
+// A single permission, or an "a|b" pair meaning "any of".
 $canSee = function (?string $perm) use ($myPerms): bool {
-    return $perm === null || in_array($perm, $myPerms, true);
+    if ($perm === null) {
+        return true;
+    }
+    foreach (explode('|', $perm) as $p) {
+        if (in_array(trim($p), $myPerms, true)) {
+            return true;
+        }
+    }
+    return false;
 };
 
 $isActive = function (string $path) use ($current): bool {
@@ -111,7 +120,7 @@ $isActive = function (string $path) use ($current): bool {
 // Sidebar count badges (path => pending registrations). Rendered only when > 0;
 // center users only see their own center's pending registrations.
 $navBadges = [];
-if ($canSee('student-list')) {
+if ($canSee('student-list|student-approve')) {
     $navBadges['/pending-students'] = \App\Models\Student::pendingCount(
         Auth::isAdmin() ? null : Auth::centerId()
     );
@@ -280,7 +289,7 @@ $activeSession = Auth::activeSession();
                 </select>
                 <?php endif; ?>
 
-                <?php if ($canSee('student-list')): ?>
+                <?php if ($canSee('student-list|student-approve')): ?>
                 <a href="/pending-students" class="relative p-1 text-slate-500 hover:text-slate-700 transition shrink-0" title="Pending registrations" aria-label="Pending registrations">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                     <span data-nav-badge="/pending-students"
@@ -351,7 +360,7 @@ $activeSession = Auth::activeSession();
 <?php foreach ((array) ($pageScripts ?? []) as $src): ?>
 <script src="<?= e($src) ?>"></script>
 <?php endforeach; ?>
-<?php if ($canSee('student-list')): ?>
+<?php if ($canSee('student-list|student-approve')): ?>
 <script>
 // Live pending-registration badges. Every tab shares the same DOM nodes and a
 // background poll keeps the count current without a full page reload.
