@@ -32,15 +32,15 @@ if ($photoSrc === null) {
     $photoSrc = $resolve($placeholder);
 }
 
-// The QR opens this student's result sheet as a deep link (same payload the
-// result sheet's QR uses for its PDF link — registration alone is enough).
+// The QR opens this student's registration card (public route, keyed by the
+// registration number) — the card-side counterpart of the result sheet's
+// QR-to-PDF deep link. Scanning the card returns the card itself.
 $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
 $https = (($_SERVER['HTTPS'] ?? '') === 'on')
     || (strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https')
     || ((int) ($_SERVER['SERVER_PORT'] ?? 0) === 443);
-$qrContent = ($https ? 'https://' : 'http://') . $host . '/result/show?data=' . rawurlencode((string) json_encode([
-    'registration' => (string) ($student['registration'] ?? ''),
-]));
+$qrContent = ($https ? 'https://' : 'http://') . $host
+    . '/api/registrationpdf/' . rawurlencode((string) ($student['registration'] ?? ''));
 
 /** A "Label : value" details row. */
 $row = static function (string $label, $value): string {

@@ -1023,8 +1023,13 @@ final class StudentController extends Controller
      */
     public function registrationpdf(Request $request): string
     {
+        // Public by design: the registration card's QR points at this URL, so
+        // the visitor is usually the student (or anyone holding the card) with
+        // no account. Anonymous visitors are throttled per IP so the lookup is
+        // not a cheap enumeration oracle (same pattern as the institute card);
+        // signed-in staff are not limited.
         if (!Auth::check()) {
-            Response::json(['status' => 'errors'], 401);
+            RateLimiter::hit('student-registration-pdf', 30, 60);
         }
 
         $key = (string) $request->params['id'];
@@ -1053,8 +1058,10 @@ final class StudentController extends Controller
             throw new \App\Core\HttpException(404, 'Student not found');
         }
 
-        // Center-user scoping: cannot print another center's student card.
-        if (!Auth::isAdmin()) {
+        // Center-user scoping: a signed-in center user cannot print another
+        // center's student card. Anonymous visitors (the card's own QR) are
+        // allowed through — the card is keyed by its registration number.
+        if (Auth::check() && !Auth::isAdmin()) {
             $authCenterId = Auth::centerId();
             if ($authCenterId !== null && (int) $authCenterId !== (int) $student['center_id']) {
                 Response::json(['message' => 'This action is unauthorized.'], 403);

@@ -33,8 +33,10 @@ Router::get('/api/totalStudent', [StudentController::class, 'totalStudent'], 'au
 
 // Printable registration card by registration number
 // Original: GET /api/registrationpdf/{registration} (public + dompdf stream).
-// Hardened: requires auth (PII); rendered as printable HTML like certificates.
-Router::get('/api/registrationpdf/{id}', [StudentController::class, 'registrationpdf'], 'auth');
+// Public on purpose (like the institute card): the card's own QR encodes this
+// URL so a student can open it without an account. The controller applies a
+// per-IP throttle so registration numbers cannot be enumerated cheaply.
+Router::get('/api/registrationpdf/{id}', [StudentController::class, 'registrationpdf']);
 
 // Edit student
 // Original: GET /edit-student/{id}  ->  edit (page)
