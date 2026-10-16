@@ -203,9 +203,9 @@ $row = static function (string $label, $value): string {
 
     /* ---- QR (banner right, on the blank space) ---- */
     /* The QR payload is the whole contact block (~236 bytes -> 61 modules), so
-       it needs ~102px to stay scannable on paper (~0.44mm per module). */
+       it needs ~92px to stay scannable on paper (~0.40mm per module). */
     .rc-qr { text-align: center; margin-left: auto; align-self: center; flex-shrink: 0; }
-    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 102px !important; height: 102px !important; }
+    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 92px !important; height: 92px !important; }
 
     .rc-reg {
         margin: 0;
@@ -281,11 +281,11 @@ $row = static function (string $label, $value): string {
 
     /* Compact print scale (applies everywhere so screens match the PDF).
        Header text scaled so the contact lines fill the space up to the QR;
-       the QR keeps the 102px size set by the .rc-qr rule (its payload is the
+       the QR keeps the 92px size set by the .rc-qr rule (its payload is the
        whole contact block, so it needs the room to stay scannable). */
     .rc-banner { padding: .5rem 1rem .4rem; margin-bottom: 1rem; }
     .rc-logo img { width: 68px; height: 68px; }
-    /* The QR now carries the whole contact block, so it is sized to 102px
+    /* The QR now carries the whole contact block, so it is sized to 92px
        (scannable on paper). The heading and the contact line are scaled down a
        notch so the row (logo + text + QR) still fits inside the 210mm sheet. */
     .rc-banner h1 { font-size: 1.8rem; }
@@ -298,7 +298,7 @@ $row = static function (string $label, $value): string {
     .rc-photo img { width: 74px; height: 84px; }
     .rc-body { padding: .35rem 1rem 0; column-gap: 1.8rem; row-gap: 0; }
     .rc-row { font-size: .8rem; padding: .06rem 0; grid-template-columns: 8.2rem 1rem 1fr; }
-    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 102px !important; height: 102px !important; }
+    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 92px !important; height: 92px !important; }
     .sig-tbl { margin-top: .2rem !important; }
     .sig-name { font-size: .95em; }
     .rc-welcome { font-size: .7rem; padding-top: .25rem; }
@@ -325,7 +325,7 @@ $row = static function (string $label, $value): string {
         .rc-banner h1 { font-size: 1.05rem; line-height: 1.2; white-space: normal; }
         .rc-banner .rc-gov { font-size: .68rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
         .rc-reg { font-size: .72rem; }
-        .rc-qr canvas, .rc-qr img, .rc-qr table { width: 90px !important; height: 90px !important; }
+        .rc-qr canvas, .rc-qr img, .rc-qr table { width: 81px !important; height: 81px !important; }
 
         .rc-welcome { font-size: .7rem; padding: .4rem .5rem 0; }
         .rc-exam-head { font-size: 1.05rem; margin: .5rem 0 .2rem; }
@@ -484,7 +484,7 @@ $row = static function (string $label, $value): string {
     var box = document.getElementById('reg-qr');
     if (!box || typeof QRCode === 'undefined') { return; }
     // The payload is the association's whole contact block (237 bytes -> a
-    // 61x61 matrix), so it is drawn at 384px and displayed at 102px by the
+    // 61x61 matrix), so it is drawn at 384px and displayed at 92px by the
     // .rc-qr rule (which keeps the printed modules large enough to scan).
     new QRCode(box, {
         text: box.getAttribute('data-qr-content'),
@@ -494,8 +494,8 @@ $row = static function (string $label, $value): string {
     });
     // qrcodejs emits a canvas and/or an <img>; .rc-qr sizes every render target.
     Array.prototype.forEach.call(box.querySelectorAll('canvas, img, table'), function (el) {
-        el.style.width = '102px';
-        el.style.height = '102px';
+        el.style.width = '92px';
+        el.style.height = '92px';
     });
 })();
 </script>
