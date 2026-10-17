@@ -395,63 +395,8 @@ $qrContentEscaped = e($qrContent);
         .rc-page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
     }
 
-    /* ---- Two-per-page mode (center-wide admit card print) ---- */
-    <?php if ($twoPerPage): ?>
-    .rc-pages { display: flex; flex-direction: column; gap: 0; }
-    .rc-pages > .py-6 { padding: 0 !important; }
-    .rc-page {
-        width: 210mm !important;
-        height: 148.5mm !important;
-        min-height: 148.5mm !important;
-        max-height: 148.5mm !important;
-        overflow: hidden;
-        margin: 0 !important;
-        box-shadow: none !important;
-        border-bottom: 1.5px dashed #94a3b8 !important;
-    }
-    .rc-pages > .py-6:nth-child(even) .rc-page { border-bottom: none !important; }
-    .rc-pages > .py-6:nth-child(2n) { break-after: page; page-break-after: always; }
-    .rc-pages > .py-6:last-child    { break-after: auto; page-break-after: auto; }
-    /* Compress spacing to fit half-A4 */
-    .rc-banner { padding: .3rem .8rem; margin-bottom: .3rem; }
-    .rc-logo img { width: 50px; height: 50px; }
-    .rc-banner h1 { font-size: 1.1rem; }
-    .rc-banner .rc-gov { font-size: .62rem; }
-    .rc-exam-head { font-size: 1rem; margin: .25rem 0 .15rem; }
-    .rc-top { padding: .15rem .8rem .05rem; }
-    .rc-tag { font-size: .72rem; padding: .08rem .55rem; }
-    .rc-center .rc-pill { font-size: .78rem; padding: .12rem .85rem; }
-    .rc-body { padding: .15rem .8rem 0; gap: 1rem; }
-    .rc-row { font-size: .7rem; padding: .03rem 0; grid-template-columns: 7.5rem .8rem 1fr; }
-    .rc-photo img { width: 54px; height: 62px; }
-    .rc-rules { margin: .2rem 1rem; }
-    .rc-rules li, .rc-rules p { font-size: .58rem; line-height: 1.4; }
-    .sig-tbl { margin-top: .15rem !important; }
-    .sig-img img { max-width: 70px; }
-    .sig-name { font-size: .72em; }
-    .sig-role { font-size: .68em; }
-    .rc-note { font-size: .6rem; padding: .15rem .8rem 0; }
-    .rc-foot { font-size: .55rem; padding: .1rem .8rem .2rem; }
-    [data-print-card], .mt-4.flex.justify-center { display: none !important; }
-    @media print {
-        @page { size: A4 portrait; margin: 0; }
-        html { font-size: 11.5px; }
-        .rc-page {
-            width: 210mm !important;
-            height: 148.5mm !important;
-            min-height: 148.5mm !important;
-            max-height: 148.5mm !important;
-            padding: 2mm 4mm !important;
-            overflow: hidden !important;
-            box-shadow: none !important;
-        }
-        /* Override the default one-per-page break */
-        .rc-pages.multiple > .py-6:not(:last-child) .rc-page { break-after: avoid !important; page-break-after: avoid !important; }
-        /* Break after every 2nd card wrapper */
-        .rc-pages > .py-6:nth-child(2n) { break-after: page; page-break-after: always; }
-        .rc-pages > .py-6:last-child    { break-after: auto; page-break-after: auto; }
-    }
-    <?php endif; ?>
+    /* ---- Two-per-page mode removed — handled by admitcards.center_print ---- */
+    <?php if ($twoPerPage): ?><?php endif; ?>
 </style>
 
 <div class="rc-pages<?= $cardCount > 1 ? ' multiple' : '' ?>">

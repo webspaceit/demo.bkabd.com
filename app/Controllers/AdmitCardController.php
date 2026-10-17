@@ -103,6 +103,44 @@ final class AdmitCardController extends Controller
         ], 'layouts.guest');
     }
 
+    /** Print one selected student's admit card. GET /api/admitcard_student/{id}. */
+    public function printStudentAdmitCard(Request $request): string
+    {
+        $studentId = (int) $request->params['id'];
+        $student = Database::selectOne(
+            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
+                    u.`name` AS center_name,
+                    d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
+               FROM `students` s
+          LEFT JOIN `institutes` i ON i.`id` = s.`institute_id`
+          LEFT JOIN `centers` c ON c.`id` = s.`center_id`
+          LEFT JOIN `users` u ON u.`id` = c.`user_id`
+          LEFT JOIN `divisions` d ON d.`id` = s.`division_id`
+          LEFT JOIN `districts` dt ON dt.`id` = s.`district_id`
+          LEFT JOIN `upozilas` uz ON uz.`id` = s.`upazila_id`
+              WHERE s.`id` = ? AND s.`active` = 1
+              LIMIT 1",
+            [$studentId]
+        );
+
+        if ($student === null) {
+            throw new \App\Core\HttpException(404, 'Active student not found');
+        }
+
+        Auth::assertStudentAccess($studentId);
+
+        $activeSession = $this->activeSession();
+        $centerName = (string) ($student['center_name'] ?? 'Center');
+
+        return View::render('admitcards.center_print', [
+            'title' => 'Admit Card - ' . ($student['registration'] ?? ''),
+            'centerName' => $centerName,
+            'activeSession' => $activeSession,
+            'students' => [$student],
+            'singleStudent' => true,
+        ], 'layouts.guest');
+    }
+
     /**
      * Print all admit cards for an entire center — 2 cards per A4 page.
      * GET /api/admitcard_center/{id}   where {id} = center_id (0 = all centers for admin)
@@ -164,8 +202,10 @@ final class AdmitCardController extends Controller
               )['name'] ?? 'Center')
             : 'All Centers';
 
-        return View::render('students.registration_card', [
+        return View::render('admitcards.center_print', [
             'title'      => 'Admit Cards — ' . $centerName,
+            'centerName' => $centerName,
+            'activeSession' => $activeSession,
             'students'   => $students,
             'cardMode'   => 'admit',
             'twoPerPage' => true,

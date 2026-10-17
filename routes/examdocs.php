@@ -43,6 +43,7 @@ Router::get('/seatplan', function () {
 // Original: GET /admitcards/{id}/{class} - returns view/HTML data
 Router::get('/api/admitcards/{id}/{class}', [AdmitCardController::class, 'fetchAdmitCards'], 'auth|permission:admit-card');
 Router::get('/api/admitcard_print/{id}/{class}', [AdmitCardController::class, 'printAdmitCards'], 'auth|permission:admit-card');
+Router::get('/api/admitcard_student/{id}', [AdmitCardController::class, 'printStudentAdmitCard'], 'auth|permission:admit-card');
 Router::get('/api/admitcard_center/{id}', [AdmitCardController::class, 'printByCenter'], 'auth|permission:admit-card');
 // NOTE: /api/CenterWiseStudentDetailsReportIssuedAdmitCard/{id} is a *report*
 // (ReportController) — registered once in routes/reports.php. An earlier

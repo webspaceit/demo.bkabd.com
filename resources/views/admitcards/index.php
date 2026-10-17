@@ -165,8 +165,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     '<td>' + BK.esc(r.center_name || '') + '</td>' +
                     '<td>' + BK.esc(r.institute_name || '') + '</td>' +
                     '<td><button type="button" class="btn btn-sm btn-primary"' +
-                        ' data-inst="' + BK.esc(String(r.institute_id)) + '"' +
-                        ' data-class="' + BK.esc(String(r.class)) + '">View/Print</button></td>' +
+                        ' data-student="' + BK.esc(String(r.id)) + '">View/Print</button></td>' +
                 '</tr>';
             }).join('') : '<tr><td colspan="10" class="text-center py-8 text-slate-400">No records found</td></tr>';
 
@@ -181,9 +180,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // View/Print button
     rowsEl.addEventListener('click', function (e) {
-        const btn = e.target.closest('button[data-inst]');
+        const btn = e.target.closest('button[data-student]');
         if (!btn) return;
-        window.open('/api/admitcard_print/' + encodeURIComponent(btn.dataset.inst) + '/' + encodeURIComponent(btn.dataset.class), '_blank');
+        window.open('/api/admitcard_student/' + encodeURIComponent(btn.dataset.student), '_blank');
     });
 
     // Pagination

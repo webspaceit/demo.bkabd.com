@@ -1,23 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title><?= e($title ?? 'Admit Cards') ?></title>
+
 <?php
-/**
- * Center-wide admit card print — 2 cards per A4 page.
- * Rendered inside layouts.guest.
- *
- * @var array  $students      rows with all joined fields
- * @var string $centerName
- * @var string $activeSession
- */
-
-$classLabel = static function (int $c): string {
-    return match ($c) { 6=>'KG', 1=>'One', 2=>'Two', 3=>'Three', 4=>'Four', 5=>'Five', default=>(string)$c };
-};
-
-// Resolve photo to base64 data URI (avoids broken images when printing).
-$photoData = static function (string $photo): ?string {
-    if ($photo === '') { return null; }
-    $candidates = str_contains($photo, '/')
-        ? [$photo]
-        : ['images/students/' . $photo, 'uploads/students/' . $photo];
+// ----------------------------------------------------------------
+// Resolve helpers identical to registration_card.php
+// ----------------------------------------------------------------
+$resolve = static function (string $file): ?string {
+    if ($file === '') { return null; }
+    $candidates = str_contains($file, '/')
+        ? [$file]
+        : ['images/students/' . $file, 'uploads/students/' . $file];
     foreach ($candidates as $rel) {
         $abs = BASE_PATH . '/public/' . $rel;
         if (is_file($abs)) {
@@ -28,275 +24,323 @@ $photoData = static function (string $photo): ?string {
     return null;
 };
 
-$logoSrc = BASE_PATH . '/public/assets/img/result/logo.png';
-$logoB64  = is_file($logoSrc)
-    ? 'data:image/png;base64,' . base64_encode((string) file_get_contents($logoSrc))
-    : '';
+$resolveStudentPhoto = static function (array $student) use ($resolve): ?string {
+    $src = $resolve((string) ($student['photo'] ?? ''));
+    if ($src === null) {
+        $placeholder = ((int) ($student['gender'] ?? 0) === 2) ? 'female.jpeg' : 'male.jpeg';
+        $src = $resolve($placeholder);
+    }
+    return $src;
+};
 
-$total = count($students);
+$className = static function (int $class): string {
+    return match ($class) {
+        6=>'KG', 1=>'One', 2=>'Two', 3=>'Three', 4=>'Four', 5=>'Five', default=>(string)$class,
+    };
+};
+
+$row = static function (string $label, $value): string {
+    return '<div class="rc-row"><span class="rc-lbl">' . e($label) . '</span>'
+        . '<span class="rc-sep">:</span>'
+        . '<span class="rc-val">' . e((string)($value ?? '')) . '</span></div>';
+};
+
+$qrContent = implode("\n", [
+    'BANGLADESH KINDERGARTEN ASSOCIATION',
+    'Govt. Reg. No.: S-1028/98',
+    '59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009',
+    'Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd',
+]);
+$qrContentEscaped = e($qrContent);
+$printDate     = date('d-m-Y');
+$copyrightYear = date('Y');
+$session       = $activeSession ?? '';
+$singleStudent = !empty($singleStudent);
+$pairs         = array_chunk($students, $singleStudent ? 1 : 2);
+$total         = count($students);
 ?>
+
 <style>
-/* ---- Reset ---- */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: Arial, Helvetica, sans-serif; background: #e5e7eb; }
+/* ---- Load all the original registration_card styles ---- */
+<?php
+// Inline the original card CSS by reading it directly
+$cssFile = BASE_PATH . '/resources/views/students/registration_card.php';
+$content = file_get_contents($cssFile);
+// Extract only what's between the first <style> and </style>
+if (preg_match('/<style>(.*?)<\/style>/s', $content, $m)) {
+    $css = str_replace(
+        [
+            "<?= asset_v('/assets/img/result/pattern.png') ?>",
+            "<?= asset_v('/assets/img/result/for-registration.png') ?>",
+        ],
+        ['/assets/img/result/pattern.png', '/assets/img/result/for-registration.png'],
+        $m[1]
+    );
+    // The source view's only PHP inside <style> controls its optional layout.
+    // Strip that template logic after resolving its image URLs into real CSS.
+    $css = preg_replace('/<\?(?:php|=).*?\?>/s', '', $css);
+    echo $css;
+}
+?>
 
-/* ---- Toolbar (hidden on print) ---- */
-.toolbar {
+/* ---- Center-print overrides ---- */
+@page { size: A4 portrait; margin: 0; }
+<?php if ($singleStudent): ?>@page { size: A5 landscape; margin: 0; }<?php endif; ?>
+
+html, body { background: #e5e7eb; margin: 0; padding: 0; }
+
+/* Toolbar */
+.cp-toolbar {
     background: #064e3b; color: #fff;
-    padding: .6rem 1.2rem;
-    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    position: sticky; top: 0; z-index: 10;
+    padding: .5rem 1.2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    font-family: Arial, sans-serif;
 }
-.toolbar h2 { font-size: .95rem; font-weight: 600; }
-.toolbar span { font-size: .8rem; opacity: .8; }
-.toolbar button {
-    background: #fff; color: #064e3b;
-    border: none; border-radius: 6px;
-    padding: .4rem 1.1rem; font-size: .85rem; font-weight: 700;
-    cursor: pointer; white-space: nowrap;
+.cp-toolbar h2 { font-size: .9rem; font-weight: 600; }
+.cp-toolbar small { font-size: .75rem; opacity: .75; }
+.cp-toolbar button {
+    background: #fff; color: #064e3b; border: none;
+    border-radius: 5px; padding: .35rem 1rem;
+    font-size: .82rem; font-weight: 700; cursor: pointer;
 }
-.toolbar button:hover { background: #d1fae5; }
 
-/* ---- A4 page wrapper — two cards stacked ---- */
-.page {
+/* One A4 page = 2 card slots */
+.cp-page {
     width: 210mm;
-    min-height: 297mm;
-    margin: 1rem auto;
+    height: 297mm;
+    margin: 8px auto;
     background: #fff;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     box-shadow: 0 2px 12px rgba(0,0,0,.25);
-    overflow: hidden;
 }
+.cp-page.single { width: 210mm; height: 148.5mm; margin: 0 auto; }
 
-/* ---- Individual card — exactly half of A4 ---- */
-.admit-card {
-    width: 100%;
-    height: 148.5mm;          /* A4 height ÷ 2 */
-    box-sizing: border-box;
-    padding: 4mm 6mm;
-    border-bottom: 1.5px dashed #94a3b8;
-    display: flex;
-    flex-direction: column;
-    gap: 2mm;
+/* Each card slot = exactly half A4 */
+.cp-slot {
+    width: 210mm;
+    height: 148.5mm;
     overflow: hidden;
+    flex-shrink: 0;
     position: relative;
 }
-.admit-card:last-child { border-bottom: none; }
-
-/* ---- Header ---- */
-.ac-header {
-    display: flex;
-    align-items: center;
-    gap: 3mm;
-    border-bottom: 2px double #065f46;
-    padding-bottom: 2mm;
+.cp-slot + .cp-slot {
+    border-top: 2px dashed #999;
 }
-.ac-logo { width: 14mm; height: 14mm; object-fit: contain; flex-shrink: 0; }
-.ac-org { flex: 1; text-align: center; }
-.ac-org h1 { font-size: 9.5pt; font-weight: 800; color: #0f172a; line-height: 1.2; }
-.ac-org p  { font-size: 6.5pt; color: #334155; line-height: 1.4; margin-top: 1mm; }
 
-/* ---- Card title pill ---- */
-.ac-title-row {
-    display: flex; align-items: center; justify-content: center; gap: 3mm;
-}
-.ac-pill {
-    background: #0f172a; color: #fff;
-    border-radius: 999px;
-    padding: 1mm 6mm;
-    font-size: 9pt; font-weight: 800;
-    letter-spacing: .03em;
-}
-.ac-session { font-size: 8pt; font-weight: 600; color: #0f172a; }
-
-/* ---- Body: details table + photo ---- */
-.ac-body {
-    display: flex;
-    gap: 3mm;
-    flex: 1;
+.cp-slot .rc-page {
+    width: 210mm !important;
+    height: 148.5mm !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    padding: 0.15in !important;
     overflow: hidden;
+    box-sizing: border-box;
 }
-.ac-details { flex: 1; }
-.ac-table { width: 100%; border-collapse: collapse; }
-.ac-table tr td {
-    font-size: 7.5pt;
-    padding: 0.9mm 1.5mm;
-    border: 0.5px solid #cbd5e1;
-    vertical-align: middle;
-    line-height: 1.3;
-}
-.ac-table tr td:first-child {
-    font-weight: 700;
-    width: 36%;
-    background: #f8fafc;
-    white-space: nowrap;
-}
-.ac-photo-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5mm;
-    flex-shrink: 0;
-}
-.ac-photo {
-    width: 20mm; height: 24mm;
-    object-fit: cover;
-    border: 1.5px double #94a3b8;
-    background: #f1f5f9;
-    display: block;
-}
-.ac-photo-placeholder {
-    width: 20mm; height: 24mm;
-    border: 1.5px double #cbd5e1;
-    background: #f1f5f9;
-    display: flex; align-items: center; justify-content: center;
-}
-.ac-photo-placeholder svg { width: 10mm; height: 10mm; color: #94a3b8; }
-.ac-roll-tag {
-    border: 1px solid #0f172a;
-    border-radius: 999px;
-    padding: 0.5mm 2.5mm;
-    font-size: 6.5pt; font-weight: 700;
-    text-align: center;
-    white-space: nowrap;
+.cp-slot .reg-card,
+.cp-slot .rc-inner { height: 100%; box-sizing: border-box; }
+.cp-slot .rc-inner { display: flex; flex-direction: column; justify-content: space-between; }
+.cp-slot .rc-banner { gap: .55rem; padding: .3rem .7rem .25rem; margin-bottom: .35rem; }
+.cp-slot .rc-logo img { width: 90px; height: 90px; object-fit: contain; }
+.cp-slot .rc-banner > div:not(.rc-qr) { flex: 1 1 auto; min-width: 0; text-align: center; }
+.cp-slot .rc-banner h1 { font-size: 1.75rem; }
+.cp-slot .rc-reg { font-size: .95rem; }
+.cp-slot .rc-banner .rc-gov { font-size: .82rem; line-height: 1.35; }
+.cp-slot .rc-qr canvas,
+.cp-slot .rc-qr img,
+.cp-slot .rc-qr table { width: 75px !important; height: 75px !important; }
+.cp-slot .rc-exam-head { font-size: 1.5rem; margin: .25rem 0 .35rem; }
+.cp-slot .rc-top { padding: .15rem .7rem .15rem; }
+.cp-slot .rc-tag { padding: .1rem .55rem; font-size: .7rem; }
+.cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: .8rem; }
+.cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 -1.25rem !important; }
+.cp-slot .rc-col { flex: 1 1 0; min-width: 0; }
+.cp-slot .rc-row { grid-template-columns: 8.2rem 1rem 1fr; font-size: .85rem; line-height: 1.25; padding: .04rem 0; }
+.cp-slot .rc-photo img { width: 74px; height: 84px; }
+.cp-slot .rc-rules { width: 125%; margin: .25rem 0 0 !important; font-size: .82rem !important; line-height: 1.28 !important; }
+.cp-slot .rc-rules p { margin: 0 0 .15rem; }
+.cp-slot .rc-rules ol { margin: 0; padding-left: .8rem; }
+.cp-slot .sig-tbl { margin-top: .25rem !important; }
+.cp-slot .overflow-x-auto { margin-top: 0; }
+.cp-slot .sig-tbl { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.cp-slot .overflow-x-auto { width: 100%; }
+.cp-slot .sig-img img { max-width: 90px; max-height: 36px; }
+.cp-slot .sig-name { font-size: .9em; }
+.cp-slot .sig-role { font-size: 82%; }
+.cp-slot .rc-note { font-size: .66rem; padding: .18rem .7rem 0; line-height: 1.2; }
+.cp-slot .rc-foot { padding: .15rem .7rem .2rem; font-size: .58rem; }
+
+/* The card keeps its print proportions in the browser's narrow viewport. */
+@media screen and (max-width: 900px) {
+    .cp-page { zoom: .68; }
+    .cp-slot .rc-banner { flex-wrap: nowrap; }
+    .cp-slot .rc-banner h1 { font-size: 1.75rem; white-space: nowrap; }
+    .cp-slot .rc-banner .rc-gov { white-space: nowrap; overflow-wrap: normal; }
+    .cp-slot .rc-top { flex-direction: row; align-items: center; }
+    .cp-slot .rc-tags { min-width: 0; }
+    .cp-slot .rc-roll { min-width: 0; margin-left: auto; }
+    .cp-slot .rc-tag { white-space: nowrap; text-align: left; }
+    .cp-slot .rc-body { flex-direction: row; gap: .6rem; }
+    .cp-slot .rc-col { width: auto; }
+    .cp-slot .rc-photo { align-self: flex-start; }
+    .cp-slot .sig-tbl, .cp-slot .sig-tbl tbody { display: table; }
+    .cp-slot .sig-tbl tr { display: table-row; }
+    .cp-slot .sig-tbl td { display: table-cell; padding: 0 .2rem; }
 }
 
-/* ---- Rules ---- */
-.ac-rules {
-    font-size: 6pt;
-    line-height: 1.5;
-    color: #1e293b;
-    border-top: 0.5px solid #e2e8f0;
-    padding-top: 1.5mm;
-}
-.ac-rules b { font-size: 6.5pt; }
+/* Hide py-6 wrapper padding */
+.cp-slot .py-6 { padding: 0 !important; }
 
-/* ---- Signatures ---- */
-.ac-sigs {
-    display: flex;
-    justify-content: space-between;
-    border-top: 0.5px solid #e2e8f0;
-    padding-top: 1.5mm;
-    margin-top: auto;
-}
-.ac-sig {
-    text-align: center;
-    font-size: 6pt;
-    line-height: 1.3;
-}
-.ac-sig-line {
-    border-top: 0.5px solid #000;
-    width: 28mm;
-    margin: 0 auto .5mm;
-}
-
-/* ---- Print rules ---- */
-@page { size: A4 portrait; margin: 0; }
 @media print {
-    body { background: #fff; }
-    .toolbar { display: none; }
-    .page {
-        width: 210mm;
-        min-height: 297mm;
+    html, body { background: #fff; }
+    .cp-toolbar { display: none; }
+    .cp-page {
         margin: 0;
         box-shadow: none;
-        page-break-after: always;
+        break-after: auto;
+        page-break-after: auto;
     }
-    .page:last-child { page-break-after: auto; }
-    .admit-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cp-page + .cp-page {
+        break-before: page;
+        page-break-before: always;
+    }
+    .cp-slot .rc-page { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 </style>
+</head>
+<body>
 
-<div class="toolbar">
+<div class="cp-toolbar">
     <div>
-        <h2>Admit Cards — <?= e($centerName) ?> &nbsp;|&nbsp; Session <?= e($activeSession) ?></h2>
-        <span><?= $total ?> student<?= $total !== 1 ? 's' : '' ?> &nbsp;·&nbsp; <?= ceil($total / 2) ?> page<?= ceil($total / 2) !== 1 ? 's' : '' ?></span>
+        <h2>Admit Cards — <?= e($centerName ?? '') ?> &nbsp;|&nbsp; Session <?= e($session) ?></h2>
+        <small><?= $total ?> students &nbsp;·&nbsp; <?= ceil($total / 2) ?> pages</small>
     </div>
-    <button type="button" onclick="window.print()">&#128424; Print / Save as PDF</button>
+    <button onclick="window.print()">&#128424; Print / Save as PDF</button>
 </div>
 
-<?php
-// Chunk students into pairs — 2 per A4 page
-$pairs = array_chunk($students, 2);
-foreach ($pairs as $pair):
-?>
-<div class="page">
-    <?php foreach ($pair as $s):
-        $photo    = $photoData((string) ($s['photo'] ?? ''));
-        $cls      = $classLabel((int) ($s['class'] ?? 0));
-        $reg      = $s['registration'] ?? '';
-        $roll     = $s['roll'] ?? '';
-        $session  = $s['session'] ?? $activeSession;
+<?php foreach ($pairs as $pair): ?>
+<div class="cp-page<?= $singleStudent ? ' single' : '' ?>">
+    <?php for ($slot = 0; $slot < ($singleStudent ? 1 : 2); $slot++):
+        $s = $pair[$slot] ?? null;
+        $photoSrc = $s ? $resolveStudentPhoto((array)$s) : null;
     ?>
-    <div class="admit-card">
-
-        <!-- Header -->
-        <div class="ac-header">
-            <?php if ($logoB64): ?>
-                <img class="ac-logo" src="<?= $logoB64 ?>" alt="Logo">
-            <?php endif; ?>
-            <div class="ac-org">
-                <h1>BANGLADESH KINDERGARTEN ASSOCIATION</h1>
-                <p>Govt. Reg. No.: S-1028/98 &nbsp;|&nbsp; 59/3, Brammonchiron, Jatrabari, Dhaka-1203 &nbsp;|&nbsp; +88-02-224458009</p>
-            </div>
-        </div>
-
-        <!-- Title row -->
-        <div class="ac-title-row">
-            <span class="ac-pill">Admit Card</span>
-            <span class="ac-session">Scholarship Examination — <?= e($session) ?></span>
-        </div>
-
-        <!-- Body: details + photo -->
-        <div class="ac-body">
-            <div class="ac-details">
-                <table class="ac-table">
-                    <tr><td>Student's Name</td><td><?= e($s['name'] ?? '') ?></td></tr>
-                    <tr><td>Father's Name</td><td><?= e($s['father_name'] ?? '') ?></td></tr>
-                    <tr><td>Mother's Name</td><td><?= e($s['mother_name'] ?? '') ?></td></tr>
-                    <tr><td>Date of Birth</td><td><?= e($s['dob'] ?? '') ?></td></tr>
-                    <tr><td>Registration No.</td><td><?= e($reg) ?></td></tr>
-                    <tr><td>Roll No.</td><td><?= e($roll) ?></td></tr>
-                    <tr><td>Exam Class</td><td><?= e($cls) ?></td></tr>
-                    <tr><td>Exam Date &amp; Time</td><td>As per routine</td></tr>
-                    <tr><td>Exam Center</td><td><?= e($s['center_name'] ?? '') ?></td></tr>
-                    <tr><td>Exam Venue</td><td><?= e($s['institute_name'] ?? '') ?></td></tr>
-                </table>
+    <div class="cp-slot">
+      <?php if ($s): ?>
+        <div class="rc-page">
+        <div class="reg-card border-2 border-black bg-white">
+            <div class="rc-inner border-2 border-black">
+            <div class="rc-banner">
+                <span class="rc-logo"><img src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD" onerror="this.style.display='none'"></span>
+                <div>
+                    <h1>BANGLADESH KINDERGARTEN ASSOCIATION</h1>
+                    <p class="rc-reg">Govt. Reg. No.: S-1028/98</p>
+                    <p class="rc-gov">
+                        59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009<br>
+                        Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd
+                    </p>
+                </div>
+                <div class="rc-qr">
+                    <div class="reg-qr inline-block" data-qr-content="<?= $qrContentEscaped ?>"></div>
+                </div>
             </div>
 
-            <div class="ac-photo-wrap">
-                <?php if ($photo): ?>
-                    <img class="ac-photo" src="<?= $photo ?>" alt="Photo">
-                <?php else: ?>
-                    <div class="ac-photo-placeholder">
-                        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+            <p class="rc-exam-head">Scholarship Exam - <?= e($s['session'] ?? $session) ?></p>
+
+            <div class="rc-top">
+                <div class="rc-tags">
+                    <div class="rc-tag">Reg No.&nbsp;: <?= e($s['registration'] ?? '') ?></div>
+                </div>
+                <div class="rc-center">
+                    <div class="rc-pill">Admit Card</div>
+                </div>
+                <div class="rc-tag rc-roll">Exam Roll&nbsp;: <?= e($s['roll'] ?? '') ?></div>
+            </div>
+
+            <div class="rc-body">
+                <div class="rc-col">
+                    <?= $row('Name', $s['name'] ?? '') ?>
+                    <?= $row("Father's Name", $s['father_name'] ?? '') ?>
+                    <?= $row("Mother's Name", $s['mother_name'] ?? '') ?>
+                    <?= $row('Date of Birth', !empty($s['dob']) ? DateFormat($s['dob'], 'd-m-Y') : '') ?>
+                    <?= $row('Registration No.', $s['registration'] ?? '') ?>
+                    <div class="rc-rules ml-4 my-3 text-[11px] sm:text-xs leading-relaxed">
+                        <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
+                        <p>১। পরীক্ষা শুরুর কম পক্ষে ১৫ মিনিট আগে পরীক্ষা হলে উপস্থিত থাকতে হবে।</p>
+                        <p>২। পরীক্ষা হলে কোনো ধরনের কাগজপত্র বা বই নিয়ে প্রবেশ করা যাবে না।</p>
+                        <p>৩। পরীক্ষা প্রবেশ পত্র ছাড়া কোনো শিক্ষার্থী পরীক্ষায় অংশগ্রহণ করতে পারবে না।</p>
+                        <p>৪। পরীক্ষা হলে কোনো অনৈতিক বা অনাকাঙ্ক্ষিত ঘটনা ঘটানো যাবে না।</p>
+                        <p>৫। পরীক্ষা সময় মোবাইল ফোন ব্যবহার করা যাবে না।</p>
                     </div>
-                <?php endif; ?>
-                <div class="ac-roll-tag">Roll: <?= e($roll) ?></div>
-                <div class="ac-roll-tag">Reg: <?= e(substr($reg, -6)) ?></div>
+                </div>
+                <div class="rc-col">
+                <?= $row('Roll No.', $s['roll'] ?? '') ?>
+                <?= $row('Exam Class', $className((int)($s['class'] ?? 0))) ?>
+                <?= $row('Exam Date & Time', 'As per routine') ?>
+                <?= $row('Exam Center', $s['center_name'] ?? '') ?>
+                <?= $row('Exam Venue', $s['institute_name'] ?? '') ?>
+                </div>
+                <div class="rc-photo">
+                    <?php if ($photoSrc): ?><img src="<?= $photoSrc ?>" alt="Student photo"><?php endif; ?>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+            <table class="sig-tbl mt-4 w-full text-[10px] sm:text-xs">
+                <tr>
+                    <?php foreach ([
+                        ['chairman',            'MONOWARA BHUIYAN',   'Chairman'],
+                        ['general_secretary',   'MD. MIZANUR RAHMAN', 'General Secretary'],
+                        ['controller',          'MD. FARUK HOSSEN',   'Controller of Exam'],
+                        ['education_secretary', 'MD. ABDUL ALIM',     'Education Secretary'],
+                    ] as [$signKey, $signName, $signRole]): ?>
+                    <td>
+                        <div class="sig-img"><img src="<?= e(result_signature($signKey)) ?>" alt=""></div>
+                        <div class="sig-line">
+                            <div class="sig-name"><?= e($signName) ?></div>
+                            <div class="sig-role"><?= e($signRole) ?></div>
+                        </div>
+                    </td>
+                    <?php endforeach; ?>
+                </tr>
+            </table>
+            </div>
+
+            <p class="rc-note">
+                <b>Note:</b> Examinee must bring this admit card to the examination hall.<br>
+                <span class="text-xs">&copy; Copyright 1984 - <?= e($copyrightYear) ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by Web Space IT</span>
+            </p>
+
+            <div class="rc-foot">
+                <div>Print Date: <?= e($printDate) ?></div>
+            </div>
             </div>
         </div>
-
-        <!-- Rules -->
-        <div class="ac-rules">
-            <b>নিয়মাবলী:</b>
-            ১। পরীক্ষা শুরুর কম পক্ষে ১৫ মিনিট আগে পরীক্ষা হলে উপস্থিত থাকতে হবে।
-            ২। পরীক্ষা হলে কোনো ধরনের কাগজপত্র বা বই নিয়ে প্রবেশ করা যাবে না।
-            ৩। পরীক্ষা প্রবেশ পত্র ছাড়া কোনো শিক্ষার্থী পরীক্ষায় অংশগ্রহণ করতে পারবে না।
-            ৪। পরীক্ষা হলে কোনো অনৈতিক বা অনাকাঙ্ক্ষিত ঘটনা ঘটানো যাবে না।
-            ৫। পরীক্ষা সময় মোবাইল ফোন ব্যবহার করা যাবে না।
         </div>
-
-        <!-- Signatures -->
-        <div class="ac-sigs">
-            <div class="ac-sig"><div class="ac-sig-line"></div><span>Exam Controller</span></div>
-            <div class="ac-sig"><div class="ac-sig-line"></div><span>General Secretary</span></div>
-            <div class="ac-sig"><div class="ac-sig-line"></div><span>Chairman</span></div>
-            <div class="ac-sig"><div class="ac-sig-line"></div><span>Director</span></div>
-        </div>
-
-    </div><!-- /.admit-card -->
-    <?php endforeach; ?>
-</div><!-- /.page -->
+      <?php endif; ?>
+    </div>
+    <?php endfor; ?>
+</div>
 <?php endforeach; ?>
+
+<script src="/assets/js/vendor/qrcode.min.js"></script>
+<script>
+(function () {
+    if (typeof QRCode === 'undefined') { return; }
+    document.querySelectorAll('.reg-qr').forEach(function (box) {
+        new QRCode(box, {
+            text: box.getAttribute('data-qr-content'),
+            width: 384, height: 384,
+            correctLevel: QRCode.CorrectLevel.M
+        });
+        box.querySelectorAll('canvas, img, table').forEach(function (el) {
+            el.style.width = '75px';
+            el.style.height = '75px';
+        });
+    });
+})();
+</script>
+</body>
+</html>
