@@ -2,56 +2,68 @@
 /**
  * Admit Cards index page
  */
+$classes = [1, 2, 3, 4, 5, 6];
 ?>
-<div class="card">
-    <div class="card-header flex items-center justify-between">
-        <h3 class="text-lg font-semibold">Admit Cards</h3>
-    </div>
-    <div class="card-body">
-        <form id="admitcard-form" class="filter-bar grid grid-cols-1 md:grid-cols-3 gap-4" data-form>
-            <div class="fl">
-                <select class="input" data-field="session" disabled>
-                    <option value="<?= e($activeSession) ?>"><?= e($activeSession) ?></option>
-                </select>
-                <label>Exam Session</label>
-            </div>
-            <div class="fl">
-                <select class="input" data-field="center_id" required>
-                    <option value="">Select Center</option>
-                </select>
-                <label>Center <span class="text-red-500">*</span></label>
-                <p class="field-error hidden" data-error-for="center_id"></p>
-            </div>
-            <div class="fl">
-                <select class="input" data-field="institute_id">
-                    <option value="">Select Institute</option>
-                </select>
-                <label>Institute</label>
-            </div>
-            <div class="fl">
-                <select class="input" data-field="class">
-                    <option value="">Select Class</option>
-                    <option value="6">KG</option>
-                    <option value="1">One</option>
-                    <option value="2">Two</option>
-                    <option value="3">Three</option>
-                    <option value="4">Four</option>
-                    <option value="5">Five</option>
-                </select>
-                <label>Class</label>
-            </div>
-            <div class="flex items-end gap-2">
-                <button type="submit" class="btn btn-primary">Search</button>
-                <button type="button" class="btn btn-light" id="btn-reset">Reset</button>
-            </div>
-        </form>
+<div class="space-y-4">
+    <div class="card" id="admitcard-list">
+        <div class="card-header">
+            <h1 class="text-base font-semibold text-slate-800">Admit Cards</h1>
+            <button type="button" id="btn-print-center" class="btn btn-primary btn-sm hidden">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print All (Center)
+            </button>
+        </div>
+        <div class="card-body space-y-4">
 
-        <div class="mt-6">
+            <!-- Filter bar — same style as students list -->
+            <div class="filter-bar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div class="fl">
+                    <select id="f-session" class="w-full">
+                        <option value="">All Sessions</option>
+                        <?php foreach ((array) $sessions as $s): ?>
+                            <option value="<?= (int) $s['session'] ?>"
+                                <?= (string) ($s['session'] ?? '') === (string) $activeSession ? 'selected' : '' ?>>
+                                <?= e($s['session']) ?><?= (int) ($s['active'] ?? 0) === 1 ? ' (active)' : '' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label for="f-session">Exam Session</label>
+                </div>
+                <div class="fl">
+                    <select id="f-center" class="w-full">
+                        <option value="">All Centers</option>
+                        <?php foreach ((array) $centers as $c): ?>
+                            <option value="<?= (int) $c['id'] ?>"><?= e($c['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label for="f-center">Center</label>
+                </div>
+                <div class="fl">
+                    <select id="f-institute" class="w-full">
+                        <option value="">All Institutes</option>
+                    </select>
+                    <label for="f-institute">Institute</label>
+                </div>
+                <div class="fl">
+                    <select id="f-class" class="w-full">
+                        <option value="">All Classes</option>
+                        <?php foreach ($classes as $c): ?>
+                            <option value="<?= (int) $c ?>"><?= e(ClassName($c)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label for="f-class">Class</label>
+                </div>
+                <div class="fl">
+                    <input type="search" id="f-search" class="w-full" placeholder="Name, reg. no, roll...">
+                    <label for="f-search">Search</label>
+                </div>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>SL</th>
+                            <th style="width:10px">Sl.</th>
                             <th>Registration</th>
                             <th>Roll</th>
                             <th>Name</th>
@@ -63,130 +75,135 @@
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody id="list-body"></tbody>
+                    <tbody id="admit-rows">
+                        <tr><td colspan="10" class="text-center py-8 text-slate-400">Use the filters above and press Search</td></tr>
+                    </tbody>
                 </table>
             </div>
-            <div data-pagination class="mt-4"></div>
+            <div id="admit-pagination"></div>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('admitcard-form');
-    const centerSel = form.querySelector('[data-field="center_id"]');
-    const instituteSel = form.querySelector('[data-field="institute_id"]');
-    const listBody = document.getElementById('list-body');
-    const pagerEl = document.querySelector('[data-pagination]');
-    const resetBtn = document.getElementById('btn-reset');
-    const activeSession = <?= json_encode($activeSession) ?>;
+document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
 
-    // Load centers
-    BK.get('/api/centerList').then(function(res) {
-        const centers = res.data.centerList || [];
-        centers.forEach(function(c) {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = (c.center_name || c.name || '').toUpperCase();
-            centerSel.appendChild(opt);
-        });
-    }).catch(function(err) {
-        BK.toast('Failed to load centers', 'error');
-    });
+    const sessionEl   = document.getElementById('f-session');
+    const centerEl    = document.getElementById('f-center');
+    const instituteEl = document.getElementById('f-institute');
+    const classEl     = document.getElementById('f-class');
+    const searchEl    = document.getElementById('f-search');
+    const rowsEl      = document.getElementById('admit-rows');
+    const pagerEl     = document.getElementById('admit-pagination');
+    const btnPrintCenter = document.getElementById('btn-print-center');
+    const PER_PAGE    = 20;
+    const CLASS_NAMES = { 6:'KG', 1:'ONE', 2:'TWO', 3:'THREE', 4:'FOUR', 5:'FIVE' };
 
-    centerSel.addEventListener('change', function() {
-        const centerId = this.value;
-        instituteSel.innerHTML = '<option value="">Select Institute</option>';
-        if (!centerId) return;
-        BK.get('/api/instituteListByCenter?center_id=' + centerId).then(function(res) {
-            const institutes = res.data.instituteList || [];
-            institutes.forEach(function(inst) {
-                const opt = document.createElement('option');
-                opt.value = inst.id;
-                opt.textContent = (inst.name || '').toUpperCase();
-                instituteSel.appendChild(opt);
-            });
-        });
-    });
+    let pageNum     = 1;
+    let searchTimer = null;
+    const val = el => el ? el.value : '';
 
-    function loadList(page) {
-        page = page || 1;
-        const params = new URLSearchParams();
-        params.set('page', page);
-        params.set('per_page', 20);
-        params.set('session', activeSession);
-        const centerId = centerSel.value;
-        const instituteId = instituteSel.value;
-        const cls = form.querySelector('[data-field="class"]').value;
-        if (centerId) params.set('center_id', centerId);
-        if (instituteId) params.set('institute_id', instituteId);
-        if (cls) params.set('class', cls);
-
-        BK.get('/api/report-student-list?' + params.toString()).then(function(res) {
-            const paginator = res.data.paginator || {};
-            const rows = paginator.data || [];
-            let html = '';
-            if (rows.length === 0) {
-                html = '<tr><td colspan="10" class="text-center text-slate-500">No records found</td></tr>';
-            } else {
-                rows.forEach(function(r, idx) {
-                    const sl = ((paginator.current_page - 1) * paginator.per_page) + idx + 1;
-                    html += '<tr>' +
-                        '<td>' + sl + '</td>' +
-                        '<td>' + (r.registration || '') + '</td>' +
-                        '<td>' + (r.roll || '') + '</td>' +
-                        '<td>' + (r.name || '') + '</td>' +
-                        '<td>' + (r.father_name || '') + '</td>' +
-                        '<td>' + (r.mother_name || '') + '</td>' +
-                        '<td>' + getClassName(r.class) + '</td>' +
-                        '<td>' + (r.center_name || '') + '</td>' +
-                        '<td>' + (r.institute_name || '') + '</td>' +
-                        '<td class="row-actions flex gap-1">' +
-                            '<button type="button" class="btn btn-sm btn-primary" data-action="view" data-institute="' + r.institute_id + '" data-class="' + r.class + '">View/Print</button>' +
-                        '</td>' +
-                    '</tr>';
-                });
-            }
-            listBody.innerHTML = html;
-            BK.renderPagination(pagerEl, paginator);
-
-            // Attach action handlers
-            listBody.querySelectorAll('[data-action="view"]').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    const instId = this.getAttribute('data-institute');
-                    const clsId = this.getAttribute('data-class');
-                    if (!instId || !clsId) return;
-                    window.open('/api/admitcard_print/' + instId + '/' + clsId, '_blank', 'scrollbars=yes,width=800,height=600');
-                });
-            });
-        }).catch(function(err) {
-            BK.toast(err.message || 'Failed to load students', 'error');
-        });
-    }
-
-    function getClassName(cls) {
-        cls = parseInt(cls);
-        switch(cls) {
-            case 6: return 'KG';
-            case 1: return 'One';
-            case 2: return 'Two';
-            case 3: return 'Three';
-            case 4: return 'Four';
-            case 5: return 'Five';
-            default: return cls;
+    // Show/hide Print All button based on center selection
+    function syncPrintBtn() {
+        const cid = centerEl.value;
+        if (btnPrintCenter) {
+            btnPrintCenter.classList.toggle('hidden', !cid);
+            btnPrintCenter.dataset.centerId = cid || '0';
         }
     }
 
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        loadList(1);
+    if (btnPrintCenter) {
+        btnPrintCenter.addEventListener('click', function () {
+            const cid = btnPrintCenter.dataset.centerId || '0';
+            window.open('/api/admitcard_center/' + encodeURIComponent(cid), '_blank');
+        });
+    }
+
+    // Cascade: center → institute
+    centerEl.addEventListener('change', function () {
+        syncPrintBtn();
+        instituteEl.innerHTML = '<option value="">All Institutes</option>';
+        const cid = centerEl.value;
+        if (!cid) return;
+        BK.get('/api/instituteListByCenter?center_id=' + encodeURIComponent(cid))
+            .then(function (res) {
+                (res.data.instituteList || []).forEach(function (i) {
+                    const o = document.createElement('option');
+                    o.value = i.id;
+                    o.textContent = i.name || '';
+                    instituteEl.appendChild(o);
+                });
+            })
+            .catch(() => BK.toast('Could not load institutes', 'error'));
     });
 
-    resetBtn.addEventListener('click', function() {
-        form.reset();
-        instituteSel.innerHTML = '<option value="">Select Institute</option>';
-        listBody.innerHTML = '<tr><td colspan="10" class="text-center text-slate-500">No records found</td></tr>';
-        pagerEl.innerHTML = '';
+    function reload() {
+        const url = BK.qs('/api/students', {
+            page:         pageNum,
+            per_page:     PER_PAGE,
+            session:      val(sessionEl),
+            center_id:    val(centerEl),
+            institute_id: val(instituteEl),
+            class:        val(classEl),
+            search:       val(searchEl),
+        });
+        BK.get(url).then(function (json) {
+            const pager = (json && json.data) || {};
+            const rows  = pager.data || [];
+            rowsEl.innerHTML = rows.length ? rows.map(function (r, idx) {
+                const sl  = ((pager.current_page - 1) * pager.per_page) + idx + 1;
+                const cls = CLASS_NAMES[r.class] || r.class;
+                return '<tr>' +
+                    '<td>' + sl + '</td>' +
+                    '<td>' + BK.esc(r.registration || '') + '</td>' +
+                    '<td>' + BK.esc(r.roll || '') + '</td>' +
+                    '<td>' + BK.esc(r.name || '') + '</td>' +
+                    '<td>' + BK.esc(r.father_name || '') + '</td>' +
+                    '<td>' + BK.esc(r.mother_name || '') + '</td>' +
+                    '<td>' + BK.esc(cls) + '</td>' +
+                    '<td>' + BK.esc(r.center_name || '') + '</td>' +
+                    '<td>' + BK.esc(r.institute_name || '') + '</td>' +
+                    '<td><button type="button" class="btn btn-sm btn-primary"' +
+                        ' data-inst="' + BK.esc(String(r.institute_id)) + '"' +
+                        ' data-class="' + BK.esc(String(r.class)) + '">View/Print</button></td>' +
+                '</tr>';
+            }).join('') : '<tr><td colspan="10" class="text-center py-8 text-slate-400">No records found</td></tr>';
+
+            if (pager.current_page) pageNum = pager.current_page;
+            pagerEl.innerHTML = '';
+            BK.renderPagination(pagerEl, pager);
+        }).catch(function (err) {
+            rowsEl.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-500">Could not load list</td></tr>';
+            BK.toast(err.message || 'Could not load list', 'error');
+        });
+    }
+
+    // View/Print button
+    rowsEl.addEventListener('click', function (e) {
+        const btn = e.target.closest('button[data-inst]');
+        if (!btn) return;
+        window.open('/api/admitcard_print/' + encodeURIComponent(btn.dataset.inst) + '/' + encodeURIComponent(btn.dataset.class), '_blank');
     });
+
+    // Pagination
+    pagerEl.addEventListener('click', function (e) {
+        const a = e.target.closest('a');
+        if (!a) return;
+        e.preventDefault();
+        pageNum = Number(new URL(a.href).searchParams.get('page') || 1);
+        reload();
+    });
+
+    // Filter change triggers reload
+    [sessionEl, centerEl, instituteEl, classEl].forEach(el => el.addEventListener('change', () => { pageNum = 1; reload(); }));
+
+    // Search with debounce
+    searchEl.addEventListener('input', function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => { pageNum = 1; reload(); }, 300);
+    });
+
+    reload();
 });
 </script>

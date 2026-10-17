@@ -6,6 +6,7 @@ use App\Core\Auth;
 use App\Core\Database;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\View;
 use App\Models\Student;
 use App\Core\Query;
 
@@ -76,17 +77,99 @@ final class AdmitCardController extends Controller
         // RLS/BOLA: same ownership rule for the printable admit cards.
         Auth::assertInstituteAccess($id);
 
-        // In original admitcard_print takes institute_id
-        $students = Student::query()
-            ->where('institute_id', $id)
-            ->where('session', $activeSession)
-            ->where('class', $class)
-            // Approval workflow: pending registrations get no admit card.
-            ->where('active', 1)
-            ->orderBy('roll', 'asc')
-            ->get();
+        // The registration-card layout also needs the resolved center, institute,
+        // and location labels, so load them with the students in one query.
+        $students = Database::select(
+            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
+                    u.`name` AS center_name,
+                    d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
+               FROM `students` s
+          LEFT JOIN `institutes` i ON i.`id` = s.`institute_id`
+          LEFT JOIN `centers` c ON c.`id` = s.`center_id`
+          LEFT JOIN `users` u ON u.`id` = c.`user_id`
+          LEFT JOIN `divisions` d ON d.`id` = s.`division_id`
+          LEFT JOIN `districts` dt ON dt.`id` = s.`district_id`
+          LEFT JOIN `upozilas` uz ON uz.`id` = s.`upazila_id`
+              WHERE s.`institute_id` = ? AND s.`session` = ? AND s.`class` = ?
+                AND s.`active` = 1
+           ORDER BY s.`roll` ASC",
+            [$id, $activeSession, $class]
+        );
 
-        return $this->renderAdmitCards($students, $activeSession);
+        return View::render('students.registration_card', [
+            'title' => 'Admit Cards - Class ' . $class,
+            'students' => $students,
+            'cardMode' => 'admit',
+        ], 'layouts.guest');
+    }
+
+    /**
+     * Print all admit cards for an entire center — 2 cards per A4 page.
+     * GET /api/admitcard_center/{id}   where {id} = center_id (0 = all centers for admin)
+     */
+    public function printByCenter(Request $request): string
+    {
+        if (!Auth::check()) {
+            Response::json(['status' => 'errors'], 401);
+        }
+        if (!Auth::can('admit-card')) {
+            Response::json(['message' => 'This action is unauthorized.'], 403);
+        }
+
+        $centerId      = (int) $request->params['id'];
+        $activeSession = $this->activeSession();
+
+        // RLS: center users are pinned to their own center
+        if (!Auth::isAdmin()) {
+            $mine = (int) (Auth::centerId() ?? 0);
+            if ($centerId === 0) {
+                $centerId = $mine;
+            } else {
+                Auth::assertCenterAccess($centerId);
+            }
+        }
+
+        $params = [$activeSession];
+        $centerWhere = '';
+        if ($centerId > 0) {
+            $centerWhere = ' AND s.`center_id` = ?';
+            $params[]    = $centerId;
+        }
+
+        $students = Database::select(
+            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
+                    u.`name` AS center_name,
+                    d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
+               FROM `students` s
+          LEFT JOIN `institutes` i  ON i.`id`  = s.`institute_id`
+          LEFT JOIN `centers` c     ON c.`id`  = s.`center_id`
+          LEFT JOIN `users` u       ON u.`id`  = c.`user_id`
+          LEFT JOIN `divisions` d   ON d.`id`  = s.`division_id`
+          LEFT JOIN `districts` dt  ON dt.`id` = s.`district_id`
+          LEFT JOIN `upozilas` uz   ON uz.`id` = s.`upazila_id`
+              WHERE s.`session` = ? AND s.`active` = 1" . $centerWhere . "
+           ORDER BY u.`name` ASC, FIELD(s.`class`,6,1,2,3,4,5), s.`roll` ASC",
+            $params
+        );
+
+        if (empty($students)) {
+            return '<html><body style="font-family:sans-serif;padding:2rem">'
+                . '<h2>No active students found for this center.</h2></body></html>';
+        }
+
+        $centerName = $centerId > 0
+            ? (Database::selectOne(
+                'SELECT u.`name` FROM `centers` c JOIN `users` u ON u.`id` = c.`user_id` WHERE c.`id` = ?',
+                [$centerId]
+              )['name'] ?? 'Center')
+            : 'All Centers';
+
+        return View::render('students.registration_card', [
+            'title'      => 'Admit Cards — ' . $centerName,
+            'students'   => $students,
+            'cardMode'   => 'admit',
+            'twoPerPage' => true,
+        ], 'layouts.guest');
     }
 
     private function renderAdmitCards($students, $activeSession): string
@@ -317,9 +400,17 @@ final class AdmitCardController extends Controller
                                   <th class="nonbold">Exam. Venue</th>
                                   <th class="nonbold">' . e($student['institute_name'] ?? '') . '</th>
                               </tr>
-                          </table>
-                      </div>
-                      <div style="margin-top:-15px;line-height:1.5">
+</table>
+                       </div>
+                       <div style="margin:8px 4px 6px;font-size:13px;line-height:1.6;">
+                           <b>নিয়মাবলী:</b>
+                           ১। পরীক্ষা শুরুর কম পক্ষে ১৫ মিনিট আগে পরীক্ষা হলে উপস্থিত থাকতে হবে।
+                           ২। পরীক্ষা হলে কোনো ধরনের কাগজপত্র বা বই নিয়ে প্রবেশ করা যাবে না।
+                           ৩। পরীক্ষা প্রবেশ পত্র ছাড়া কোনো শিক্ষার্থী পরীক্ষায় অংশগ্রহণ করতে পারবে না।
+                           ৪। পরীক্ষা হলে কোনো অনৈতিক বা অনাকাঙ্ক্ষিত ঘটনা ঘটানো যাবে না।
+                           ৫। পরীক্ষা সময় মোবাইল ফোন ব্যবহার করা যাবে না।
+                       </div>
+                       <div style="margin-top:-15px;line-height:1.5">
                           <div class="left" style="width:20%;margin-top:40px;">
                               <div class="sign">
                                   <img src="/images/authority/head.gif">

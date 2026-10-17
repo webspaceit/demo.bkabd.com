@@ -9,7 +9,11 @@
  *
  * @var array $student  row from students joined with institute/center/geo names
  */
-$photo = (string) ($student['photo'] ?? '');
+$cardMode    = ($cardMode ?? 'registration') === 'admit' ? 'admit' : 'registration';
+$twoPerPage  = !empty($twoPerPage);
+$isAdmitCard = $cardMode === 'admit';
+$cardStudents = $students ?? (isset($student) ? [$student] : []);
+$cardCount = count($cardStudents);
 $resolve = static function (string $file): ?string {
     if ($file === '') {
         return null;
@@ -26,15 +30,9 @@ $resolve = static function (string $file): ?string {
     }
     return null;
 };
-$photoSrc = $resolve($photo);
-if ($photoSrc === null) {
-    $placeholder = ((int) ($student['gender'] ?? 0) === 2) ? 'female.jpeg' : 'male.jpeg';
-    $photoSrc = $resolve($placeholder);
-}
 
-// The QR does not link back to this page (it is staff-only anyway): it carries
-// the association's identity and contact details — the same block the banner
-// prints — so scanning the card shows the office address, phone and sites.
+// The QR does not link back to this staff-only page; it carries the
+// association's identity and contact details printed in the banner.
 $qrContent = implode("\n", [
     'BANGLADESH KINDERGARTEN ASSOCIATION',
     'Govt. Reg. No.: S-1028/98',
@@ -48,13 +46,35 @@ $row = static function (string $label, $value): string {
         . '<span class="rc-sep">:</span>'
         . '<span class="rc-val">' . e((string) ($value ?? '')) . '</span></div>';
 };
+
+$resolveStudentPhoto = static function (array $student) use ($resolve): ?string {
+    $photoSrc = $resolve((string) ($student['photo'] ?? ''));
+    if ($photoSrc === null) {
+        $placeholder = ((int) ($student['gender'] ?? 0) === 2) ? 'female.jpeg' : 'male.jpeg';
+        $photoSrc = $resolve($placeholder);
+    }
+    return $photoSrc;
+};
+
+$className = static function (int $class): string {
+    return match ($class) {
+        6 => 'KG', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four', 5 => 'Five',
+        default => (string) $class,
+    };
+};
+
+$printDate = date('d-m-Y');
+$copyrightYear = date('Y');
+$title = $title ?? ($isAdmitCard ? 'Admit Card' : 'Registration Card');
+$cardLabel = $isAdmitCard ? 'Admit Card' : 'Student Registration Card';
+$qrContentEscaped = e($qrContent);
 ?>
 <style>
     /* ---- Card format (landscape, like the association's card) ----
        Same sheet design as the scholarship result sheet (result_show.php):
        the user-supplied repeating pattern fills the sheet; the watermark logo
        is painted on the inner frame so neither hides the other. */
-    #reg-card {
+    .reg-card {
         max-width: 820px;
         margin: 0 auto;
         padding: .4125rem;
@@ -202,10 +222,10 @@ $row = static function (string $label, $value): string {
     .rc-val { font-weight: 600; color: #111827; word-break: break-word; }
 
     /* ---- QR (banner right, on the blank space) ---- */
-    /* The QR payload is the whole contact block (~236 bytes -> 61 modules), so
-       it needs ~87px to stay scannable on paper (~0.38mm per module). */
+/* The QR payload is the whole contact block (~236 bytes -> 61 modules), so
+        it needs ~75px to stay scannable on paper (~0.38mm per module). */
     .rc-qr { text-align: center; margin-left: auto; align-self: center; flex-shrink: 0; }
-    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 87px !important; height: 87px !important; }
+    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 75px !important; height: 75px !important; }
 
     .rc-reg {
         margin: 0;
@@ -268,26 +288,26 @@ $row = static function (string $label, $value): string {
         box-shadow: 0 2px 10px rgba(15, 23, 42, .35), 0 0 1px rgba(15, 23, 42, .4);
     }
 
-    #reg-card {
+    .reg-card {
         max-width: none;
         margin: 0;
         break-inside: avoid;
         page-break-inside: avoid;
     }
-    #reg-card, #reg-card * {
+    .reg-card, .reg-card * {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
-    /* Compact print scale (applies everywhere so screens match the PDF).
-       Header text scaled so the contact lines fill the space up to the QR;
-       the QR keeps the 87px size set by the .rc-qr rule (its payload is the
-       whole contact block, so it needs the room to stay scannable). */
+/* Compact print scale (applies everywhere so screens match the PDF).
+        Header text scaled so the contact lines fill the space up to the QR;
+        the QR keeps the 75px size set by the .rc-qr rule (its payload is the
+        whole contact block, so it needs the room to stay scannable). */
     .rc-banner { padding: .5rem 1rem .4rem; margin-bottom: 1rem; }
     .rc-logo img { width: 68px; height: 68px; }
-    /* The QR now carries the whole contact block, so it is sized to 87px
-       (scannable on paper). The heading and the contact line are scaled down a
-       notch so the row (logo + text + QR) still fits inside the 210mm sheet. */
+    /* The QR now carries the whole contact block, so it is sized to 75px
+        (scannable on paper). The heading and the contact line are scaled down a
+        notch so the row (logo + text + QR) still fits inside the 210mm sheet. */
     .rc-banner h1 { font-size: 1.8rem; }
     .rc-reg { font-size: .85rem; }
     .rc-banner .rc-gov { font-size: .8rem; line-height: 1.6; white-space: nowrap; }
@@ -298,7 +318,7 @@ $row = static function (string $label, $value): string {
     .rc-photo img { width: 74px; height: 84px; }
     .rc-body { padding: .35rem 1rem 0; column-gap: 1.8rem; row-gap: 0; }
     .rc-row { font-size: .8rem; padding: .06rem 0; grid-template-columns: 8.2rem 1rem 1fr; }
-    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 87px !important; height: 87px !important; }
+    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 75px !important; height: 75px !important; }
     .sig-tbl { margin-top: .2rem !important; }
     .sig-name { font-size: .95em; }
     .rc-welcome { font-size: .7rem; padding-top: .25rem; }
@@ -325,7 +345,7 @@ $row = static function (string $label, $value): string {
         .rc-banner h1 { font-size: 1.05rem; line-height: 1.2; white-space: normal; }
         .rc-banner .rc-gov { font-size: .68rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
         .rc-reg { font-size: .72rem; }
-        .rc-qr canvas, .rc-qr img, .rc-qr table { width: 77px !important; height: 77px !important; }
+        .rc-qr canvas, .rc-qr img, .rc-qr table { width: 75px !important; height: 75px !important; }
 
         .rc-welcome { font-size: .7rem; padding: .4rem .5rem 0; }
         .rc-exam-head { font-size: 1.05rem; margin: .5rem 0 .2rem; }
@@ -363,6 +383,9 @@ $row = static function (string $label, $value): string {
         html, body { background: #fff !important; }
         body > header, body > footer, #toast-stack { display: none !important; }
         .no-print { display: none !important; }
+        .rc-pages.multiple > .py-6:not(:last-child) .rc-page { break-after: page; page-break-after: always; }
+        body.print-one-admit-card .rc-page:not(.print-target) { display: none !important; }
+        body.print-one-admit-card .rc-page.print-target { break-after: auto !important; page-break-after: auto !important; }
         /* The thank-you line is screen-only; with it hidden the Scholarship
            Exam heading below flows up to where the sentence was. */
         .rc-welcome { display: none !important; }
@@ -371,11 +394,72 @@ $row = static function (string $label, $value): string {
            (the @page margin already provides the 0.15in). */
         .rc-page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
     }
+
+    /* ---- Two-per-page mode (center-wide admit card print) ---- */
+    <?php if ($twoPerPage): ?>
+    .rc-pages { display: flex; flex-direction: column; gap: 0; }
+    .rc-pages > .py-6 { padding: 0 !important; }
+    .rc-page {
+        width: 210mm !important;
+        height: 148.5mm !important;
+        min-height: 148.5mm !important;
+        max-height: 148.5mm !important;
+        overflow: hidden;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border-bottom: 1.5px dashed #94a3b8 !important;
+    }
+    .rc-pages > .py-6:nth-child(even) .rc-page { border-bottom: none !important; }
+    .rc-pages > .py-6:nth-child(2n) { break-after: page; page-break-after: always; }
+    .rc-pages > .py-6:last-child    { break-after: auto; page-break-after: auto; }
+    /* Compress spacing to fit half-A4 */
+    .rc-banner { padding: .3rem .8rem; margin-bottom: .3rem; }
+    .rc-logo img { width: 50px; height: 50px; }
+    .rc-banner h1 { font-size: 1.1rem; }
+    .rc-banner .rc-gov { font-size: .62rem; }
+    .rc-exam-head { font-size: 1rem; margin: .25rem 0 .15rem; }
+    .rc-top { padding: .15rem .8rem .05rem; }
+    .rc-tag { font-size: .72rem; padding: .08rem .55rem; }
+    .rc-center .rc-pill { font-size: .78rem; padding: .12rem .85rem; }
+    .rc-body { padding: .15rem .8rem 0; gap: 1rem; }
+    .rc-row { font-size: .7rem; padding: .03rem 0; grid-template-columns: 7.5rem .8rem 1fr; }
+    .rc-photo img { width: 54px; height: 62px; }
+    .rc-rules { margin: .2rem 1rem; }
+    .rc-rules li, .rc-rules p { font-size: .58rem; line-height: 1.4; }
+    .sig-tbl { margin-top: .15rem !important; }
+    .sig-img img { max-width: 70px; }
+    .sig-name { font-size: .72em; }
+    .sig-role { font-size: .68em; }
+    .rc-note { font-size: .6rem; padding: .15rem .8rem 0; }
+    .rc-foot { font-size: .55rem; padding: .1rem .8rem .2rem; }
+    [data-print-card], .mt-4.flex.justify-center { display: none !important; }
+    @media print {
+        @page { size: A4 portrait; margin: 0; }
+        html { font-size: 11.5px; }
+        .rc-page {
+            width: 210mm !important;
+            height: 148.5mm !important;
+            min-height: 148.5mm !important;
+            max-height: 148.5mm !important;
+            padding: 2mm 4mm !important;
+            overflow: hidden !important;
+            box-shadow: none !important;
+        }
+        /* Override the default one-per-page break */
+        .rc-pages.multiple > .py-6:not(:last-child) .rc-page { break-after: avoid !important; page-break-after: avoid !important; }
+        /* Break after every 2nd card wrapper */
+        .rc-pages > .py-6:nth-child(2n) { break-after: page; page-break-after: always; }
+        .rc-pages > .py-6:last-child    { break-after: auto; page-break-after: auto; }
+    }
+    <?php endif; ?>
 </style>
 
+<div class="rc-pages<?= $cardCount > 1 ? ' multiple' : '' ?>">
+<?php foreach ($cardStudents as $student): ?>
+<?php $photoSrc = $resolveStudentPhoto((array) $student); ?>
 <div class="py-6 print:py-0">
     <div class="rc-page">
-    <div id="reg-card" class="border-2 border-black bg-white">
+    <div class="reg-card border-2 border-black bg-white">
         <div class="rc-inner border-2 border-black">
         <div class="rc-banner">
             <span class="rc-logo"><img src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD" onerror="this.style.display='none'"></span>
@@ -388,11 +472,13 @@ $row = static function (string $label, $value): string {
                 </p>
             </div>
             <div class="rc-qr">
-                <div id="reg-qr" class="inline-block" data-qr-content="<?= e($qrContent) ?>"></div>
+                <div class="reg-qr inline-block" data-qr-content="<?= $qrContentEscaped ?>"></div>
             </div>
         </div>
 
+        <?php if (!$isAdmitCard): ?>
         <p class="rc-welcome">Thank you. Your Registration has been completed successfully. You must save this Card. It will be required to participate in the next Scholarship Examination.</p>
+        <?php endif; ?>
 
         <p class="rc-exam-head">Scholarship Exam - <?= e($student['session'] ?? '') ?></p>
 
@@ -401,12 +487,28 @@ $row = static function (string $label, $value): string {
                 <div class="rc-tag">Reg No.&nbsp;: <?= e($student['registration'] ?? '') ?></div>
             </div>
             <div class="rc-center">
-                <div class="rc-pill">Student Registration Card</div>
+                <div class="rc-pill"><?= e($cardLabel) ?></div>
             </div>
             <div class="rc-tag rc-roll">Exam Roll&nbsp;: <?= e($student['roll'] ?? '') ?></div>
         </div>
 
         <div class="rc-body">
+            <?php if ($isAdmitCard): ?>
+            <div class="rc-col">
+                <?= $row('Name', $student['name'] ?? '') ?>
+                <?= $row("Father's Name", $student['father_name'] ?? '') ?>
+                <?= $row("Mother's Name", $student['mother_name'] ?? '') ?>
+                <?= $row('Date of Birth', !empty($student['dob']) ? DateFormat($student['dob'], 'd-m-Y') : '') ?>
+                <?= $row('Registration No.', $student['registration'] ?? '') ?>
+            </div>
+            <div class="rc-col">
+                <?= $row('Roll No.', $student['roll'] ?? '') ?>
+                <?= $row('Exam Class', $className((int) ($student['class'] ?? 0))) ?>
+                <?= $row('Exam Date & Time', 'As per routine') ?>
+                <?= $row('Exam Center', $student['center_name'] ?? '') ?>
+                <?= $row('Exam Venue', $student['institute_name'] ?? '') ?>
+            </div>
+            <?php else: ?>
             <div class="rc-col">
                 <?= $row('Name', $student['name'] ?? '') ?>
                 <?= $row("Father's Name", $student['father_name'] ?? '') ?>
@@ -415,7 +517,6 @@ $row = static function (string $label, $value): string {
                 <?= $row('Exam Center', $student['center_name'] ?? '') ?>
                 <?= $row('Institute Name', $student['institute_name'] ?? '') ?>            
                 <?= $row('Institute Address', $student['institute_address'] ?? '') ?>
-                
             </div>
             <div class="rc-col">
                 <?= $row('Gender', GenderName((int) ($student['gender'] ?? 0))) ?>
@@ -425,8 +526,8 @@ $row = static function (string $label, $value): string {
                 <?= $row('Division', $student['division_name'] ?? '') ?>
                 <?= $row('District', $student['district_name'] ?? '') ?>
                 <?= $row('Thana/Upazila', $student['upazila_name'] ?? '') ?>
-                
             </div>
+            <?php endif; ?>
             <div class="rc-photo">
                 <?php if ($photoSrc !== null): ?>
                     <img src="<?= $photoSrc ?>" alt="Student photo">
@@ -437,6 +538,19 @@ $row = static function (string $label, $value): string {
         <!-- <div class="rc-body rc-body-wide">
             <?= $row('Institute Address', $student['institute_address'] ?? '') ?>
         </div> -->
+
+        <?php if ($isAdmitCard): ?>
+        <div class="rc-rules ml-4 my-3 text-[11px] sm:text-xs leading-relaxed">
+            <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
+            <ol class="list-decimal list-inside space-y-0.5">
+                <li>পরীক্ষা শুরুর কম পক্ষে ১৫ মিনিট আগে পরীক্ষা হলে উপস্থিত থাকতে হবে।</li>
+                <li>পরীক্ষা হলে কোনো ধরনের কাগজপত্র বা বই নিয়ে প্রবেশ করা যাবে না।</li>
+                <li>পরীক্ষা প্রবেশ পত্র ছাড়া কোনো শিক্ষার্থী পরীক্ষায় অংশগ্রহণ করতে পারবে না।</li>
+                <li>পরীক্ষা হলে কোনো অনৈতিক বা অনাকাঙ্ক্ষিত ঘটনা ঘটানো যাবে না।</li>
+                <li>পরীক্ষা সময় মোবাইল ফোন ব্যবহার করা যাবে না।</li>
+            </ol>
+        </div>
+        <?php endif; ?>
 
         <div class="overflow-x-auto">
         <table class="sig-tbl mt-4 w-full text-[10px] sm:text-xs">
@@ -460,42 +574,88 @@ $row = static function (string $label, $value): string {
         </div>
 
         <p class="rc-note">
-            <b>Note:</b> This registration card is valid upto this session. Examinee must bring this card in the examination hall.<br>
-            <span class="text-xs">&copy; Copyright 1984 - <?= date('Y') ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by Web Space IT</span>
+            <?php if ($isAdmitCard): ?>
+            <b>Note:</b> Examinee must bring this admit card to the examination hall.
+            <?php else: ?>
+            <b>Note:</b> This registration card is valid upto this session. Examinee must bring this card in the examination hall.
+            <?php endif; ?><br>
+            <span class="text-xs">&copy; Copyright 1984 - <?= e($copyrightYear) ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by Web Space IT</span>
         </p>
 
         <div class="rc-foot">
+            <?php if (!$isAdmitCard): ?>
             <div>Date of Registration &amp; Time: <?= e(DateFormat($student['created_at'] ?? '', 'd-m-Y, h:i A')) ?></div>
-            <div>Print Date: <?= e(date('d-m-Y')) ?></div>
+            <?php endif; ?>
+            <div>Print Date: <?= e($printDate) ?></div>
         </div>
         </div>
     </div>
     </div>
+    <?php if ($isAdmitCard): ?>
+    <div class="mt-2 flex justify-center print:hidden">
+        <button type="button" class="btn btn-primary" data-print-card
+                data-session="<?= e($student['session'] ?? '') ?>"
+                data-registration="<?= e($student['registration'] ?? '') ?>">Print / Save this card as PDF</button>
+    </div>
+    <?php endif; ?>
+</div>
+<?php endforeach; ?>
+</div>
 
-    <div class="mt-4 flex justify-center gap-3 print:hidden">
-        <a href="javascript:history.back()" class="btn bg-slate-500 text-white hover:bg-slate-600">Back</a>
-        <button type="button" onclick="window.print();" class="btn bg-emerald-500 text-white hover:bg-emerald-600">Print</button>
-    </div>
+<div class="mt-4 flex justify-center gap-3 print:hidden">
+    <a href="javascript:history.back()" class="btn bg-slate-500 text-white hover:bg-slate-600">Back</a>
+    <button type="button" onclick="window.print();" class="btn bg-emerald-500 text-white hover:bg-emerald-600">Print</button>
 </div>
 
 <script src="/assets/js/vendor/qrcode.min.js"></script>
 <script>
 (function () {
-    var box = document.getElementById('reg-qr');
-    if (!box || typeof QRCode === 'undefined') { return; }
-    // The payload is the association's whole contact block (237 bytes -> a
-    // 61x61 matrix), so it is drawn at 384px and displayed at 87px by the
-    // .rc-qr rule (which keeps the printed modules large enough to scan).
-    new QRCode(box, {
-        text: box.getAttribute('data-qr-content'),
-        width: 384,
-        height: 384,
-        correctLevel: QRCode.CorrectLevel.M
+    if (typeof QRCode === 'undefined') { return; }
+    Array.prototype.forEach.call(document.querySelectorAll('.reg-qr'), function (box) {
+        new QRCode(box, {
+            text: box.getAttribute('data-qr-content'),
+            width: 384,
+            height: 384,
+            correctLevel: QRCode.CorrectLevel.M
+        });
+        // qrcodejs emits a canvas and/or an <img>; size every render target.
+        Array.prototype.forEach.call(box.querySelectorAll('canvas, img, table'), function (el) {
+            el.style.width = '75px';
+            el.style.height = '75px';
+        });
     });
-    // qrcodejs emits a canvas and/or an <img>; .rc-qr sizes every render target.
-    Array.prototype.forEach.call(box.querySelectorAll('canvas, img, table'), function (el) {
-        el.style.width = '87px';
-        el.style.height = '87px';
+})();
+
+(function () {
+    var buttons = document.querySelectorAll('[data-print-card]');
+    var cleanSegment = function (value) {
+        return String(value || '').trim().replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'unknown';
+    };
+
+    Array.prototype.forEach.call(buttons, function (button) {
+        button.addEventListener('click', function () {
+            var wrapper = button.closest('.py-6');
+            var page = wrapper && wrapper.querySelector('.rc-page');
+            if (!page) { return; }
+
+            var originalTitle = document.title;
+            document.querySelectorAll('.rc-page.print-target').forEach(function (target) {
+                target.classList.remove('print-target');
+            });
+            page.classList.add('print-target');
+            document.body.classList.add('print-one-admit-card');
+            document.title = 'admin_card_' + cleanSegment(button.dataset.session)
+                + '_' + cleanSegment(button.dataset.registration);
+
+            var restore = function () {
+                document.body.classList.remove('print-one-admit-card');
+                page.classList.remove('print-target');
+                document.title = originalTitle;
+                window.removeEventListener('afterprint', restore);
+            };
+            window.addEventListener('afterprint', restore);
+            window.print();
+        });
     });
 })();
 </script>
