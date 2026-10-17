@@ -304,7 +304,7 @@ $qrContentEscaped = e($qrContent);
         the QR keeps the 75px size set by the .rc-qr rule (its payload is the
         whole contact block, so it needs the room to stay scannable). */
     .rc-banner { padding: .5rem 1rem .4rem; margin-bottom: 1rem; }
-    .rc-logo img { width: 68px; height: 68px; }
+    .rc-logo img { width: 90px; height: 90px; }
     /* The QR now carries the whole contact block, so it is sized to 75px
         (scannable on paper). The heading and the contact line are scaled down a
         notch so the row (logo + text + QR) still fits inside the 210mm sheet. */
@@ -340,8 +340,8 @@ $qrContentEscaped = e($qrContent);
             box-shadow: 0 1px 4px rgba(15, 23, 42, .25);
         }
 
-        .rc-banner { flex-wrap: wrap; gap: .5rem; padding: .5rem .5rem .4rem; margin-bottom: .6rem; }
-        .rc-logo img { width: 52px; height: 52px; }
+        .rc-banner { flex-wrap: nowrap; gap: .5rem; padding: .5rem .5rem .4rem; margin-bottom: .6rem; }
+        .rc-logo img { width: 90px; height: 90px; }
         .rc-banner h1 { font-size: 1.05rem; line-height: 1.2; white-space: normal; }
         .rc-banner .rc-gov { font-size: .68rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
         .rc-reg { font-size: .72rem; }
