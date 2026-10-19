@@ -154,32 +154,26 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-qr table { width: 75px !important; height: 75px !important; }
 .cp-slot .rc-exam-head { font-size: 1.5rem; margin: .25rem 0 .35rem; }
 .cp-slot .rc-top { padding: .15rem .7rem .15rem; }
-.cp-slot .rc-tag { padding: .1rem .55rem; font-size: .7rem; }
+.cp-slot .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
 .cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: .95rem; }
-.cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 -1.25rem !important; }
+.cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 .25rem !important; }
 .cp-slot .rc-col { flex: 1 1 0; min-width: 0; }
-.cp-slot .rc-row { grid-template-columns: 8.2rem 1rem 1fr; font-size: .85rem; line-height: 1.25; padding: .04rem 0; }
-/* Registration No. and Roll No. share a single line in the detail table. */
-.cp-slot .rc-row-pair { display: flex; align-items: baseline; flex-wrap: nowrap; white-space: nowrap; }
-.cp-slot .rc-row-pair .rc-sep { padding: 0 .28rem; }
-.cp-slot .rc-row-pair .rc-lbl-gap { margin-left: .85rem; }
+.cp-slot .rc-row { grid-template-columns: 9.5rem 1rem 1fr; font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
 .cp-slot .rc-photo img { width: 74px; height: 84px; }
-/* Rules block: wide enough that every rule sits on one line, stopping just
-   short of the photo column (204% of the narrow label column), and trimmed to
-   .97rem so the longest rule still fits on one line if the Bengali webfont
-   falls back to a slightly wider face. */
-.cp-slot .rc-rules { width: 204%; margin: .25rem 0 0 !important; font-size: .97rem !important; line-height: 1.28 !important; }
+/* Full-width rules, styled like the individual admit card. */
+.cp-slot .rc-rules { width: auto; margin: .25rem 0 .25rem .7rem !important; font-size: 1rem !important; line-height: 1.22 !important; }
 .cp-slot .rc-rules p { margin: 0 0 .15rem; }
+.cp-slot .rc-rules p:last-child { margin-bottom: 0; white-space: nowrap; font-size: 1rem; }
 .cp-slot .rc-rules ol { margin: 0; padding-left: .8rem; }
 .cp-slot .sig-tbl { margin-top: .25rem !important; }
 .cp-slot .overflow-x-auto { margin-top: 0; }
 .cp-slot .sig-tbl { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .cp-slot .overflow-x-auto { width: 100%; }
 .cp-slot .sig-img img { max-width: 90px; max-height: 36px; }
-.cp-slot .sig-name { font-size: .9em; }
-.cp-slot .sig-role { font-size: 82%; }
-.cp-slot .rc-note { font-size: .66rem; padding: .18rem .7rem 0; line-height: 1.2; }
-.cp-slot .rc-foot { padding: .15rem .7rem .2rem; font-size: .58rem; }
+.cp-slot .sig-name { font-size: .82rem; }
+.cp-slot .sig-role { font-size: .68rem; }
+.cp-slot .rc-note { font-size: .75rem; padding: .12rem .7rem 0; line-height: 1.15; }
+.cp-slot .rc-foot { padding: .1rem .7rem .15rem; font-size: .75rem; }
 
 /* The card keeps its print proportions in the browser's narrow viewport. */
 @media screen and (max-width: 900px) {
@@ -273,14 +267,6 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                     <?= $row("Father's Name", $s['father_name'] ?? '') ?>
                     <?= $row("Mother's Name", $s['mother_name'] ?? '') ?>
                     <?= $row('Date of Birth', !empty($s['dob']) ? DateFormat($s['dob'], 'd-m-Y') : '') ?>
-                    <div class="rc-row rc-row-pair"><span class="rc-lbl">Registration No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($s['registration'] ?? '') ?></span><span class="rc-lbl rc-lbl-gap">Roll No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($s['roll'] ?? '') ?></span></div>
-                    <div class="rc-rules ml-4 my-3 text-[11px] sm:text-xs leading-relaxed">
-                        <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
-                        <p>১. প্রবেশপত্র (অ্যাডমিট কার্ড) ছাড়া কোনো পরীক্ষার্থীকে পরীক্ষা কক্ষে প্রবেশ করতে দেওয়া হবে না।</p>
-                        <p>২. প্রবেশপত্র ছাড়া কোনো পরীক্ষার্থী লিখিত পরীক্ষার কাগজ বা বই সঙ্গে রাখতে পারবে না।</p>
-                        <p>৩. পরীক্ষা শুরুর দুই ঘণ্টার আগে কোনো পরীক্ষার্থী পরীক্ষা কক্ষ থেকে বাইরে যেতে পারবেন না।</p>
-                        <p>৪. প্রত্যেক পরীক্ষার্থীকে অ্যাসোসিয়েশনের সকল নিয়ম মেনে চলতে হবে। অন্যথায়, তাকে পরীক্ষায় অংশগ্রহণের অনুমতি দেওয়া হবে না।</p>
-                    </div>
                 </div>
                 <div class="rc-col">
                 <?= $row('Exam Class', $className((int)($s['class'] ?? 0))) ?>
@@ -291,6 +277,14 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                 <div class="rc-photo">
                     <?php if ($photoSrc): ?><img src="<?= $photoSrc ?>" alt="Student photo"><?php endif; ?>
                 </div>
+            </div>
+
+            <div class="rc-rules">
+                <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
+                <p>১. প্রবেশপত্র (অ্যাডমিট কার্ড) ছাড়া কোনো পরীক্ষার্থীকে পরীক্ষা কক্ষে প্রবেশ করতে দেওয়া হবে না।</p>
+                <p>২. প্রবেশপত্র ছাড়া কোনো পরীক্ষার্থী লিখিত পরীক্ষার কাগজ বা বই সঙ্গে রাখতে পারবে না।</p>
+                <p>৩. পরীক্ষা শুরুর দুই ঘণ্টার আগে কোনো পরীক্ষার্থী পরীক্ষা কক্ষ থেকে বাইরে যেতে পারবেন না।</p>
+                <p>৪. প্রত্যেক পরীক্ষার্থীকে অ্যাসোসিয়েশনের সকল নিয়ম মেনে চলতে হবে। অন্যথায়, তাকে পরীক্ষায় অংশগ্রহণের অনুমতি দেওয়া হবে না।</p>
             </div>
 
             <div class="overflow-x-auto">

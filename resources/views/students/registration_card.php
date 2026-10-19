@@ -334,6 +334,23 @@ $qrContentEscaped = e($qrContent);
     .rc-note { font-size: .8rem; padding-top: .25rem; }
     .rc-foot { padding: .25rem 1rem .45rem; font-size: .68rem; }
 
+    <?php if ($isAdmitCard): ?>
+    /* Match the center-wide admit-card print typography. */
+    .rc-banner h1 { font-size: 1.75rem; }
+    .rc-reg { font-size: .95rem; }
+    .rc-banner .rc-gov { font-size: .82rem; line-height: 1.35; }
+    .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
+    .rc-row { grid-template-columns: 9.5rem 1rem 1fr; font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
+    /* Align the rules with the detail text, whose left inset is 1.2rem. */
+    .rc-rules { margin: .25rem 0 .25rem 1.2rem !important; font-size: 1rem !important; line-height: 1.22 !important; }
+    .rc-rules p { margin: 0 0 .15rem; }
+    .rc-rules p:last-child { margin-bottom: 0; white-space: nowrap; font-size: 1rem; }
+    .sig-name { font-size: .82rem; }
+    .sig-role { font-size: .68rem; }
+    .rc-note { font-size: .75rem; line-height: 1.15; }
+    .rc-foot { font-size: .75rem; }
+    <?php endif; ?>
+
     /* ---- Phones / small tablets ----
        The sheet is 210mm wide so print and desktop match the reference, but
        that forces a horizontal scrollbar on a phone. Below 900px the layout
@@ -453,7 +470,6 @@ $qrContentEscaped = e($qrContent);
                 <?= $row("Father's Name", $student['father_name'] ?? '') ?>
                 <?= $row("Mother's Name", $student['mother_name'] ?? '') ?>
                 <?= $row('Date of Birth', !empty($student['dob']) ? DateFormat($student['dob'], 'd-m-Y') : '') ?>
-                <div class="rc-row rc-row-pair"><span class="rc-lbl">Registration No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($student['registration'] ?? '') ?></span><span class="rc-lbl rc-lbl-gap">Roll No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($student['roll'] ?? '') ?></span></div>
             </div>
             <div class="rc-col">
                 <?= $row('Exam Class', $className((int) ($student['class'] ?? 0))) ?>
@@ -495,13 +511,10 @@ $qrContentEscaped = e($qrContent);
         <?php if ($isAdmitCard): ?>
         <div class="rc-rules ml-4 my-3 text-[11px] sm:text-xs leading-relaxed">
             <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
-            <ol class="list-decimal list-inside space-y-0.5">
-                <li>পরীক্ষা শুরুর কম পক্ষে ১৫ মিনিট আগে পরীক্ষা হলে উপস্থিত থাকতে হবে।</li>
-                <li>পরীক্ষা হলে কোনো ধরনের কাগজপত্র বা বই নিয়ে প্রবেশ করা যাবে না।</li>
-                <li>পরীক্ষা প্রবেশ পত্র ছাড়া কোনো শিক্ষার্থী পরীক্ষায় অংশগ্রহণ করতে পারবে না।</li>
-                <li>পরীক্ষা হলে কোনো অনৈতিক বা অনাকাঙ্ক্ষিত ঘটনা ঘটানো যাবে না।</li>
-                <li>পরীক্ষা সময় মোবাইল ফোন ব্যবহার করা যাবে না।</li>
-            </ol>
+            <p>১. প্রবেশপত্র (অ্যাডমিট কার্ড) ছাড়া কোনো পরীক্ষার্থীকে পরীক্ষা কক্ষে প্রবেশ করতে দেওয়া হবে না।</p>
+            <p>২. প্রবেশপত্র ছাড়া কোনো পরীক্ষার্থী লিখিত পরীক্ষার কাগজ বা বই সঙ্গে রাখতে পারবে না।</p>
+            <p>৩. পরীক্ষা শুরুর দুই ঘণ্টার আগে কোনো পরীক্ষার্থী পরীক্ষা কক্ষ থেকে বাইরে যেতে পারবেন না।</p>
+            <p>৪. প্রত্যেক পরীক্ষার্থীকে অ্যাসোসিয়েশনের সকল নিয়ম মেনে চলতে হবে। অন্যথায়, তাকে পরীক্ষায় অংশগ্রহণের অনুমতি দেওয়া হবে না।</p>
         </div>
         <?php endif; ?>
 

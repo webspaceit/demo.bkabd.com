@@ -130,14 +130,11 @@ final class AdmitCardController extends Controller
         Auth::assertStudentAccess($studentId);
 
         $activeSession = $this->activeSession();
-        $centerName = (string) ($student['center_name'] ?? 'Center');
 
-        return View::render('admitcards.center_print', [
-            'title' => 'Admit Card - ' . ($student['registration'] ?? ''),
-            'centerName' => $centerName,
-            'activeSession' => $activeSession,
+        return View::render('students.registration_card', [
+            'title'    => 'Admit Card - ' . ($student['registration'] ?? ''),
             'students' => [$student],
-            'singleStudent' => true,
+            'cardMode' => 'admit',
         ], 'layouts.guest');
     }
 
