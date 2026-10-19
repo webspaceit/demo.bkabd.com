@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" type="image/png" href="/assets/img/result/logo.png?v=<?= (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png') ?>">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?= e($title ?? 'Admit Cards') ?></title>
 
@@ -108,21 +109,23 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 /* One A4 page = 2 card slots */
 .cp-page {
     width: 210mm;
-    height: 297mm;
+    min-height: 297mm;
+    height: auto;
     margin: 8px auto;
     background: #fff;
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     flex-direction: column;
     box-shadow: 0 2px 12px rgba(0,0,0,.25);
 }
-.cp-page.single { width: 210mm; height: 148.5mm; margin: 0 auto; }
+.cp-page.single { width: 210mm; min-height: 148.5mm; height: auto; margin: 0 auto; }
 
 /* Each card slot = exactly half A4 */
 .cp-slot {
     width: 210mm;
-    height: 148.5mm;
-    overflow: hidden;
+    min-height: 148.5mm;
+    height: auto;
+    overflow: visible;
     flex-shrink: 0;
     position: relative;
 }
@@ -132,17 +135,17 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 
 .cp-slot .rc-page {
     width: 210mm !important;
-    height: 148.5mm !important;
-    min-height: 0 !important;
+    height: auto !important;
+    min-height: 148.5mm !important;
     margin: 0 !important;
     box-shadow: none !important;
     padding: 0.15in !important;
-    overflow: hidden;
+    overflow: visible;
     box-sizing: border-box;
 }
-.cp-slot .reg-card,
-.cp-slot .rc-inner { height: 100%; box-sizing: border-box; }
-.cp-slot .rc-inner { display: flex; flex-direction: column; justify-content: space-between; }
+.cp-slot .reg-card { height: auto; min-height: 129.6mm; display: flex; flex-direction: column; box-sizing: border-box; }
+.cp-slot .rc-inner { height: auto; min-height: 125.8mm; flex: 1 0 auto; box-sizing: border-box; }
+.cp-slot .rc-inner { display: flex; flex-direction: column; justify-content: flex-start; }
 .cp-slot .rc-banner { gap: .55rem; padding: .3rem .7rem .25rem; margin-bottom: .35rem; }
 .cp-slot .rc-logo img { width: 90px; height: 90px; object-fit: contain; }
 .cp-slot .rc-banner > div:not(.rc-qr) { flex: 1 1 auto; min-width: 0; text-align: center; }
@@ -152,8 +155,8 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-qr canvas,
 .cp-slot .rc-qr img,
 .cp-slot .rc-qr table { width: 75px !important; height: 75px !important; }
-.cp-slot .rc-exam-head { font-size: 1.5rem; margin: .25rem 0 .35rem; }
-.cp-slot .rc-top { padding: .15rem .7rem .15rem; }
+.cp-slot .rc-exam-head { font-size: 1.5rem; margin: .5rem 0 1rem; }
+.cp-slot .rc-top { padding: .15rem .7rem .15rem; margin-bottom: .5rem; }
 .cp-slot .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
 .cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: .95rem; }
 .cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 .25rem !important; }
@@ -169,11 +172,11 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .overflow-x-auto { margin-top: 0; }
 .cp-slot .sig-tbl { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .cp-slot .overflow-x-auto { width: 100%; }
-.cp-slot .sig-img img { max-width: 90px; max-height: 36px; }
+.cp-slot .sig-img img { max-width: 90px; height: auto; margin: 0 auto; display: block; }
 .cp-slot .sig-name { font-size: .82rem; }
 .cp-slot .sig-role { font-size: .68rem; }
 .cp-slot .rc-note { font-size: .75rem; padding: .12rem .7rem 0; line-height: 1.15; }
-.cp-slot .rc-foot { padding: .1rem .7rem .15rem; font-size: .75rem; }
+.cp-slot .rc-foot { margin-top: auto; padding: .1rem .7rem .15rem; font-size: .75rem; }
 
 /* The card keeps its print proportions in the browser's narrow viewport. */
 @media screen and (max-width: 900px) {

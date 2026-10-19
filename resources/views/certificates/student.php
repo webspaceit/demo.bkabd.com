@@ -13,6 +13,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <link rel="icon" type="image/png" href="/assets/img/result/logo.png?v=<?= (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png') ?>">
     <title>BKABD — Student Certificate</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>

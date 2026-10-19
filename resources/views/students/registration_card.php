@@ -341,10 +341,12 @@ $qrContentEscaped = e($qrContent);
     .rc-banner .rc-gov { font-size: .82rem; line-height: 1.35; }
     .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
     .rc-row { grid-template-columns: 9.5rem 1rem 1fr; font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
-    /* Align the rules with the detail text, whose left inset is 1.2rem. */
+    /* Match the center-wide card's vertical spacing around details and rules. */
+    .rc-body { margin-top: 0 !important; margin-bottom: .25rem !important; }
     .rc-rules { margin: .25rem 0 .25rem 1.2rem !important; font-size: 1rem !important; line-height: 1.22 !important; }
     .rc-rules p { margin: 0 0 .15rem; }
     .rc-rules p:last-child { margin-bottom: 0; white-space: nowrap; font-size: 1rem; }
+    .sig-tbl { margin-top: .25rem !important; }
     .sig-name { font-size: .82rem; }
     .sig-role { font-size: .68rem; }
     .rc-note { font-size: .75rem; line-height: 1.15; }
