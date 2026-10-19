@@ -156,14 +156,15 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-top { padding: .15rem .7rem .15rem; }
 .cp-slot .rc-tag { padding: .1rem .55rem; font-size: .7rem; }
 .cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: .95rem; }
-.cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 !important; }
+.cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 -1.25rem !important; }
 .cp-slot .rc-col { flex: 1 1 0; min-width: 0; }
 .cp-slot .rc-row { grid-template-columns: 8.2rem 1rem 1fr; font-size: .85rem; line-height: 1.25; padding: .04rem 0; }
 .cp-slot .rc-photo img { width: 74px; height: 84px; }
-/* Rules block: bumped a couple of steps up in size for readability; the
-   .rc-body bottom margin is trimmed below to keep it clear of the
-   signature row. */
-.cp-slot .rc-rules { width: 125%; margin: .25rem 0 0 !important; font-size: 1rem !important; line-height: 1.28 !important; }
+/* Rules block: wide enough that every rule sits on one line, stopping just
+   short of the photo column (204% of the narrow label column), and trimmed to
+   .97rem so the longest rule still fits on one line if the Bengali webfont
+   falls back to a slightly wider face. */
+.cp-slot .rc-rules { width: 204%; margin: .25rem 0 0 !important; font-size: .97rem !important; line-height: 1.28 !important; }
 .cp-slot .rc-rules p { margin: 0 0 .15rem; }
 .cp-slot .rc-rules ol { margin: 0; padding-left: .8rem; }
 .cp-slot .sig-tbl { margin-top: .25rem !important; }
