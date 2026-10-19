@@ -220,6 +220,15 @@ $qrContentEscaped = e($qrContent);
     .rc-lbl { font-weight: 700; color: #0f172a; }
     .rc-sep { color: #0f172a; text-align: center; }
     .rc-val { font-weight: 600; color: #111827; word-break: break-word; }
+    /* Registration No. and Roll No. share a single line in the detail table. */
+    .rc-row-pair {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+    }
+    .rc-row-pair .rc-sep { padding: 0 .3rem; }
+    .rc-row-pair .rc-lbl-gap { margin-left: 1rem; }
 
     /* ---- QR (banner right, on the blank space) ---- */
 /* The QR payload is the whole contact block (~236 bytes -> 61 modules), so
@@ -444,10 +453,9 @@ $qrContentEscaped = e($qrContent);
                 <?= $row("Father's Name", $student['father_name'] ?? '') ?>
                 <?= $row("Mother's Name", $student['mother_name'] ?? '') ?>
                 <?= $row('Date of Birth', !empty($student['dob']) ? DateFormat($student['dob'], 'd-m-Y') : '') ?>
-                <?= $row('Registration No.', $student['registration'] ?? '') ?>
+                <div class="rc-row rc-row-pair"><span class="rc-lbl">Registration No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($student['registration'] ?? '') ?></span><span class="rc-lbl rc-lbl-gap">Roll No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($student['roll'] ?? '') ?></span></div>
             </div>
             <div class="rc-col">
-                <?= $row('Roll No.', $student['roll'] ?? '') ?>
                 <?= $row('Exam Class', $className((int) ($student['class'] ?? 0))) ?>
                 <?= $row('Exam Date & Time', 'As per routine') ?>
                 <?= $row('Exam Center', $student['center_name'] ?? '') ?>
