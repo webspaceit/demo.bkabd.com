@@ -338,7 +338,7 @@ $qrContentEscaped = e($qrContent);
     /* Match the center-wide admit-card print typography. */
     .rc-banner h1 { font-size: 1.75rem; }
     .rc-reg { font-size: .95rem; }
-    .rc-banner .rc-gov { font-size: .82rem; line-height: 1.35; }
+    .rc-banner .rc-gov { font-size: .85rem; line-height: 1.35; }
     .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
     .rc-top { margin-bottom: .5rem; }
     .rc-row { grid-template-columns: 9.5rem 1rem 1fr; font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
@@ -454,7 +454,7 @@ $qrContentEscaped = e($qrContent);
         <p class="rc-welcome">Thank you. Your Registration has been completed successfully. You must save this Card. It will be required to participate in the next Scholarship Examination.</p>
         <?php endif; ?>
 
-        <p class="rc-exam-head">Scholarship Exam - <?= e($student['session'] ?? '') ?></p>
+        <p class="rc-exam-head">Scholarship Examination - <?= e($student['session'] ?? '') ?></p>
 
         <div class="rc-top">
             <div class="rc-tags">
@@ -513,7 +513,7 @@ $qrContentEscaped = e($qrContent);
 
         <?php if ($isAdmitCard): ?>
         <div class="rc-rules ml-4 my-3 text-[11px] sm:text-xs leading-relaxed">
-            <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
+            <p class="font-bold mb-1 text-slate-800">বিশেষ নির্দেশাবলিঃ</p>
             <p>১. প্রবেশপত্র (অ্যাডমিট কার্ড) ছাড়া কোনো পরীক্ষার্থীকে পরীক্ষা কক্ষে প্রবেশ করতে দেওয়া হবে না।</p>
             <p>২. প্রবেশপত্র ছাড়া কোনো পরীক্ষার্থী লিখিত পরীক্ষার কাগজ বা বই সঙ্গে রাখতে পারবে না।</p>
             <p>৩. পরীক্ষা শুরুর দুই ঘণ্টার আগে কোনো পরীক্ষার্থী পরীক্ষা কক্ষ থেকে বাইরে যেতে পারবেন না।</p>
@@ -544,7 +544,7 @@ $qrContentEscaped = e($qrContent);
 
         <p class="rc-note">
             <?php if ($isAdmitCard): ?>
-            <b>Note:</b> Examinee must bring this admit card to the examination hall.
+            <b>Note:</b> This admit card is valid upto this session. Examinee must bring this card in the examination hall.
             <?php else: ?>
             <b>Note:</b> This registration card is valid upto this session. Examinee must bring this card in the examination hall.
             <?php endif; ?><br>

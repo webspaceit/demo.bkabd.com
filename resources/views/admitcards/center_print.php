@@ -151,11 +151,11 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-banner > div:not(.rc-qr) { flex: 1 1 auto; min-width: 0; text-align: center; }
 .cp-slot .rc-banner h1 { font-size: 1.75rem; }
 .cp-slot .rc-reg { font-size: .95rem; }
-.cp-slot .rc-banner .rc-gov { font-size: .82rem; line-height: 1.35; }
+.cp-slot .rc-banner .rc-gov { font-size: .85rem; line-height: 1.35; }
 .cp-slot .rc-qr canvas,
 .cp-slot .rc-qr img,
 .cp-slot .rc-qr table { width: 75px !important; height: 75px !important; }
-.cp-slot .rc-exam-head { font-size: 1.5rem; margin: .5rem 0 1rem; }
+.cp-slot .rc-exam-head { font-size: 1.7rem; margin: .5rem 0 1rem; }
 .cp-slot .rc-top { padding: .15rem .7rem .15rem; margin-bottom: .5rem; }
 .cp-slot .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
 .cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: .95rem; }
@@ -252,7 +252,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                 </div>
             </div>
 
-            <p class="rc-exam-head">Scholarship Exam - <?= e($s['session'] ?? $session) ?></p>
+            <p class="rc-exam-head">Scholarship Examination - <?= e($s['session'] ?? $session) ?></p>
 
             <div class="rc-top">
                 <div class="rc-tags">
@@ -283,7 +283,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
             </div>
 
             <div class="rc-rules">
-                <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
+                <p class="font-bold mb-1 text-slate-800">বিশেষ নির্দেশাবলিঃ</p>
                 <p>১. প্রবেশপত্র (অ্যাডমিট কার্ড) ছাড়া কোনো পরীক্ষার্থীকে পরীক্ষা কক্ষে প্রবেশ করতে দেওয়া হবে না।</p>
                 <p>২. প্রবেশপত্র ছাড়া কোনো পরীক্ষার্থী লিখিত পরীক্ষার কাগজ বা বই সঙ্গে রাখতে পারবে না।</p>
                 <p>৩. পরীক্ষা শুরুর দুই ঘণ্টার আগে কোনো পরীক্ষার্থী পরীক্ষা কক্ষ থেকে বাইরে যেতে পারবেন না।</p>
@@ -312,7 +312,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
             </div>
 
             <p class="rc-note">
-                <b>Note:</b> Examinee must bring this admit card to the examination hall.<br>
+                <b>Note:</b> This admit card is valid upto this session. Examinee must bring this card in the examination hall.<br>
                 <span class="text-xs">&copy; Copyright 1984 - <?= e($copyrightYear) ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by Web Space IT</span>
             </p>
 
