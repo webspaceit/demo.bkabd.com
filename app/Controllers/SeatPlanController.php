@@ -18,12 +18,19 @@ final class SeatPlanController extends Controller
         [$session, $centerId, $class] = $this->assignmentScope(
             $request->query('session'), $request->query('center_id'), $request->query('class')
         );
-        return ['assignments' => Database::select(
-            'SELECT `id`, `building_name`, `floor_number`, `room_number`, `roll_start`, `roll_end`, `room_capacity` '
-            . 'FROM `seat_plan_assignments` WHERE `session` = ? AND `center_id` = ? AND `class` = ? '
-            . 'ORDER BY `sort_order` ASC, `id` ASC',
-            [$session, $centerId, $class]
-        )];
+        try {
+            return ['assignments' => Database::select(
+                'SELECT `id`, `building_name`, `floor_number`, `room_number`, `roll_start`, `roll_end`, `room_capacity` '
+                . 'FROM `seat_plan_assignments` WHERE `session` = ? AND `center_id` = ? AND `class` = ? '
+                . 'ORDER BY `sort_order` ASC, `id` ASC',
+                [$session, $centerId, $class]
+            ), 'schema_ready' => true];
+        } catch (\PDOException $e) {
+            if (!in_array((string) $e->getCode(), ['42S02', '42S22'], true)) {
+                throw $e;
+            }
+            return ['assignments' => [], 'schema_ready' => false];
+        }
     }
 
     /** Replace all room assignments in a scope atomically. */
@@ -88,19 +95,26 @@ final class SeatPlanController extends Controller
             ];
         }
 
-        Database::transaction(static function () use ($assignments, $session, $centerId, $class): void {
-            Database::delete('seat_plan_assignments', '`session` = ? AND `center_id` = ? AND `class` = ?', [$session, $centerId, $class]);
-            foreach ($assignments as $assignment) {
-                Database::insert('seat_plan_assignments', $assignment + [
-                    'session' => $session,
-                    'center_id' => $centerId,
-                    'class' => $class,
-                    'user_id' => Auth::id(),
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
+        try {
+            Database::transaction(static function () use ($assignments, $session, $centerId, $class): void {
+                Database::delete('seat_plan_assignments', '`session` = ? AND `center_id` = ? AND `class` = ?', [$session, $centerId, $class]);
+                foreach ($assignments as $assignment) {
+                    Database::insert('seat_plan_assignments', $assignment + [
+                        'session' => $session,
+                        'center_id' => $centerId,
+                        'class' => $class,
+                        'user_id' => Auth::id(),
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            });
+        } catch (\PDOException $e) {
+            if (in_array((string) $e->getCode(), ['42S02', '42S22'], true)) {
+                throw new HttpException(503, 'Seat Plan database update is required before room assignments can be saved.');
             }
-        });
+            throw $e;
+        }
 
         return ['status' => 'success', 'saved' => count($assignments)];
     }

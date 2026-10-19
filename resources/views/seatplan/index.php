@@ -142,6 +142,12 @@ document.addEventListener('DOMContentLoaded', function () {
         rowsEl.innerHTML = '';
         try {
             const result = await BK.get(BK.qs('/api/seatplan/assignments', scope));
+            if (result.schema_ready === false) {
+                saveBtn.disabled = true;
+                helpEl.textContent = 'Room assignments are unavailable until the Seat Plan database update is applied.';
+                return;
+            }
+            saveBtn.disabled = false;
             (result.assignments || []).forEach(addRoomRow);
             helpEl.textContent = 'Assignments are saved for this session, center, and class.';
         } catch (err) {
