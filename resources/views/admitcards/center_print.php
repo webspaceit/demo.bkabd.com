@@ -159,6 +159,10 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 -1.25rem !important; }
 .cp-slot .rc-col { flex: 1 1 0; min-width: 0; }
 .cp-slot .rc-row { grid-template-columns: 8.2rem 1rem 1fr; font-size: .85rem; line-height: 1.25; padding: .04rem 0; }
+/* Registration No. and Roll No. share a single line in the detail table. */
+.cp-slot .rc-row-pair { display: flex; align-items: baseline; flex-wrap: nowrap; white-space: nowrap; }
+.cp-slot .rc-row-pair .rc-sep { padding: 0 .28rem; }
+.cp-slot .rc-row-pair .rc-lbl-gap { margin-left: .85rem; }
 .cp-slot .rc-photo img { width: 74px; height: 84px; }
 /* Rules block: wide enough that every rule sits on one line, stopping just
    short of the photo column (204% of the narrow label column), and trimmed to
@@ -269,6 +273,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                     <?= $row("Father's Name", $s['father_name'] ?? '') ?>
                     <?= $row("Mother's Name", $s['mother_name'] ?? '') ?>
                     <?= $row('Date of Birth', !empty($s['dob']) ? DateFormat($s['dob'], 'd-m-Y') : '') ?>
+                    <div class="rc-row rc-row-pair"><span class="rc-lbl">Registration No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($s['registration'] ?? '') ?></span><span class="rc-lbl rc-lbl-gap">Roll No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($s['roll'] ?? '') ?></span></div>
                     <div class="rc-rules ml-4 my-3 text-[11px] sm:text-xs leading-relaxed">
                         <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
                         <p>১. প্রবেশপত্র (অ্যাডমিট কার্ড) ছাড়া কোনো পরীক্ষার্থীকে পরীক্ষা কক্ষে প্রবেশ করতে দেওয়া হবে না।</p>
