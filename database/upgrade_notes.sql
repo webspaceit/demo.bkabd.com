@@ -4,6 +4,37 @@
 -- ============================================================
 
 -- ------------------------------------------------------------
+-- Seat Plan room assignments
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `seat_plan_assignments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `session` int NOT NULL,
+  `center_id` int NOT NULL,
+  `class` tinyint NOT NULL,
+  `building_name` varchar(120) NOT NULL,
+  `floor_number` varchar(50) NOT NULL,
+  `room_number` varchar(50) NOT NULL,
+  `roll_start` int DEFAULT NULL,
+  `roll_end` int DEFAULT NULL,
+  `room_capacity` int DEFAULT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `user_id` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_seat_plan_scope` (`session`,`center_id`,`class`,`sort_order`),
+  KEY `idx_seat_plan_rolls` (`session`,`center_id`,`class`,`roll_start`,`roll_end`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Exam routines — scope schedules to an exam session.
+-- Class was already present in routines but was not exposed in the UI.
+-- Existing routines remain unscoped (NULL) until assigned in Edit Routine.
+-- ------------------------------------------------------------
+ALTER TABLE `routines`
+  ADD COLUMN `session` int DEFAULT NULL AFTER `time`;
+
+-- ------------------------------------------------------------
 -- Public result portal — performance indexes for result day
 -- (mirrors the KEY lines added to database/schema.sql)
 -- ------------------------------------------------------------

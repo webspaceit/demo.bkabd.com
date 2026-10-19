@@ -53,3 +53,6 @@ Router::get('/api/admitcard_center/{id}', [AdmitCardController::class, 'printByC
 // Seat plan endpoints
 Router::get('/api/seatplan/{id}/{class}', [SeatPlanController::class, 'fetchSeatPlan'], 'auth|permission:seatplan');
 Router::get('/api/seatplan_print/{id}/{class}', [SeatPlanController::class, 'printSeatPlan'], 'auth|permission:seatplan');
+Router::get('/api/seatplan_cards/{id}/{class}', [SeatPlanController::class, 'printSeatArrangementCards'], 'auth|permission:seatplan');
+Router::get('/api/seatplan/assignments', [SeatPlanController::class, 'assignments'], 'auth|permission:seatplan');
+Router::post('/api/seatplan/assignments', [SeatPlanController::class, 'saveAssignments'], 'auth|permission:seatplan');

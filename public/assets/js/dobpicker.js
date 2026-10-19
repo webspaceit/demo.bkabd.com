@@ -55,6 +55,9 @@
 
     function Picker(display) {
         this.display = display;
+        this.allowFuture = display.hasAttribute('data-allow-future');
+        this.minDate = parseISO(display.getAttribute('data-min-date'));
+        this.maxDate = parseISO(display.getAttribute('data-max-date'));
         var wrap = display.closest('.dob-field') || display.parentNode;
         this.hidden = wrap ? wrap.querySelector('[data-dobpicker-value]') : null;
 
@@ -62,8 +65,9 @@
         this.isOpen = false;
 
         this.sel = this.hidden ? parseISO(this.hidden.value) : null;
-        this.y = this.sel ? this.sel.y : (today().y - 20);
-        this.m = this.sel ? this.sel.m : today().m;
+        var defaultYear = parseInt(display.getAttribute('data-default-year'), 10);
+        this.y = this.sel ? this.sel.y : (Number.isInteger(defaultYear) ? defaultYear : (display.hasAttribute('data-default-today') ? today().y : today().y - 20));
+        this.m = this.sel ? this.sel.m : (Number.isInteger(defaultYear) ? 1 : today().m);
         this.d = this.sel ? this.sel.d : 1;
 
         this._onDocDown = this._onDocDown.bind(this);
@@ -81,7 +85,7 @@
         p.className = 'dobp-popup';
         p.hidden = true;
         p.setAttribute('role', 'dialog');
-        p.setAttribute('aria-label', 'Choose date of birth');
+        p.setAttribute('aria-label', 'Choose ' + (this.display.getAttribute('data-picker-label') || 'date of birth'));
         p.innerHTML =
             '<div class="dobp-head">' +
                 '<div style="display:flex">' +
@@ -139,20 +143,27 @@
         var dec = Math.floor(this.y / 10) * 10;
 
         this.titleEl.textContent = MONTHS[this.m - 1] + ' ' + this.y;
-        this.decadeEl.textContent = dec + '\u2013' + (dec + 9);
+        var singleYearRange = this.minDate && this.maxDate && this.minDate.y === this.maxDate.y;
+        this.decadeEl.textContent = singleYearRange ? String(this.minDate.y) : dec + '\u2013' + (dec + 9);
 
         var html = '';
-        for (var y = dec; y < dec + 10; y++) {
+        var firstYear = singleYearRange ? this.minDate.y : dec;
+        var lastYear = singleYearRange ? this.maxDate.y : dec + 9;
+        for (var y = firstYear; y <= lastYear; y++) {
+            var yearOutOfRange = (this.minDate && y < this.minDate.y) || (this.maxDate && y > this.maxDate.y);
             html += '<button type="button" class="dobp-year' + (y === this.y ? ' is-active' : '')
-                + '" data-year="' + y + '"' + (y > t.y ? ' disabled' : '') + '>' + y + '</button>';
+                + '" data-year="' + y + '"' + (yearOutOfRange || (!this.allowFuture && y > t.y) ? ' disabled' : '') + '>' + y + '</button>';
         }
         this.yearsEl.innerHTML = html;
 
         html = '';
         for (var m = 1; m <= 12; m++) {
-            var monthFuture = (this.y > t.y) || (this.y === t.y && m > t.m);
+            var monthStart = { y: this.y, m: m, d: 1 };
+            var monthEnd = { y: this.y, m: m, d: new Date(this.y, m, 0).getDate() };
+            var monthOutOfRange = (this.minDate && cmp(monthEnd, this.minDate) < 0) || (this.maxDate && cmp(monthStart, this.maxDate) > 0);
+            var monthFuture = !this.allowFuture && ((this.y > t.y) || (this.y === t.y && m > t.m));
             html += '<button type="button" class="dobp-month' + (m === this.m ? ' is-active' : '')
-                + '" data-month="' + m + '"' + (monthFuture ? ' disabled' : '') + '>'
+                + '" data-month="' + m + '"' + (monthOutOfRange || monthFuture ? ' disabled' : '') + '>'
                 + MONTHS[m - 1].slice(0, 3) + '</button>';
         }
         this.monthsEl.innerHTML = html;
@@ -167,9 +178,11 @@
         for (var d = 1; d <= dim; d++) {
             var isSel = this.sel && this.sel.y === this.y && this.sel.m === this.m && this.sel.d === d;
             var isToday = t.y === this.y && t.m === this.m && t.d === d;
-            var dayFuture = this.y > t.y || (this.y === t.y && (this.m > t.m || (this.m === t.m && d > t.d)));
+            var candidate = { y: this.y, m: this.m, d: d };
+            var outOfRange = (this.minDate && cmp(candidate, this.minDate) < 0) || (this.maxDate && cmp(candidate, this.maxDate) > 0);
+            var dayFuture = !this.allowFuture && (this.y > t.y || (this.y === t.y && (this.m > t.m || (this.m === t.m && d > t.d))));
             html += '<button type="button" class="dobp-day' + (isSel ? ' is-active' : '') + (isToday ? ' is-today' : '')
-                + '" data-day="' + d + '"' + (dayFuture ? ' disabled' : '') + '>' + d + '</button>';
+                + '" data-day="' + d + '"' + (outOfRange || dayFuture ? ' disabled' : '') + '>' + d + '</button>';
         }
         var cells = Math.ceil((firstDow + dim) / 7) * 7;
         for (var k = 1; k <= cells - firstDow - dim; k++) {
@@ -178,10 +191,10 @@
         this.daysEl.innerHTML = html;
 
         var currentDecade = Math.floor(t.y / 10) * 10;
-        this.navPrevDecade.disabled = dec <= 1900;
-        this.navNextDecade.disabled = dec >= currentDecade;
-        this.navPrevMonth.disabled = (this.y <= 1900 && this.m === 1);
-        this.navNextMonth.disabled = (this.y === t.y && this.m === t.m);
+        this.navPrevDecade.disabled = singleYearRange || dec <= 1900 || (this.minDate && dec + 9 < this.minDate.y);
+        this.navNextDecade.disabled = singleYearRange || (!this.allowFuture && dec >= currentDecade) || (this.maxDate && dec > this.maxDate.y);
+        this.navPrevMonth.disabled = (this.y <= 1900 && this.m === 1) || (this.minDate && (this.y < this.minDate.y || (this.y === this.minDate.y && this.m <= this.minDate.m)));
+        this.navNextMonth.disabled = (!this.allowFuture && this.y === t.y && this.m === t.m) || (this.maxDate && (this.y > this.maxDate.y || (this.y === this.maxDate.y && this.m >= this.maxDate.m)));
     };
 
     Picker.prototype._shift = function (dy, dm) {
@@ -190,8 +203,10 @@
         var m = this.m + dm;
         while (m > 12) { m -= 12; y += 1; }
         while (m < 1) { m += 12; y -= 1; }
-        if (y > t.y) { y = t.y; m = t.m; }
-        if (y === t.y && m > t.m) { m = t.m; }
+        if (this.minDate && (y < this.minDate.y || (y === this.minDate.y && m < this.minDate.m))) { y = this.minDate.y; m = this.minDate.m; }
+        if (this.maxDate && (y > this.maxDate.y || (y === this.maxDate.y && m > this.maxDate.m))) { y = this.maxDate.y; m = this.maxDate.m; }
+        if (!this.allowFuture && y > t.y) { y = t.y; m = t.m; }
+        if (!this.allowFuture && y === t.y && m > t.m) { m = t.m; }
         if (y < 1900) { y = 1900; m = 1; }
         this.y = y;
         this.m = m;
@@ -200,8 +215,10 @@
 
     Picker.prototype._clamp = function () {
         var t = today();
-        if (this.y > t.y) { this.y = t.y; }
-        if (this.y === t.y && this.m > t.m) { this.m = t.m; }
+        if (this.minDate && (this.y < this.minDate.y || (this.y === this.minDate.y && this.m < this.minDate.m))) { this.y = this.minDate.y; this.m = this.minDate.m; }
+        if (this.maxDate && (this.y > this.maxDate.y || (this.y === this.maxDate.y && this.m > this.maxDate.m))) { this.y = this.maxDate.y; this.m = this.maxDate.m; }
+        if (!this.allowFuture && this.y > t.y) { this.y = t.y; }
+        if (!this.allowFuture && this.y === t.y && this.m > t.m) { this.m = t.m; }
     };
 
     Picker.prototype._onClick = function (e) {
@@ -277,13 +294,32 @@
     Picker.prototype.clear = function () {
         this.sel = null;
         this._sync();
+        this._fire();
+        if (this.isOpen) { this._render(); }
+    };
+
+    Picker.prototype.setDateRange = function (minDate, maxDate) {
+        this.minDate = parseISO(minDate);
+        this.maxDate = parseISO(maxDate);
+        this.display.setAttribute('data-min-date', minDate || '');
+        this.display.setAttribute('data-max-date', maxDate || '');
+        if (this.sel && ((this.minDate && cmp(this.sel, this.minDate) < 0) || (this.maxDate && cmp(this.sel, this.maxDate) > 0))) {
+            this.clear();
+        }
+        if (!this.sel && this.minDate && this.maxDate && this.minDate.y === this.maxDate.y) {
+            this.y = this.minDate.y;
+            this.m = Math.min(this.maxDate.m, Math.max(this.minDate.m, today().m));
+        }
+        this._clamp();
         if (this.isOpen) { this._render(); }
     };
 
     Picker.prototype._pick = function (d) {
         var t = today();
         var candidate = { y: this.y, m: this.m, d: d };
-        if (cmp(candidate, t) > 0) { return; }
+        if ((!this.allowFuture && cmp(candidate, t) > 0)
+            || (this.minDate && cmp(candidate, this.minDate) < 0)
+            || (this.maxDate && cmp(candidate, this.maxDate) > 0)) { return; }
         this.sel = candidate;
         this._sync();
         this._fire();
@@ -373,6 +409,10 @@
 
     // Clears the picker + hidden ISO value (used after a successful submit).
     window.DOBPicker = {
+        refresh: init,
+        setRange: function (display, minDate, maxDate) {
+            if (display && display._dobp) { display._dobp.setDateRange(minDate, maxDate); }
+        },
         clear: function (target) {
             var hidden = typeof target === 'string' ? document.getElementById(target) : target;
             if (!hidden) { return; }

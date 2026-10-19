@@ -40,6 +40,52 @@ $className = static function (int $class): string {
     };
 };
 
+$examRoutines = $examRoutines ?? [];
+$groupRoutineRows = static function (array $rows): array {
+    $groups = [];
+    foreach ($rows as $routine) {
+        $date = trim((string) ($routine['date'] ?? ''));
+        $time = trim((string) ($routine['time'] ?? ''));
+        $key = strtolower(preg_replace('/\s+/u', ' ', $date)) . "\0" . strtolower(preg_replace('/\s+/u', ' ', $time));
+        if (!isset($groups[$key])) {
+            $groups[$key] = $routine;
+            $groups[$key]['_subjects'] = [];
+        }
+        $subjects = preg_split('/\s*,\s*/u', trim((string) ($routine['subject'] ?? '')), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        foreach ($subjects as $subject) {
+            $subjectKey = strtolower(trim($subject));
+            if ($subjectKey !== '' && !isset($groups[$key]['_subject_keys'][$subjectKey])) {
+                $groups[$key]['_subject_keys'][$subjectKey] = true;
+                $groups[$key]['_subjects'][] = trim($subject);
+            }
+        }
+    }
+    foreach ($groups as &$group) {
+        $group['subject'] = implode(', ', $group['_subjects']);
+        unset($group['_subjects'], $group['_subject_keys']);
+    }
+    unset($group);
+    return array_values($groups);
+};
+$examRoutineRows = static function (string|int $session, int $class) use ($examRoutines, $groupRoutineRows): array {
+    $sessionRows = array_values(array_filter($examRoutines, static function (array $routine) use ($session): bool {
+        return (string) ($routine['session'] ?? '') === (string) $session;
+    }));
+    $matchesClass = static function (array $rows) use ($class): array {
+        return array_values(array_filter($rows, static function (array $routine) use ($class): bool {
+            $routineClass = trim((string) ($routine['class'] ?? ''));
+            return $routineClass !== '' && (int) $routineClass === $class;
+        }));
+    };
+    $matchesAllClasses = static function (array $rows): array {
+        return array_values(array_filter($rows, static function (array $routine): bool {
+            return trim((string) ($routine['class'] ?? '')) === '';
+        }));
+    };
+    $rows = $matchesClass($sessionRows);
+    if ($rows === []) { $rows = $matchesAllClasses($sessionRows); }
+    return $groupRoutineRows($rows);
+};
 $row = static function (string $label, $value): string {
     return '<div class="rc-row"><span class="rc-lbl">' . e($label) . '</span>'
         . '<span class="rc-sep">:</span>'
@@ -146,26 +192,33 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .reg-card { height: auto; min-height: 129.6mm; display: flex; flex-direction: column; box-sizing: border-box; }
 .cp-slot .rc-inner { height: auto; min-height: 125.8mm; flex: 1 0 auto; box-sizing: border-box; }
 .cp-slot .rc-inner { display: flex; flex-direction: column; justify-content: flex-start; }
-.cp-slot .rc-banner { gap: .55rem; padding: .3rem .7rem .25rem; margin-bottom: .35rem; }
-.cp-slot .rc-logo img { width: 90px; height: 90px; object-fit: contain; }
+.cp-slot .rc-banner { gap: .55rem; padding: .1rem .7rem .1rem; margin-bottom: .35rem; }
+.cp-slot .rc-qr { display: flex; align-items: center; justify-content: center; align-self: center; height: 70px; }
+.cp-slot .rc-logo img { width: 70px; height: 70px; object-fit: contain; }
 .cp-slot .rc-banner > div:not(.rc-qr) { flex: 1 1 auto; min-width: 0; text-align: center; }
 .cp-slot .rc-banner h1 { font-size: 1.75rem; }
 .cp-slot .rc-reg { font-size: .95rem; }
 .cp-slot .rc-banner .rc-gov { font-size: .85rem; line-height: 1.35; }
 .cp-slot .rc-qr canvas,
 .cp-slot .rc-qr img,
-.cp-slot .rc-qr table { width: 75px !important; height: 75px !important; }
-.cp-slot .rc-exam-head { font-size: 1.7rem; margin: .5rem 0 1rem; }
+.cp-slot .rc-qr table { width: 70px !important; height: 70px !important; }
+.cp-slot .rc-exam-head { font-size: 1.7rem; margin: .2rem 0 .6rem; }
 .cp-slot .rc-top { padding: .15rem .7rem .15rem; margin-bottom: .5rem; }
 .cp-slot .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
-.cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: .95rem; }
+.cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: 1.5rem; }
 .cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 .25rem !important; }
 .cp-slot .rc-col { flex: 1 1 0; min-width: 0; }
 .cp-slot .rc-row { grid-template-columns: 9.5rem 1rem 1fr; font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
-.cp-slot .rc-photo img { width: 74px; height: 84px; }
+.cp-slot .rc-photo img { width: 60px; height: 70px; }
 /* Full-width rules, styled like the individual admit card. */
+.cp-slot .rc-routine { width: calc(100% - 1.4rem); margin: .1rem .7rem .3rem; }
+.cp-slot .rc-routine-table { font-size: .82rem; line-height: 1.2; }
+.cp-slot .rc-routine-table th,
+.cp-slot .rc-routine-table td { padding: .15rem .3rem; }
 .cp-slot .rc-rules { width: auto; margin: .25rem 0 .25rem .7rem !important; font-size: 1rem !important; line-height: 1.22 !important; }
+.cp-slot .rc-routine-title { font-size: .95rem; font-weight: 700; color: #0f172a; }
 .cp-slot .rc-rules p { margin: 0 0 .15rem; }
+.cp-slot .rc-rules > p:first-child { font-size: .95rem !important; line-height: 1.2; font-weight: 700; color: #0f172a; }
 .cp-slot .rc-rules p:last-child { margin-bottom: 0; white-space: nowrap; font-size: 1rem; }
 .cp-slot .rc-rules ol { margin: 0; padding-left: .8rem; }
 .cp-slot .sig-tbl { margin-top: .25rem !important; }
@@ -203,10 +256,19 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
     html, body { background: #fff; }
     .cp-toolbar { display: none; }
     .cp-page {
+        height: 297mm;
+        min-height: 297mm;
         margin: 0;
         box-shadow: none;
+        overflow: hidden;
         break-after: auto;
         page-break-after: auto;
+    }
+    .cp-slot {
+        height: 148.5mm;
+        min-height: 0;
+        flex: 0 0 148.5mm;
+        box-sizing: border-box;
     }
     .cp-page + .cp-page {
         break-before: page;
@@ -273,13 +335,35 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                 </div>
                 <div class="rc-col">
                 <?= $row('Exam Class', $className((int)($s['class'] ?? 0))) ?>
-                <?= $row('Exam Date & Time', 'As per routine') ?>
                 <?= $row('Exam Center', $s['center_name'] ?? '') ?>
                 <?= $row('Exam Venue', $s['institute_name'] ?? '') ?>
+                <?php if (!empty($s['seat_assignment']['room_label'])): ?>
+                    <?= $row('Seat Location', $s['seat_assignment']['room_label']) ?>
+                <?php endif; ?>
                 </div>
                 <div class="rc-photo">
                     <?php if ($photoSrc): ?><img src="<?= $photoSrc ?>" alt="Student photo"><?php endif; ?>
                 </div>
+            </div>
+
+            <div class="rc-routine">
+                <div class="rc-routine-title">Exam Routine</div>
+                <table class="rc-routine-table">
+                    <thead><tr><th>Subject</th><th>Exam Date</th><th>Day</th><th>Time</th></tr></thead>
+                    <tbody>
+                    <?php $studentRoutineRows = $examRoutineRows($s['session'] ?? $session, (int) ($s['class'] ?? 0)); ?>
+                    <?php if ($studentRoutineRows === []): ?>
+                        <tr><td colspan="4">Not scheduled</td></tr>
+                    <?php else: foreach ($studentRoutineRows as $routineItem): ?>
+                        <tr>
+                            <td><?= e($routineItem['subject'] ?? '') ?></td>
+                            <td><?= e($routineItem['date'] ?? '') ?></td>
+                            <td><?= e($routineItem['day'] ?? '') ?></td>
+                            <td><?= e($routineItem['time'] ?? '') ?></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
             </div>
 
             <div class="rc-rules">
@@ -339,8 +423,8 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
             correctLevel: QRCode.CorrectLevel.M
         });
         box.querySelectorAll('canvas, img, table').forEach(function (el) {
-            el.style.width = '75px';
-            el.style.height = '75px';
+            el.style.width = '70px';
+            el.style.height = '70px';
         });
     });
 })();

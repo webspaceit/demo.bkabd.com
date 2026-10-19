@@ -47,7 +47,8 @@ final class RoutineController extends Controller
             'date' => (string) $data['date'],
             'day' => (string) $request->input('day', ''),
             'time' => (string) $request->input('time', ''),
-            'class' => (string) $request->input('class', ''),
+            'session' => (int) $data['session'],
+            'class' => $data['class'],
             'order' => (int) $data['order'],
             'active' => 1,
             'user_id' => Auth::id(),
@@ -83,10 +84,12 @@ final class RoutineController extends Controller
         $row = [
             'subject' => (string) $data['subject'],
             'date' => (string) $data['date'],
+            'session' => (int) $data['session'],
+            'class' => $data['class'],
             'order' => (int) $data['order'],
             'updated_at' => date('Y-m-d H:i:s'),
         ];
-        foreach (['day', 'time', 'class'] as $col) {
+        foreach (['day', 'time'] as $col) {
             if ($request->has($col)) {
                 $row[$col] = (string) $request->input($col);
             }
@@ -95,6 +98,27 @@ final class RoutineController extends Controller
         Routine::updateRow($id, $row);
 
         return ['status' => 'success'];
+    }
+
+    /** PUT /api/routines/{id}/active — toggle routine visibility on admit cards. */
+    public function setActive(Request $request): array
+    {
+        $id = (int) $request->params['id'];
+        if (Routine::find($id) === null) {
+            throw new HttpException(404, 'Routine not found');
+        }
+
+        $active = $request->input('active');
+        if (!in_array((string) $active, ['0', '1'], true)) {
+            throw new HttpException(422, 'Active must be 0 or 1');
+        }
+
+        Routine::updateRow($id, [
+            'active' => (int) $active,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return ['status' => 'success', 'active' => (int) $active];
     }
 
     /** DELETE /api/routines/{id} — original destroy() (404 instead of fatal on null). */
@@ -127,6 +151,11 @@ final class RoutineController extends Controller
     {
         return View::render('routines.create', [
             'title' => 'Add Routine',
+            'pageStyles' => ['/assets/css/dobpicker.css', '/assets/css/flatpickr.min.css'],
+            'pageScripts' => [
+                '/assets/js/vendor/flatpickr.min.js',
+                '/assets/js/dobpicker.js?v=' . (int) @filemtime(BASE_PATH . '/public/assets/js/dobpicker.js'),
+            ],
         ], 'layouts.dashboard');
     }
 
@@ -141,6 +170,8 @@ final class RoutineController extends Controller
         return View::render('routines.edit', [
             'title' => 'Edit Routine',
             'routineId' => $id,
+            'pageStyles' => ['/assets/css/flatpickr.min.css'],
+            'pageScripts' => ['/assets/js/vendor/flatpickr.min.js'],
         ], 'layouts.dashboard');
     }
 
@@ -153,19 +184,23 @@ final class RoutineController extends Controller
      * and an integer check for `order` so garbage cannot reach MySQL strict
      * mode (blueprint hard rule 7).
      *
-     * @return array{subject:string,date:string,order:int}
+     * @return array{subject:string,date:string,session:int,class:?string,order:int}
      */
     private function validated(Request $request): array
     {
         $data = Validator::validate($request, [
             'subject' => 'required|string|max:255',
             'date' => 'required|string|max:255',
+            'session' => 'required|integer',
+            'class' => 'nullable|in:1,2,3,4,5,6',
             'order' => 'required|integer',
         ]);
 
         return [
             'subject' => (string) $data['subject'],
             'date' => (string) $data['date'],
+            'session' => (int) $data['session'],
+            'class' => isset($data['class']) && $data['class'] !== '' ? (string) $data['class'] : null,
             'order' => (int) $data['order'],
         ];
     }

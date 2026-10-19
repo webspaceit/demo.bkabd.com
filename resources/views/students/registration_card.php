@@ -63,6 +63,52 @@ $className = static function (int $class): string {
     };
 };
 
+$examRoutines = $examRoutines ?? [];
+$groupRoutineRows = static function (array $rows): array {
+    $groups = [];
+    foreach ($rows as $routine) {
+        $date = trim((string) ($routine['date'] ?? ''));
+        $time = trim((string) ($routine['time'] ?? ''));
+        $key = strtolower(preg_replace('/\s+/u', ' ', $date)) . "\0" . strtolower(preg_replace('/\s+/u', ' ', $time));
+        if (!isset($groups[$key])) {
+            $groups[$key] = $routine;
+            $groups[$key]['_subjects'] = [];
+        }
+        $subjects = preg_split('/\s*,\s*/u', trim((string) ($routine['subject'] ?? '')), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        foreach ($subjects as $subject) {
+            $subjectKey = strtolower(trim($subject));
+            if ($subjectKey !== '' && !isset($groups[$key]['_subject_keys'][$subjectKey])) {
+                $groups[$key]['_subject_keys'][$subjectKey] = true;
+                $groups[$key]['_subjects'][] = trim($subject);
+            }
+        }
+    }
+    foreach ($groups as &$group) {
+        $group['subject'] = implode(', ', $group['_subjects']);
+        unset($group['_subjects'], $group['_subject_keys']);
+    }
+    unset($group);
+    return array_values($groups);
+};
+$examRoutineRows = static function (string|int $session, int $class) use ($examRoutines, $groupRoutineRows): array {
+    $sessionRows = array_values(array_filter($examRoutines, static function (array $routine) use ($session): bool {
+        return (string) ($routine['session'] ?? '') === (string) $session;
+    }));
+    $matchesClass = static function (array $rows) use ($class): array {
+        return array_values(array_filter($rows, static function (array $routine) use ($class): bool {
+            $routineClass = trim((string) ($routine['class'] ?? ''));
+            return $routineClass !== '' && (int) $routineClass === $class;
+        }));
+    };
+    $matchesAllClasses = static function (array $rows): array {
+        return array_values(array_filter($rows, static function (array $routine): bool {
+            return trim((string) ($routine['class'] ?? '')) === '';
+        }));
+    };
+    $rows = $matchesClass($sessionRows);
+    if ($rows === []) { $rows = $matchesAllClasses($sessionRows); }
+    return $groupRoutineRows($rows);
+};
 $printDate = date('d-m-Y');
 $copyrightYear = date('Y');
 $title = $title ?? ($isAdmitCard ? 'Admit Card' : 'Registration Card');
@@ -101,16 +147,17 @@ $qrContentEscaped = e($qrContent);
         padding: .8rem 1.2rem .7rem;
         border-bottom: double 3px #065f46;
     }
-    /* Header logo — natural size (the asset is 90x90), no frame. */
+    /* Header logo — 70px, no frame. */
     .rc-logo {
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
     }
-    .rc-logo img { width: 90px; height: 90px; object-fit: contain; }
+    .rc-logo img { width: 70px; height: 70px; object-fit: contain; }
     .rc-banner h1 {
         margin: 0;
+        text-align: center;
         font-size: 1.5rem;
         line-height: 1.15;
         font-weight: 800;
@@ -126,6 +173,14 @@ $qrContentEscaped = e($qrContent);
         color: #000;
         text-align: center;
     }
+    .reg-card.registration-card .rc-banner {
+        gap: .55rem;
+        padding: .3rem .7rem .25rem;
+        margin-bottom: .35rem;
+    }
+    .reg-card.registration-card .rc-banner h1 { font-size: 1.75rem; }
+    .reg-card.registration-card .rc-reg { font-size: .95rem; }
+    .reg-card.registration-card .rc-banner .rc-gov { font-size: .85rem; line-height: 1.35; }
 
     /* ---- Top row: Reg No tag | heading + pill | Exam Roll tag ---- */
     .rc-top {
@@ -195,6 +250,35 @@ $qrContentEscaped = e($qrContent);
         margin-top: .5rem;
         margin-bottom: .6rem;
     }
+    .rc-body-admit {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 74px;
+        gap: .6rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .rc-body-admit .rc-col { min-width: 0; }
+    .rc-body-admit .rc-row {
+        min-width: 0;
+        grid-template-columns: minmax(0, 8.2rem) .75rem minmax(0, 1fr);
+    }
+    .rc-body-admit .rc-val { min-width: 0; }
+    .rc-routine {
+        width: calc(100% - 2rem);
+        margin: .1rem 1rem .3rem;
+    }
+    .rc-routine-title { margin-bottom: .12rem; font-size: .95rem; font-weight: 700; color: #0f172a; }
+    .rc-routine-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: .82rem;
+        line-height: 1.2;
+        color: #111827;
+    }
+    .rc-routine-table th,
+    .rc-routine-table td { border: 1px solid #334155; padding: .15rem .3rem; text-align: center; overflow-wrap: anywhere; }
+    .rc-routine-table th { font-weight: 700; background: #f1f5f9; }
     /* The two text columns use one identical standard line pitch — no
        per-column stretching, so both blocks read at the same rhythm. */
     .rc-col {
@@ -231,10 +315,10 @@ $qrContentEscaped = e($qrContent);
     .rc-row-pair .rc-lbl-gap { margin-left: 1rem; }
 
     /* ---- QR (banner right, on the blank space) ---- */
-/* The QR payload is the whole contact block (~236 bytes -> 61 modules), so
-        it needs ~75px to stay scannable on paper (~0.38mm per module). */
+/* The QR payload is the whole contact block (~236 bytes -> 61 modules), sized
+        to 70px for the header. */
     .rc-qr { text-align: center; margin-left: auto; align-self: center; flex-shrink: 0; }
-    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 75px !important; height: 75px !important; }
+    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 70px !important; height: 70px !important; }
 
     .rc-reg {
         margin: 0;
@@ -310,11 +394,11 @@ $qrContentEscaped = e($qrContent);
 
 /* Compact print scale (applies everywhere so screens match the PDF).
         Header text scaled so the contact lines fill the space up to the QR;
-        the QR keeps the 75px size set by the .rc-qr rule (its payload is the
+        the QR keeps the 70px size set by the .rc-qr rule (its payload is the
         whole contact block, so it needs the room to stay scannable). */
     .rc-banner { padding: .5rem 1rem .4rem; margin-bottom: 1rem; }
-    .rc-logo img { width: 90px; height: 90px; }
-    /* The QR now carries the whole contact block, so it is sized to 75px
+    .rc-logo img { width: 70px; height: 70px; }
+    /* The QR now carries the whole contact block, so it is sized to 70px
         (scannable on paper). The heading and the contact line are scaled down a
         notch so the row (logo + text + QR) still fits inside the 210mm sheet. */
     .rc-banner h1 { font-size: 1.8rem; }
@@ -323,11 +407,11 @@ $qrContentEscaped = e($qrContent);
     .rc-top { padding: .45rem 1rem .1rem; }
     .rc-tag { padding: .15rem .75rem; font-size: .85rem; }
     .rc-exam-head { font-size: 1.5rem; margin-bottom: 1rem; }
-    .rc-center .rc-pill { padding: .2rem 1.2rem; font-size: .95rem; background: #000; color: #fff; }
+    .rc-center .rc-pill { padding: .2rem 1.2rem; font-size: 1.5rem; background: #000; color: #fff; }
     .rc-photo img { width: 74px; height: 84px; }
     .rc-body { padding: .35rem 1rem 0; column-gap: 1.8rem; row-gap: 0; }
     .rc-row { font-size: .8rem; padding: .06rem 0; grid-template-columns: 8.2rem 1rem 1fr; }
-    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 75px !important; height: 75px !important; }
+    .rc-qr canvas, .rc-qr img, .rc-qr table { width: 70px !important; height: 70px !important; }
     .sig-tbl { margin-top: .2rem !important; }
     .sig-name { font-size: .95em; }
     .rc-welcome { font-size: .7rem; padding-top: .25rem; }
@@ -344,8 +428,9 @@ $qrContentEscaped = e($qrContent);
     .rc-row { grid-template-columns: 9.5rem 1rem 1fr; font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
     /* Match the center-wide card's vertical spacing around details and rules. */
     .rc-body { margin-top: 0 !important; margin-bottom: .25rem !important; }
-    .rc-rules { margin: .25rem 0 .25rem 1.2rem !important; font-size: 1rem !important; line-height: 1.22 !important; }
+    .rc-rules { margin: .25rem 0 .25rem 1rem !important; font-size: 1rem !important; line-height: 1.22 !important; }
     .rc-rules p { margin: 0 0 .15rem; }
+    .rc-rules > p:first-child { font-size: .95rem !important; line-height: 1.2; font-weight: 700; color: #0f172a; }
     .rc-rules p:last-child { margin-bottom: 0; white-space: nowrap; font-size: 1rem; }
     .sig-tbl { margin-top: .25rem !important; }
     .sig-name { font-size: .82rem; }
@@ -370,11 +455,11 @@ $qrContentEscaped = e($qrContent);
         }
 
         .rc-banner { flex-wrap: nowrap; gap: .5rem; padding: .5rem .5rem .4rem; margin-bottom: .6rem; }
-        .rc-logo img { width: 90px; height: 90px; }
+        .rc-logo img { width: 70px; height: 70px; }
         .rc-banner h1 { font-size: 1.05rem; line-height: 1.2; white-space: normal; }
         .rc-banner .rc-gov { font-size: .68rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
         .rc-reg { font-size: .72rem; }
-        .rc-qr canvas, .rc-qr img, .rc-qr table { width: 75px !important; height: 75px !important; }
+        .rc-qr canvas, .rc-qr img, .rc-qr table { width: 70px !important; height: 70px !important; }
 
         .rc-welcome { font-size: .7rem; padding: .4rem .5rem 0; }
         .rc-exam-head { font-size: 1.05rem; margin: .5rem 0 .2rem; }
@@ -384,7 +469,7 @@ $qrContentEscaped = e($qrContent);
         .rc-roll { margin-left: 0; }
         .rc-tag { white-space: normal; text-align: center; }
         .rc-center { width: 100%; }
-        .rc-center .rc-pill { font-size: .95rem; padding: .3rem 1rem; }
+        .rc-center .rc-pill { font-size: 1.5rem; padding: .3rem 1rem; }
 
         .rc-body { flex-direction: column; gap: .75rem; padding: .5rem .5rem 0; margin-top: .25rem; }
         .rc-col { width: 100%; }
@@ -433,7 +518,7 @@ $qrContentEscaped = e($qrContent);
 <?php $photoSrc = $resolveStudentPhoto((array) $student); ?>
 <div class="py-6 print:py-0">
     <div class="rc-page">
-    <div class="reg-card border-2 border-black bg-white">
+    <div class="reg-card <?= $isAdmitCard ? 'admit-card' : 'registration-card' ?> border-2 border-black bg-white">
         <div class="rc-inner border-2 border-black">
         <div class="rc-banner">
             <span class="rc-logo"><img src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD" onerror="this.style.display='none'"></span>
@@ -466,7 +551,7 @@ $qrContentEscaped = e($qrContent);
             <div class="rc-tag rc-roll">Exam Roll&nbsp;: <?= e($student['roll'] ?? '') ?></div>
         </div>
 
-        <div class="rc-body">
+        <div class="rc-body<?= $isAdmitCard ? ' rc-body-admit' : '' ?>">
             <?php if ($isAdmitCard): ?>
             <div class="rc-col">
                 <?= $row('Name', $student['name'] ?? '') ?>
@@ -476,9 +561,11 @@ $qrContentEscaped = e($qrContent);
             </div>
             <div class="rc-col">
                 <?= $row('Exam Class', $className((int) ($student['class'] ?? 0))) ?>
-                <?= $row('Exam Date & Time', 'As per routine') ?>
                 <?= $row('Exam Center', $student['center_name'] ?? '') ?>
                 <?= $row('Exam Venue', $student['institute_name'] ?? '') ?>
+                <?php if (!empty($student['seat_assignment']['room_label'])): ?>
+                    <?= $row('Seat Location', $student['seat_assignment']['room_label']) ?>
+                <?php endif; ?>
             </div>
             <?php else: ?>
             <div class="rc-col">
@@ -506,6 +593,28 @@ $qrContentEscaped = e($qrContent);
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if ($isAdmitCard): ?>
+        <div class="rc-routine">
+            <div class="rc-routine-title">Exam Routine</div>
+            <table class="rc-routine-table">
+                <thead><tr><th>Subject</th><th>Exam Date</th><th>Day</th><th>Time</th></tr></thead>
+                <tbody>
+                <?php $studentRoutineRows = $examRoutineRows($student['session'] ?? '', (int) ($student['class'] ?? 0)); ?>
+                <?php if ($studentRoutineRows === []): ?>
+                    <tr><td colspan="4">Not scheduled</td></tr>
+                <?php else: foreach ($studentRoutineRows as $routineItem): ?>
+                    <tr>
+                        <td><?= e($routineItem['subject'] ?? '') ?></td>
+                        <td><?= e($routineItem['date'] ?? '') ?></td>
+                        <td><?= e($routineItem['day'] ?? '') ?></td>
+                        <td><?= e($routineItem['time'] ?? '') ?></td>
+                    </tr>
+                <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
 
         <!-- <div class="rc-body rc-body-wide">
             <?= $row('Institute Address', $student['institute_address'] ?? '') ?>
@@ -589,8 +698,8 @@ $qrContentEscaped = e($qrContent);
         });
         // qrcodejs emits a canvas and/or an <img>; size every render target.
         Array.prototype.forEach.call(box.querySelectorAll('canvas, img, table'), function (el) {
-            el.style.width = '75px';
-            el.style.height = '75px';
+            el.style.width = '70px';
+            el.style.height = '70px';
         });
     });
 })();

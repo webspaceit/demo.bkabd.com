@@ -253,6 +253,7 @@ CREATE TABLE `routines` (
   `date` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `day` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `time` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `session` int DEFAULT NULL,
   `class` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `order` int DEFAULT NULL,
   `active` int NOT NULL DEFAULT '1',
@@ -263,6 +264,27 @@ CREATE TABLE `routines` (
 ) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `seat_plan_assignments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `session` int NOT NULL,
+  `center_id` int NOT NULL,
+  `class` tinyint NOT NULL,
+  `building_name` varchar(120) NOT NULL,
+  `floor_number` varchar(50) NOT NULL,
+  `room_number` varchar(50) NOT NULL,
+  `roll_start` int DEFAULT NULL,
+  `roll_end` int DEFAULT NULL,
+  `room_capacity` int DEFAULT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `user_id` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_seat_plan_scope` (`session`,`center_id`,`class`,`sort_order`),
+  KEY `idx_seat_plan_rolls` (`session`,`center_id`,`class`,`roll_start`,`roll_end`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `sessions` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,

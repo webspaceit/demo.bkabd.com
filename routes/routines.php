@@ -18,4 +18,5 @@ Router::get('/api/routines', [RoutineController::class, 'index'], 'auth|permissi
 Router::post('/api/routines', [RoutineController::class, 'store'], 'auth|permission:routine-create');
 Router::get('/api/routines/{id}', [RoutineController::class, 'show'], 'auth|permission:routine-edit');
 Router::put('/api/routines/{id}', [RoutineController::class, 'update'], 'auth|permission:routine-edit');
+Router::put('/api/routines/{id}/active', [RoutineController::class, 'setActive'], 'auth|permission:routine-edit');
 Router::delete('/api/routines/{id}', [RoutineController::class, 'destroy'], 'auth|permission:routine-delete');

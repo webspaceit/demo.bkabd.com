@@ -9,6 +9,7 @@ use App\Core\Response;
 use App\Core\View;
 use App\Models\Student;
 use App\Core\Query;
+use App\Services\SeatAssignmentService;
 
 final class AdmitCardController extends Controller
 {
@@ -96,10 +97,13 @@ final class AdmitCardController extends Controller
             [$id, $activeSession, $class]
         );
 
+        $students = SeatAssignmentService::attachLocations($students);
+
         return View::render('students.registration_card', [
             'title' => 'Admit Cards - Class ' . $class,
             'students' => $students,
             'cardMode' => 'admit',
+            'examRoutines' => $this->activeExamRoutines($activeSession),
         ], 'layouts.guest');
     }
 
@@ -131,10 +135,13 @@ final class AdmitCardController extends Controller
 
         $activeSession = $this->activeSession();
 
+        $student = SeatAssignmentService::attachLocations([$student])[0];
+
         return View::render('students.registration_card', [
             'title'    => 'Admit Card - ' . ($student['registration'] ?? ''),
             'students' => [$student],
             'cardMode' => 'admit',
+            'examRoutines' => $this->activeExamRoutines($student['session'] ?? $activeSession),
         ], 'layouts.guest');
     }
 
@@ -199,6 +206,8 @@ final class AdmitCardController extends Controller
               )['name'] ?? 'Center')
             : 'All Centers';
 
+        $students = SeatAssignmentService::attachLocations($students);
+
         return View::render('admitcards.center_print', [
             'title'      => 'Admit Cards — ' . $centerName,
             'centerName' => $centerName,
@@ -206,7 +215,20 @@ final class AdmitCardController extends Controller
             'students'   => $students,
             'cardMode'   => 'admit',
             'twoPerPage' => true,
+            'examRoutines' => $this->activeExamRoutines($activeSession),
         ], 'layouts.guest');
+    }
+
+    /** Active routines assigned to the selected exam session. */
+    private function activeExamRoutines(string|int $session): array
+    {
+        return Database::select(
+            "SELECT `subject`, `date`, `day`, `time`, `session`, `class`
+               FROM `routines`
+              WHERE `active` = 1 AND `session` = ?
+           ORDER BY COALESCE(`order`, 2147483647) ASC, `id` ASC",
+            [$session]
+        );
     }
 
     private function renderAdmitCards($students, $activeSession): string
