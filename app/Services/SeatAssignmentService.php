@@ -30,12 +30,21 @@ final class SeatAssignmentService
 
         $locationByStudent = [];
         foreach ($groups as $group) {
-            $assignments = Database::select(
-                'SELECT `id`, `building_name`, `floor_number`, `room_number`, `roll_start`, `roll_end`, `room_capacity` '
-                . 'FROM `seat_plan_assignments` WHERE `session` = ? AND `center_id` = ? AND `class` = ? '
-                . 'ORDER BY `sort_order` ASC, `id` ASC',
-                [$group['session'], $group['center_id'], $group['class']]
-            );
+            try {
+                $assignments = Database::select(
+                    'SELECT `id`, `building_name`, `floor_number`, `room_number`, `roll_start`, `roll_end`, `room_capacity` '
+                    . 'FROM `seat_plan_assignments` WHERE `session` = ? AND `center_id` = ? AND `class` = ? '
+                    . 'ORDER BY `sort_order` ASC, `id` ASC',
+                    [$group['session'], $group['center_id'], $group['class']]
+                );
+            } catch (\PDOException $e) {
+                // Older installations may not have run the seat-plan migration.
+                // Seat locations are optional and must not block admit-card printing.
+                if (!in_array((string) $e->getCode(), ['42S02', '42S22'], true)) {
+                    throw $e;
+                }
+                $assignments = [];
+            }
             if ($assignments === []) {
                 continue;
             }

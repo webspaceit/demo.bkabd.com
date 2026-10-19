@@ -222,13 +222,22 @@ final class AdmitCardController extends Controller
     /** Active routines assigned to the selected exam session. */
     private function activeExamRoutines(string|int $session): array
     {
-        return Database::select(
-            "SELECT `subject`, `date`, `day`, `time`, `session`, `class`
-               FROM `routines`
-              WHERE `active` = 1 AND `session` = ?
-           ORDER BY COALESCE(`order`, 2147483647) ASC, `id` ASC",
-            [$session]
-        );
+        try {
+            return Database::select(
+                "SELECT `subject`, `date`, `day`, `time`, `session`, `class`
+                   FROM `routines`
+                  WHERE `active` = 1 AND `session` = ?
+               ORDER BY COALESCE(`order`, 2147483647) ASC, `id` ASC",
+                [$session]
+            );
+        } catch (\PDOException $e) {
+            // Keep admit cards printable while an older database awaits the
+            // routine-session migration; the schedule can be added after upgrade.
+            if (in_array((string) $e->getCode(), ['42S02', '42S22'], true)) {
+                return [];
+            }
+            throw $e;
+        }
     }
 
     private function renderAdmitCards($students, $activeSession): string
