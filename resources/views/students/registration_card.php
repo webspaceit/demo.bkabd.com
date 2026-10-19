@@ -340,6 +340,7 @@ $qrContentEscaped = e($qrContent);
     .rc-reg { font-size: .95rem; }
     .rc-banner .rc-gov { font-size: .82rem; line-height: 1.35; }
     .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
+    .rc-top { margin-bottom: .5rem; }
     .rc-row { grid-template-columns: 9.5rem 1rem 1fr; font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
     /* Match the center-wide card's vertical spacing around details and rules. */
     .rc-body { margin-top: 0 !important; margin-bottom: .25rem !important; }
