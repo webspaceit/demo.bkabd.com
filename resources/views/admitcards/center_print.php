@@ -265,7 +265,6 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                     <?= $row("Father's Name", $s['father_name'] ?? '') ?>
                     <?= $row("Mother's Name", $s['mother_name'] ?? '') ?>
                     <?= $row('Date of Birth', !empty($s['dob']) ? DateFormat($s['dob'], 'd-m-Y') : '') ?>
-                    <?= $row('Registration No.', $s['registration'] ?? '') ?>
                     <div class="rc-rules ml-4 my-3 text-[11px] sm:text-xs leading-relaxed">
                         <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
                         <p>১। পরীক্ষা শুরুর কম পক্ষে ১৫ মিনিট আগে পরীক্ষা হলে উপস্থিত থাকতে হবে।</p>
@@ -276,7 +275,6 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                     </div>
                 </div>
                 <div class="rc-col">
-                <?= $row('Roll No.', $s['roll'] ?? '') ?>
                 <?= $row('Exam Class', $className((int)($s['class'] ?? 0))) ?>
                 <?= $row('Exam Date & Time', 'As per routine') ?>
                 <?= $row('Exam Center', $s['center_name'] ?? '') ?>
