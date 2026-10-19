@@ -155,12 +155,15 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-exam-head { font-size: 1.5rem; margin: .25rem 0 .35rem; }
 .cp-slot .rc-top { padding: .15rem .7rem .15rem; }
 .cp-slot .rc-tag { padding: .1rem .55rem; font-size: .7rem; }
-.cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: .8rem; }
-.cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 -1.25rem !important; }
+.cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: .95rem; }
+.cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 !important; }
 .cp-slot .rc-col { flex: 1 1 0; min-width: 0; }
 .cp-slot .rc-row { grid-template-columns: 8.2rem 1rem 1fr; font-size: .85rem; line-height: 1.25; padding: .04rem 0; }
 .cp-slot .rc-photo img { width: 74px; height: 84px; }
-.cp-slot .rc-rules { width: 125%; margin: .25rem 0 0 !important; font-size: .82rem !important; line-height: 1.28 !important; }
+/* Rules block: bumped a couple of steps up in size for readability; the
+   .rc-body bottom margin is trimmed below to keep it clear of the
+   signature row. */
+.cp-slot .rc-rules { width: 125%; margin: .25rem 0 0 !important; font-size: 1rem !important; line-height: 1.28 !important; }
 .cp-slot .rc-rules p { margin: 0 0 .15rem; }
 .cp-slot .rc-rules ol { margin: 0; padding-left: .8rem; }
 .cp-slot .sig-tbl { margin-top: .25rem !important; }
@@ -267,11 +270,10 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                     <?= $row('Date of Birth', !empty($s['dob']) ? DateFormat($s['dob'], 'd-m-Y') : '') ?>
                     <div class="rc-rules ml-4 my-3 text-[11px] sm:text-xs leading-relaxed">
                         <p class="font-bold mb-1 text-slate-800">নিয়মাবলী:</p>
-                        <p>১। পরীক্ষা শুরুর কম পক্ষে ১৫ মিনিট আগে পরীক্ষা হলে উপস্থিত থাকতে হবে।</p>
-                        <p>২। পরীক্ষা হলে কোনো ধরনের কাগজপত্র বা বই নিয়ে প্রবেশ করা যাবে না।</p>
-                        <p>৩। পরীক্ষা প্রবেশ পত্র ছাড়া কোনো শিক্ষার্থী পরীক্ষায় অংশগ্রহণ করতে পারবে না।</p>
-                        <p>৪। পরীক্ষা হলে কোনো অনৈতিক বা অনাকাঙ্ক্ষিত ঘটনা ঘটানো যাবে না।</p>
-                        <p>৫। পরীক্ষা সময় মোবাইল ফোন ব্যবহার করা যাবে না।</p>
+                        <p>১. প্রবেশপত্র (অ্যাডমিট কার্ড) ছাড়া কোনো পরীক্ষার্থীকে পরীক্ষা কক্ষে প্রবেশ করতে দেওয়া হবে না।</p>
+                        <p>২. প্রবেশপত্র ছাড়া কোনো পরীক্ষার্থী লিখিত পরীক্ষার কাগজ বা বই সঙ্গে রাখতে পারবে না।</p>
+                        <p>৩. পরীক্ষা শুরুর দুই ঘণ্টার আগে কোনো পরীক্ষার্থী পরীক্ষা কক্ষ থেকে বাইরে যেতে পারবেন না।</p>
+                        <p>৪. প্রত্যেক পরীক্ষার্থীকে অ্যাসোসিয়েশনের সকল নিয়ম মেনে চলতে হবে। অন্যথায়, তাকে পরীক্ষায় অংশগ্রহণের অনুমতি দেওয়া হবে না।</p>
                     </div>
                 </div>
                 <div class="rc-col">
