@@ -151,6 +151,13 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
     border-radius: 5px; padding: .35rem 1rem;
     font-size: .82rem; font-weight: 700; cursor: pointer;
 }
+.cp-toolbar a {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .35rem .75rem; border: 1px solid rgba(255,255,255,.45);
+    border-radius: 5px; color: #fff; text-decoration: none;
+    font-size: .82rem; font-weight: 700; white-space: nowrap;
+}
+.cp-toolbar a:hover { background: rgba(255,255,255,.12); }
 
 /* One A4 page = 2 card slots */
 .cp-page {
@@ -192,7 +199,9 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .reg-card { height: auto; min-height: 129.6mm; display: flex; flex-direction: column; box-sizing: border-box; }
 .cp-slot .rc-inner { height: auto; min-height: 125.8mm; flex: 1 0 auto; box-sizing: border-box; }
 .cp-slot .rc-inner { display: flex; flex-direction: column; justify-content: flex-start; }
-.cp-slot .rc-banner { gap: .55rem; padding: .1rem .7rem .1rem; margin-bottom: .35rem; }
+.cp-slot .rc-banner { gap: .55rem; padding: .1rem .7rem 8px; margin-bottom: .35rem; }
+.cp-slot .rc-banner { border-bottom: 1px solid #065f46; }
+.cp-slot .rc-banner::after { display: none; }
 .cp-slot .rc-qr { display: flex; align-items: center; justify-content: center; align-self: center; height: 70px; }
 .cp-slot .rc-logo img { width: 70px; height: 70px; object-fit: contain; }
 .cp-slot .rc-banner > div:not(.rc-qr) { flex: 1 1 auto; min-width: 0; text-align: center; }
@@ -269,12 +278,25 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
         min-height: 0;
         flex: 0 0 148.5mm;
         box-sizing: border-box;
+        /* Keep neighbouring card frames from sharing a rule. Flush 148.5mm
+           slots stacked the first card's bottom border on the next header. */
+        padding: 2mm 2.5mm;
+        overflow: hidden;
     }
+    .cp-slot + .cp-slot { border-top: 0; }
     .cp-page + .cp-page {
         break-before: page;
         page-break-before: always;
     }
-    .cp-slot .rc-page { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cp-slot .rc-page {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .cp-slot .rc-banner { border-bottom: 1px solid #065f46; }
 }
 </style>
 </head>
@@ -285,7 +307,10 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
         <h2>Admit Cards — <?= e($centerName ?? '') ?> &nbsp;|&nbsp; Session <?= e($session) ?></h2>
         <small><?= $total ?> students &nbsp;·&nbsp; <?= ceil($total / 2) ?> pages</small>
     </div>
-    <button onclick="window.print()">&#128424; Print / Save as PDF</button>
+    <div style="display:flex;align-items:center;gap:.6rem">
+        <a href="/admitcards" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }">&#8592; Back</a>
+        <button onclick="window.print()">&#128424; Print / Save as PDF</button>
+    </div>
 </div>
 
 <?php foreach ($pairs as $pair): ?>

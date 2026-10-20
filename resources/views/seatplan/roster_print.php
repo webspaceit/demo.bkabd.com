@@ -19,7 +19,8 @@ $printDate = date('d-m-Y');
         .inner { position: relative; min-height: 273mm; padding: 3mm; border: 2px solid #111; background: rgba(255,255,255,.42); }
         .watermark { position: absolute; z-index: 0; top: 50%; left: 50%; width: 100mm; height: 100mm; transform: translate(-50%, -50%); object-fit: contain; opacity: 1; pointer-events: none; }
         .content { position: relative; z-index: 1; }
-        .banner { display: flex; align-items: center; gap: 5mm; padding: 2mm 3mm; border-bottom: 3px double #065f46; }
+        .banner { position: relative; display: flex; align-items: center; gap: 5mm; padding: 2mm 3mm 8px; border-bottom: 0; }
+        .banner::after { content: ""; position: absolute; right: 0; bottom: 0; left: 0; height: 6px; background-image: linear-gradient(#065f46, #065f46), linear-gradient(#065f46, #065f46); background-repeat: no-repeat; background-size: 100% 2px; background-position: 0 0, 0 100%; pointer-events: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .logo { flex: 0 0 18mm; width: 18mm; height: 18mm; object-fit: contain; }
         .brand { flex: 1; min-width: 0; text-align: center; }
         .brand h1 { margin: 0; color: #0f172a; font-size: 17pt; line-height: 1.1; font-weight: 800; }

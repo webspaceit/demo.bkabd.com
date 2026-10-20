@@ -21,7 +21,8 @@ $pages = array_chunk($students, 2);
         .seat-sheet:last-child { page-break-after: auto; break-after: auto; }
         .seat-card { position: relative; width: 100%; height: 100%; padding: 2mm; border: 2px solid #111; background: url("<?= e(asset_v('/assets/img/result/pattern.png')) ?>") repeat; background-size: 90mm 90mm; overflow: hidden; }
         .inner { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; border: 2px solid #111; overflow: hidden; background: url("<?= e(asset_v('/assets/img/result/for-registration.png')) ?>") no-repeat center 56%; background-size: 62mm 62mm; }
-        .banner { display: flex; align-items: center; gap: 3mm; padding: 2mm 3mm 1.5mm; border-bottom: 3px double #065f46; }
+        .banner { position: relative; display: flex; align-items: center; gap: 3mm; padding: 2mm 3mm 8px; border-bottom: 0; }
+        .banner::after { content: ""; position: absolute; right: 0; bottom: 0; left: 0; height: 6px; background-image: linear-gradient(#065f46, #065f46), linear-gradient(#065f46, #065f46); background-repeat: no-repeat; background-size: 100% 2px; background-position: 0 0, 0 100%; pointer-events: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .logo { flex: 0 0 15mm; width: 15mm; height: 15mm; object-fit: contain; }
         .brand { flex: 1; min-width: 0; text-align: center; }
         .brand h1 { margin: 0; font-size: 15pt; line-height: 1.1; font-weight: 800; color: #0f172a; }

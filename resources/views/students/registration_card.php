@@ -141,11 +141,32 @@ $qrContentEscaped = e($qrContent);
 
     /* ---- Banner header (transparent so the pattern + watermark show through) ---- */
     .rc-banner {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 1rem;
-        padding: .8rem 1.2rem .7rem;
-        border-bottom: double 3px #065f46;
+        /* Keep 8px under the text so the 6px double rule never collides with
+           the contact line, and so print engines can snap the pair as one box. */
+        padding: .8rem 1.2rem 8px;
+        border-bottom: 0;
+    }
+    /* One 6px decoration (2px / 2px gap / 2px). Hairline `double` borders and
+       two separately positioned .3mm rules snap independently per page, so
+       some PDF pages look thick and others look double. */
+    .rc-banner::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 6px;
+        background-image: linear-gradient(#065f46, #065f46), linear-gradient(#065f46, #065f46);
+        background-repeat: no-repeat;
+        background-size: 100% 2px;
+        background-position: 0 0, 0 100%;
+        pointer-events: none;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
     /* Header logo — 70px, no frame. */
     .rc-logo {
@@ -175,7 +196,7 @@ $qrContentEscaped = e($qrContent);
     }
     .reg-card.registration-card .rc-banner {
         gap: .55rem;
-        padding: .3rem .7rem .25rem;
+        padding: .3rem .7rem 8px;
         margin-bottom: .35rem;
     }
     .reg-card.registration-card .rc-banner h1 { font-size: 1.75rem; }
@@ -396,7 +417,7 @@ $qrContentEscaped = e($qrContent);
         Header text scaled so the contact lines fill the space up to the QR;
         the QR keeps the 70px size set by the .rc-qr rule (its payload is the
         whole contact block, so it needs the room to stay scannable). */
-    .rc-banner { padding: .5rem 1rem .4rem; margin-bottom: 1rem; }
+    .rc-banner { padding: .5rem 1rem 8px; margin-bottom: 1rem; }
     .rc-logo img { width: 70px; height: 70px; }
     /* The QR now carries the whole contact block, so it is sized to 70px
         (scannable on paper). The heading and the contact line are scaled down a
@@ -454,7 +475,7 @@ $qrContentEscaped = e($qrContent);
             box-shadow: 0 1px 4px rgba(15, 23, 42, .25);
         }
 
-        .rc-banner { flex-wrap: nowrap; gap: .5rem; padding: .5rem .5rem .4rem; margin-bottom: .6rem; }
+        .rc-banner { flex-wrap: nowrap; gap: .5rem; padding: .5rem .5rem 8px; margin-bottom: .6rem; }
         .rc-logo img { width: 70px; height: 70px; }
         .rc-banner h1 { font-size: 1.05rem; line-height: 1.2; white-space: normal; }
         .rc-banner .rc-gov { font-size: .68rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
@@ -503,6 +524,10 @@ $qrContentEscaped = e($qrContent);
         /* The thank-you line is screen-only; with it hidden the Scholarship
            Exam heading below flows up to where the sentence was. */
         .rc-welcome { display: none !important; }
+
+        /* Admit-card banner uses a print-safe 1px rule below its header. */
+        .reg-card.admit-card .rc-banner { border-bottom: 3px double #065f46; }
+        .reg-card.admit-card .rc-banner::after { display: none; }
 
         /* The sheet becomes the paper itself — no shadow, no extra padding
            (the @page margin already provides the 0.15in). */
@@ -681,7 +706,7 @@ $qrContentEscaped = e($qrContent);
 </div>
 
 <div class="mt-4 flex justify-center gap-3 print:hidden">
-    <a href="javascript:history.back()" class="btn bg-slate-500 text-white hover:bg-slate-600">Back</a>
+    <a href="/admitcards" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }" class="btn bg-slate-500 text-white hover:bg-slate-600">Back</a>
     <button type="button" onclick="window.print();" class="btn bg-emerald-500 text-white hover:bg-emerald-600">Print</button>
 </div>
 
