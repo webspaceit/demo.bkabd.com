@@ -127,7 +127,11 @@ window.BK = (function () {
             const input = form.querySelector('[data-field="' + field + '"]');
             if (input) {
                 input.classList.add('border-red-500');
-                if (!first) { first = input; }
+                const visibleInput = input.dataset.centerPickerInputId
+                    ? document.getElementById(input.dataset.centerPickerInputId)
+                    : input;
+                if (visibleInput) { visibleInput.classList.add('border-red-500'); }
+                if (!first) { first = visibleInput || input; }
             }
         });
         if (first) {
@@ -396,6 +400,248 @@ window.BK = (function () {
             });
         }
     }
+})();
+
+// ---------------------------------------------------------------------
+// Searchable Center fields. The native select stays in the DOM so existing
+// forms and filters keep reading the same value and receiving change events.
+// ---------------------------------------------------------------------
+(function () {
+    let generatedId = 0;
+    const selector = 'select[name="center_id"], select[id*="center"]';
+    const valueDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+
+    function enhance(select) {
+        if (select.dataset.centerPickerEnhanced === 'true' || select.hidden ||
+            select.classList.contains('hidden') || select.getAttribute('aria-hidden') === 'true') {
+            return;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bk-center-picker';
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.className = select.className.replace(/\bhidden\b/g, '').trim();
+        input.classList.add('bk-center-picker-input');
+        input.placeholder = 'Search centers...';
+        input.autocomplete = 'off';
+        input.setAttribute('role', 'combobox');
+        input.setAttribute('aria-autocomplete', 'list');
+        input.setAttribute('aria-expanded', 'false');
+
+        if (select.id) {
+            input.id = select.id + '-search';
+            document.querySelectorAll('label[for]').forEach(function (label) {
+                if (label.htmlFor === select.id) { label.htmlFor = input.id; }
+            });
+        } else {
+            input.id = 'bk-center-search-' + (++generatedId);
+        }
+
+        const options = document.createElement('div');
+        options.className = 'bk-center-picker-options';
+        options.hidden = true;
+        options.setAttribute('role', 'listbox');
+        options.id = input.id + '-options';
+        input.setAttribute('aria-controls', options.id);
+
+        select.parentNode.insertBefore(wrapper, select);
+        wrapper.appendChild(input);
+        wrapper.appendChild(options);
+        wrapper.appendChild(select);
+        select.classList.add('bk-center-picker-native');
+        select.setAttribute('aria-hidden', 'true');
+        select.tabIndex = -1;
+        const required = select.required;
+        select.required = false;
+        input.required = required;
+        select.dataset.centerPickerEnhanced = 'true';
+        select.dataset.centerPickerInputId = input.id;
+
+        let dirty = false;
+        let activeIndex = -1;
+
+        function selectedOption() {
+            return Array.from(select.options).find(function (option) {
+                return option.value === select.value;
+            }) || null;
+        }
+
+        function isSelectedOption(option) {
+            if (option.value !== '') { return option.value === select.value; }
+            const label = option.textContent.trim();
+            return select.value === '' && /all centers/i.test(label);
+        }
+
+        function sync() {
+            if (dirty) { return; }
+            const selected = selectedOption();
+            input.value = selected ? selected.textContent.trim() : '';
+            const valid = selected && (select.value !== '' || /all centers/i.test(selected.textContent));
+            input.setCustomValidity(required && !valid ? 'Choose a center from the search results.' : '');
+            input.disabled = select.disabled;
+            input.classList.toggle('border-red-500', select.classList.contains('border-red-500'));
+        }
+
+        function close() {
+            options.hidden = true;
+            activeIndex = -1;
+            input.setAttribute('aria-expanded', 'false');
+            input.removeAttribute('aria-activedescendant');
+        }
+
+        function setActive(index) {
+            const choices = Array.from(options.querySelectorAll('[role="option"]'));
+            if (!choices.length) { activeIndex = -1; return; }
+            activeIndex = (index + choices.length) % choices.length;
+            choices.forEach(function (choice, choiceIndex) {
+                choice.dataset.active = choiceIndex === activeIndex ? 'true' : 'false';
+            });
+            input.setAttribute('aria-activedescendant', choices[activeIndex].id);
+            choices[activeIndex].scrollIntoView({ block: 'nearest' });
+        }
+
+        function choose(option) {
+            if (!option || option.disabled) { return; }
+            dirty = false;
+            select.value = option.value;
+            input.value = option.textContent.trim();
+            input.setCustomValidity('');
+            close();
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function render(query) {
+            const normalizedQuery = String(query || '').trim().toLocaleLowerCase();
+            const matches = Array.from(select.options).filter(function (option) {
+                return option.textContent.trim().toLocaleLowerCase().includes(normalizedQuery);
+            });
+            options.textContent = '';
+            activeIndex = -1;
+            matches.forEach(function (option, index) {
+                const choice = document.createElement('button');
+                choice.type = 'button';
+                choice.className = 'bk-center-picker-option';
+                choice.tabIndex = -1;
+                choice.id = input.id + '-option-' + index;
+                choice.setAttribute('role', 'option');
+                choice.setAttribute('aria-selected', isSelectedOption(option) ? 'true' : 'false');
+                choice.dataset.value = option.value;
+                choice.disabled = option.disabled;
+                choice.textContent = option.textContent.trim() || 'Select Center';
+                options.appendChild(choice);
+            });
+            if (!matches.length) {
+                const empty = document.createElement('div');
+                empty.className = 'bk-center-picker-empty';
+                empty.textContent = 'No centers found';
+                options.appendChild(empty);
+            }
+            options.hidden = false;
+            input.setAttribute('aria-expanded', 'true');
+        }
+
+        input.addEventListener('focus', function () {
+            dirty = false;
+            input.value = '';
+            render('');
+        });
+        input.addEventListener('input', function () {
+            dirty = true;
+            input.setCustomValidity(required ? 'Choose a center from the search results.' : '');
+            render(input.value);
+        });
+        input.addEventListener('keydown', function (event) {
+            const choices = options.querySelectorAll('[role="option"]');
+            if (event.key === 'ArrowDown' && !options.hidden) {
+                event.preventDefault();
+                setActive(activeIndex + 1);
+            } else if (event.key === 'ArrowUp' && !options.hidden) {
+                event.preventDefault();
+                setActive(activeIndex < 0 ? choices.length - 1 : activeIndex - 1);
+            } else if (event.key === 'Enter' && !options.hidden) {
+                event.preventDefault();
+                const choice = activeIndex >= 0 ? choices[activeIndex] : choices[0];
+                if (choice) {
+                    const option = Array.from(select.options).find(function (item) {
+                        return item.value === choice.dataset.value;
+                    });
+                    choose(option);
+                }
+            } else if (event.key === 'Escape') {
+                dirty = false;
+                sync();
+                close();
+            }
+        });
+        options.addEventListener('mousedown', function (event) {
+            if (event.target.closest('[role="option"]')) { event.preventDefault(); }
+        });
+        options.addEventListener('click', function (event) {
+            const choice = event.target.closest('[role="option"]');
+            if (!choice) { return; }
+            const option = Array.from(select.options).find(function (item) {
+                return item.value === choice.dataset.value;
+            });
+            choose(option);
+        });
+        input.addEventListener('blur', function () {
+            window.setTimeout(function () {
+                if (document.activeElement === input) { return; }
+                dirty = false;
+                sync();
+                close();
+            }, 0);
+        });
+        select.addEventListener('change', function () {
+            dirty = false;
+            sync();
+            close();
+        });
+        if (select.form) {
+            select.form.addEventListener('reset', function () {
+                window.setTimeout(function () {
+                    dirty = false;
+                    sync();
+                    close();
+                }, 0);
+            });
+        }
+
+        // Existing view scripts sometimes set select.value without dispatching
+        // change; mirror those updates in the visible search field as well.
+        if (valueDescriptor && valueDescriptor.get && valueDescriptor.set) {
+            try {
+                Object.defineProperty(select, 'value', {
+                    configurable: true,
+                    enumerable: valueDescriptor.enumerable,
+                    get: function () { return valueDescriptor.get.call(select); },
+                    set: function (value) {
+                        valueDescriptor.set.call(select, value);
+                        dirty = false;
+                        sync();
+                    }
+                });
+            } catch (error) { /* Keep normal select behavior if accessors are restricted. */ }
+        }
+
+        new MutationObserver(function () {
+            dirty = false;
+            sync();
+        }).observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'disabled', 'selected'] });
+        sync();
+    }
+
+    document.querySelectorAll(selector).forEach(enhance);
+    new MutationObserver(function (records) {
+        records.forEach(function (record) {
+            record.addedNodes.forEach(function (node) {
+                if (node.nodeType !== 1) { return; }
+                if (node.matches && node.matches(selector)) { enhance(node); }
+                if (node.querySelectorAll) { node.querySelectorAll(selector).forEach(enhance); }
+            });
+        });
+    }).observe(document.body, { childList: true, subtree: true });
 })();
 
 // ---------------------------------------------------------------------

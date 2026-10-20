@@ -2494,6 +2494,51 @@ input[type=radio]:focus {
     padding-bottom: .55rem
 }
 
+/* Searchable Center selectors keep their native select for existing form logic. */
+.bk-center-picker {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-width: 0;
+}
+.bk-center-picker-options {
+    position: absolute;
+    z-index: 1000;
+    top: calc(100% + .25rem);
+    left: 0;
+    right: 0;
+    max-height: 15rem;
+    overflow-y: auto;
+    padding: .25rem 0;
+    border: 1px solid #cbd5e1;
+    border-radius: .375rem;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .15);
+}
+.bk-center-picker-options[hidden] { display: none; }
+.bk-center-picker-option {
+    display: block;
+    width: 100%;
+    padding: .5rem .75rem;
+    border: 0;
+    background: transparent;
+    color: #334155;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+.bk-center-picker-option:hover,
+.bk-center-picker-option[aria-selected="true"],
+.bk-center-picker-option[data-active="true"] {
+    background: #f1f5f9;
+}
+.bk-center-picker-empty {
+    padding: .5rem .75rem;
+    color: #64748b;
+    font-size: .875rem;
+}
+.bk-center-picker-native { display: none !important; }
+
 /* Hide the horizontal scrollbar the notch bleed causes on the sidebar,
 /* The notch bleeds right causing horizontal overflow — allow it visually
    but hide the scrollbar completely using height:0 on the webkit track. */

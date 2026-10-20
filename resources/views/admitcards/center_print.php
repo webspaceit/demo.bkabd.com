@@ -274,6 +274,92 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
     .cp-slot .sig-tbl td { display: table-cell; padding: 0 .2rem; }
 }
 
+/* On phones, reflow the preview cards to the viewport instead of shrinking a
+   fixed-width A4 sheet. The print stylesheet below keeps the paper layout. */
+@media screen and (max-width: 600px) {
+    .cp-page,
+    .cp-page.single {
+        width: 100%;
+        min-height: 0;
+        height: auto;
+        margin: 8px 0;
+        zoom: 1;
+    }
+    .cp-slot {
+        width: 100%;
+        min-height: 0;
+        height: auto;
+        padding: 8px;
+        box-sizing: border-box;
+        overflow: visible;
+    }
+    .cp-slot .rc-page {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        padding: 0 !important;
+    }
+    .cp-slot .reg-card,
+    .cp-slot .rc-inner {
+        height: auto;
+        min-height: 0;
+    }
+    .cp-slot .rc-banner {
+        flex-wrap: wrap;
+        justify-content: center;
+        white-space: normal;
+    }
+    .cp-slot .rc-banner > div:not(.rc-qr) {
+        flex: 1 1 150px;
+        min-width: 0;
+    }
+    .cp-slot .rc-banner h1,
+    .cp-slot .rc-banner .rc-gov {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    .cp-slot .rc-top {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .cp-slot .rc-tags,
+    .cp-slot .rc-roll {
+        min-width: 0;
+        width: 100%;
+        margin-left: 0;
+    }
+    .cp-slot .rc-body {
+        flex-direction: column;
+    }
+    .cp-slot .rc-body-admit {
+        display: flex;
+        flex-direction: column;
+    }
+    .cp-slot .rc-body-admit .rc-col {
+        width: 100%;
+    }
+    .cp-slot .rc-body-admit .rc-row {
+        grid-template-columns: minmax(0, 7rem) .75rem minmax(0, 1fr);
+    }
+    .cp-slot .rc-rules p:last-child {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    .cp-slot .sig-tbl,
+    .cp-slot .sig-tbl tbody {
+        display: block;
+    }
+    .cp-slot .sig-tbl tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: .6rem .5rem;
+    }
+    .cp-slot .sig-tbl td {
+        display: flex;
+        padding: 0 .2rem;
+    }
+}
+
 /* Hide py-6 wrapper padding */
 .cp-slot .py-6 { padding: 0 !important; }
 

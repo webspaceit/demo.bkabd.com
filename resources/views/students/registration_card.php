@@ -485,9 +485,11 @@ $qrContentEscaped = e($qrContent);
         .rc-banner .rc-gov { font-size: .68rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
         .rc-reg { font-size: .72rem; }
         <?php if ($isAdmitCard): ?>
-        .reg-card.admit-card .rc-banner h1 { font-size: 1.75rem; line-height: 1.15; white-space: nowrap; }
-        .reg-card.admit-card .rc-banner .rc-gov { font-size: .85rem; line-height: 1.35; white-space: nowrap; overflow-wrap: normal; }
-        .reg-card.admit-card .rc-reg { font-size: .95rem; }
+        .reg-card.admit-card .rc-banner { gap: .35rem; padding: .35rem .4rem 8px; align-items: flex-start; }
+        .reg-card.admit-card .rc-banner h1 { font-size: 1rem; line-height: 1.2; white-space: normal; overflow-wrap: anywhere; }
+        .reg-card.admit-card .rc-banner .rc-gov { font-size: .58rem; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; }
+        .reg-card.admit-card .rc-reg { font-size: .65rem; }
+        .reg-card.admit-card .rc-qr { height: auto; }
         <?php endif; ?>
         .rc-qr canvas, .rc-qr img, .rc-qr table { width: 70px !important; height: 70px !important; }
 
@@ -504,6 +506,12 @@ $qrContentEscaped = e($qrContent);
         .rc-body { flex-direction: column; gap: .75rem; padding: .5rem .5rem 0; margin-top: .25rem; }
         .rc-col { width: 100%; }
         .rc-row { grid-template-columns: 8rem .75rem 1fr; font-size: .82rem; }
+        <?php if ($isAdmitCard): ?>
+        .reg-card.admit-card .rc-body-admit { display: flex; flex-direction: column; gap: .5rem; }
+        .reg-card.admit-card .rc-body-admit .rc-col { width: 100%; }
+        .reg-card.admit-card .rc-body-admit .rc-row { grid-template-columns: minmax(0, 7rem) .75rem minmax(0, 1fr); font-size: .78rem; }
+        .reg-card.admit-card .rc-rules p:last-child { white-space: normal; overflow-wrap: anywhere; }
+        <?php endif; ?>
         .rc-body-wide { padding: 0 .5rem .4rem; }
         .rc-body-wide .rc-val { white-space: normal; }
         .rc-photo { align-self: center; }

@@ -23,7 +23,9 @@
         <a href="/" class="text-lg font-bold tracking-wide">BKABD <span class="text-emerald-400">Exam</span></a>
         <nav class="flex items-center gap-4 text-sm">
             <a href="/scholarship-result" class="hover:text-emerald-400">Results</a>
+            <?php if (empty($hideLoginLink)): ?>
             <a href="/login" class="hover:text-emerald-400">Login</a>
+            <?php endif; ?>
         </nav>
     </div>
 </header>

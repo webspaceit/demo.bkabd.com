@@ -141,6 +141,7 @@ final class AdmitCardController extends Controller
             'title'    => 'Admit Card - ' . ($student['registration'] ?? ''),
             'students' => [$student],
             'cardMode' => 'admit',
+            'hideLoginLink' => true,
             'examRoutines' => $this->activeExamRoutines($student['session'] ?? $activeSession),
         ], 'layouts.guest');
     }
