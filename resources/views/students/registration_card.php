@@ -441,6 +441,10 @@ $qrContentEscaped = e($qrContent);
 
     <?php if ($isAdmitCard): ?>
     /* Match the center-wide admit-card print typography. */
+    .reg-card.admit-card .rc-banner { gap: .55rem; padding: .1rem .7rem 2px; margin-bottom: .35rem; }
+    .reg-card.admit-card .rc-banner { border-bottom: 1px solid #065f46; }
+    .reg-card.admit-card .rc-banner::after { display: none; }
+    .reg-card.admit-card .rc-qr { display: flex; align-items: center; justify-content: center; align-self: center; height: 70px; }
     .rc-banner h1 { font-size: 1.75rem; }
     .rc-reg { font-size: .95rem; }
     .rc-banner .rc-gov { font-size: .85rem; line-height: 1.35; }
@@ -480,6 +484,11 @@ $qrContentEscaped = e($qrContent);
         .rc-banner h1 { font-size: 1.05rem; line-height: 1.2; white-space: normal; }
         .rc-banner .rc-gov { font-size: .68rem; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
         .rc-reg { font-size: .72rem; }
+        <?php if ($isAdmitCard): ?>
+        .reg-card.admit-card .rc-banner h1 { font-size: 1.75rem; line-height: 1.15; white-space: nowrap; }
+        .reg-card.admit-card .rc-banner .rc-gov { font-size: .85rem; line-height: 1.35; white-space: nowrap; overflow-wrap: normal; }
+        .reg-card.admit-card .rc-reg { font-size: .95rem; }
+        <?php endif; ?>
         .rc-qr canvas, .rc-qr img, .rc-qr table { width: 70px !important; height: 70px !important; }
 
         .rc-welcome { font-size: .7rem; padding: .4rem .5rem 0; }
@@ -526,7 +535,7 @@ $qrContentEscaped = e($qrContent);
         .rc-welcome { display: none !important; }
 
         /* Admit-card banner uses a print-safe 1px rule below its header. */
-        .reg-card.admit-card .rc-banner { border-bottom: 3px double #065f46; }
+        .reg-card.admit-card .rc-banner { border-bottom: 1px solid #065f46; }
         .reg-card.admit-card .rc-banner::after { display: none; }
 
         /* The sheet becomes the paper itself — no shadow, no extra padding

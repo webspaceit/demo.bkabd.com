@@ -138,26 +138,40 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 
 /* Toolbar */
 .cp-toolbar {
-    background: #064e3b; color: #fff;
-    padding: .5rem 1.2rem;
-    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(110deg, #064e3b 0%, #065f46 100%); color: #fff;
+    padding: .65rem 0;
     position: sticky; top: 0; z-index: 100;
     font-family: Arial, sans-serif;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, .18);
 }
-.cp-toolbar h2 { font-size: .9rem; font-weight: 600; }
-.cp-toolbar small { font-size: .75rem; opacity: .75; }
+.cp-toolbar-inner {
+    width: 100%; max-width: 72rem; margin: 0 auto; padding: 0 1rem;
+    box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.cp-toolbar h2 { margin: 0 0 .15rem; font-size: .95rem; line-height: 1.25; font-weight: 700; letter-spacing: .01em; }
+.cp-toolbar small { display: inline-block; font-size: .72rem; line-height: 1.2; color: #d1fae5; }
+.cp-toolbar-actions { display: flex; align-items: center; gap: .55rem; flex-shrink: 0; }
 .cp-toolbar button {
-    background: #fff; color: #064e3b; border: none;
-    border-radius: 5px; padding: .35rem 1rem;
-    font-size: .82rem; font-weight: 700; cursor: pointer;
+    background: #fff; color: #064e3b; border: 1px solid #fff;
+    border-radius: 7px; padding: .5rem .85rem;
+    font-size: .8rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,.12); transition: background .15s ease, transform .15s ease;
 }
+.cp-toolbar button:hover { background: #ecfdf5; transform: translateY(-1px); }
 .cp-toolbar a {
     display: inline-flex; align-items: center; gap: .4rem;
-    padding: .35rem .75rem; border: 1px solid rgba(255,255,255,.45);
-    border-radius: 5px; color: #fff; text-decoration: none;
-    font-size: .82rem; font-weight: 700; white-space: nowrap;
+    padding: .5rem .75rem; border: 1px solid rgba(255,255,255,.5);
+    border-radius: 7px; color: #fff; text-decoration: none;
+    font-size: .8rem; font-weight: 700; white-space: nowrap; transition: background .15s ease;
 }
 .cp-toolbar a:hover { background: rgba(255,255,255,.12); }
+.cp-toolbar a:focus-visible, .cp-toolbar button:focus-visible { outline: 2px solid #a7f3d0; outline-offset: 2px; }
+.cp-page-counter {
+    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 110;
+    padding: .55rem .85rem; border: 1px solid rgba(255,255,255,.2); border-radius: 999px;
+    background: #064e3b; color: #fff; box-shadow: 0 4px 14px rgba(15,23,42,.22);
+    font: 700 .8rem/1 Arial, sans-serif; letter-spacing: .02em;
+}
 
 /* One A4 page = 2 card slots */
 .cp-page {
@@ -199,7 +213,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .reg-card { height: auto; min-height: 129.6mm; display: flex; flex-direction: column; box-sizing: border-box; }
 .cp-slot .rc-inner { height: auto; min-height: 125.8mm; flex: 1 0 auto; box-sizing: border-box; }
 .cp-slot .rc-inner { display: flex; flex-direction: column; justify-content: flex-start; }
-.cp-slot .rc-banner { gap: .55rem; padding: .1rem .7rem 8px; margin-bottom: .35rem; }
+.cp-slot .rc-banner { gap: .55rem; padding: .1rem .7rem 2px; margin-bottom: .35rem; }
 .cp-slot .rc-banner { border-bottom: 1px solid #065f46; }
 .cp-slot .rc-banner::after { display: none; }
 .cp-slot .rc-qr { display: flex; align-items: center; justify-content: center; align-self: center; height: 70px; }
@@ -243,6 +257,8 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 /* The card keeps its print proportions in the browser's narrow viewport. */
 @media screen and (max-width: 900px) {
     .cp-page { zoom: .68; }
+    .cp-toolbar-inner { flex-wrap: wrap; }
+    .cp-toolbar-actions { flex-wrap: wrap; }
     .cp-slot .rc-banner { flex-wrap: nowrap; }
     .cp-slot .rc-banner h1 { font-size: 1.75rem; white-space: nowrap; }
     .cp-slot .rc-banner .rc-gov { white-space: nowrap; overflow-wrap: normal; }
@@ -264,6 +280,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 @media print {
     html, body { background: #fff; }
     .cp-toolbar { display: none; }
+    .cp-page-counter { display: none !important; }
     .cp-page {
         height: 297mm;
         min-height: 297mm;
@@ -303,18 +320,20 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 <body>
 
 <div class="cp-toolbar">
-    <div>
-        <h2>Admit Cards — <?= e($centerName ?? '') ?> &nbsp;|&nbsp; Session <?= e($session) ?></h2>
-        <small><?= $total ?> students &nbsp;·&nbsp; <?= ceil($total / 2) ?> pages</small>
-    </div>
-    <div style="display:flex;align-items:center;gap:.6rem">
-        <a href="/admitcards" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }">&#8592; Back</a>
-        <button onclick="window.print()">&#128424; Print / Save as PDF</button>
+    <div class="cp-toolbar-inner">
+        <div>
+            <h2>Admit Cards — <?= e($centerName ?? '') ?> &nbsp;|&nbsp; Session <?= e($session) ?></h2>
+            <small><?= $total ?> students &nbsp;·&nbsp; <?= ceil($total / 2) ?> pages</small>
+        </div>
+        <div class="cp-toolbar-actions">
+            <a href="/admitcards" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }">&#8592; Back</a>
+            <button onclick="window.print()">&#128424; Print / Save as PDF</button>
+        </div>
     </div>
 </div>
 
-<?php foreach ($pairs as $pair): ?>
-<div class="cp-page<?= $singleStudent ? ' single' : '' ?>">
+<?php foreach ($pairs as $pageIndex => $pair): ?>
+<div class="cp-page<?= $singleStudent ? ' single' : '' ?>" data-page="<?= $pageIndex + 1 ?>">
     <?php for ($slot = 0; $slot < ($singleStudent ? 1 : 2); $slot++):
         $s = $pair[$slot] ?? null;
         $photoSrc = $s ? $resolveStudentPhoto((array)$s) : null;
@@ -436,6 +455,43 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
     <?php endfor; ?>
 </div>
 <?php endforeach; ?>
+
+<?php if (count($pairs) > 1): ?>
+<div class="cp-page-counter" role="status" aria-live="polite">Page 1 of <?= count($pairs) ?></div>
+<script>
+(function () {
+    var pages = Array.from(document.querySelectorAll('.cp-page[data-page]'));
+    var counter = document.querySelector('.cp-page-counter');
+    if (!counter || pages.length < 2) return;
+
+    var framePending = false;
+    function updatePageNumber() {
+        var viewportCenter = window.innerHeight / 2;
+        var currentPage = 1;
+        var nearestDistance = Infinity;
+        pages.forEach(function (page) {
+            var rect = page.getBoundingClientRect();
+            var distance = rect.top <= viewportCenter && rect.bottom >= viewportCenter
+                ? 0
+                : Math.min(Math.abs(rect.top - viewportCenter), Math.abs(rect.bottom - viewportCenter));
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                currentPage = Number(page.dataset.page);
+            }
+        });
+        counter.textContent = 'Page ' + currentPage + ' of ' + pages.length;
+        framePending = false;
+    }
+    window.addEventListener('scroll', function () {
+        if (!framePending) {
+            framePending = true;
+            window.requestAnimationFrame(updatePageNumber);
+        }
+    }, { passive: true });
+    updatePageNumber();
+})();
+</script>
+<?php endif; ?>
 
 <script src="/assets/js/vendor/qrcode.min.js"></script>
 <script>
