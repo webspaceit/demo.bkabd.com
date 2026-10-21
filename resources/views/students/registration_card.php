@@ -288,7 +288,7 @@ $qrContentEscaped = e($qrContent);
        names and addresses must wrap inside the two detail columns. */
     .reg-card.registration-card .rc-body {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 64px;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 74px;
         column-gap: 1rem;
         width: 100%;
         box-sizing: border-box;
