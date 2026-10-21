@@ -65,7 +65,7 @@
                     <input type="hidden" id="routine-time" name="time" data-field="time">
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">Subjects</label>
-                        <div class="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+                        <div class="mt-2 flex flex-wrap" style="column-gap: 1.25rem; row-gap: .5rem;">
                             <?php foreach (['Bangla', 'English', 'Mathematics'] as $subjectOption): ?>
                                 <label class="inline-flex items-center gap-2 text-sm text-slate-700">
                                     <input type="checkbox" class="accent-emerald-600" data-subject-option value="<?= e($subjectOption) ?>">

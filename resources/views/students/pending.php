@@ -13,6 +13,7 @@
  */
 $classes = $classes ?? [1, 2, 3, 4, 5, 6];
 $filters = $filters ?? [];
+$canApprovePending = can('student-approve');
 // Default the session dropdown to the active session (query string wins).
 $activeSession = (string) ($activeSession ?? '');
 $selectedSession = array_key_exists('session', $filters) && $filters['session'] !== null
@@ -34,7 +35,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
 }
 </style>
 <div class="space-y-4">
-    <div class="card" id="pending-list" data-perm-approve="<?= can('student-approve') ? '1' : '0' ?>">
+    <div class="card" id="pending-list" data-perm-approve="<?= $canApprovePending ? '1' : '0' ?>">
         <div class="card-header">
             <div class="flex items-center gap-3 min-w-0">
                 <span class="inline-flex items-center justify-center rounded-full bg-emerald-50 shrink-0" style="width:2.5rem;height:2.5rem" aria-hidden="true">
@@ -105,10 +106,18 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                 </div>
             </div>
 
+            <?php if ($canApprovePending): ?>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm text-slate-500">Select registrations on this page to approve them together.</p>
+                <button type="button" id="pending-bulk-approve" class="btn btn-primary" disabled>Approve selected (0)</button>
+            </div>
+            <?php endif; ?>
+
             <div class="overflow-x-auto">
                 <table class="table">
                     <thead>
                         <tr>
+                            <?php if ($canApprovePending): ?><th style="width:36px"><input type="checkbox" id="pending-select-all" aria-label="Select all registrations on this page"></th><?php endif; ?>
                             <th style="width:10px">#</th>
                             <th>Student</th>
                             <th>Reg. No</th>
@@ -122,7 +131,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                         </tr>
                     </thead>
                     <tbody id="pending-rows">
-                        <tr><td colspan="10" class="text-center py-8 text-slate-400">Loading…</td></tr>
+                        <tr><td colspan="<?= $canApprovePending ? '11' : '10' ?>" class="text-center py-8 text-slate-400">Loading…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -155,6 +164,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const BADGE_SEL = '[data-nav-badge="/pending-students"]';
 
     const canApprove = listBox.getAttribute('data-perm-approve') === '1';
+    const columnCount = canApprove ? 11 : 10;
+    const selectAllEl = document.getElementById('pending-select-all');
+    const bulkApproveBtn = document.getElementById('pending-bulk-approve');
+    const selectedIds = new Set();
     const val = function (el) { return el ? el.value : ''; };
 
     const CLASS_NAMES = { 6: 'KG', 1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE' };
@@ -249,7 +262,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Loading skeletons + empty states.
     // -----------------------------------------------------------------
     function skeletonRows(count) {
-        const widths = [16, 110, 78, 40, 34, 96, 120, 66, 58, 88];
+        const widths = canApprove
+            ? [16, 16, 110, 78, 40, 34, 96, 120, 66, 58, 88]
+            : [16, 110, 78, 40, 34, 96, 120, 66, 58, 88];
         let out = '';
         for (let r = 0; r < count; r++) {
             out += '<tr>' + widths.map(function (w) {
@@ -259,13 +274,32 @@ document.addEventListener('DOMContentLoaded', function () {
         return out;
     }
 
+    function updateBulkControls() {
+        const selectedCount = selectedIds.size;
+        if (bulkApproveBtn) {
+            bulkApproveBtn.disabled = selectedCount === 0;
+            bulkApproveBtn.textContent = 'Approve selected (' + selectedCount + ')';
+        }
+        if (selectAllEl) {
+            const rowChecks = Array.from(rowsEl.querySelectorAll('.pending-select-row'));
+            selectAllEl.checked = rowChecks.length > 0 && rowChecks.every(function (checkbox) { return checkbox.checked; });
+            selectAllEl.indeterminate = rowChecks.some(function (checkbox) { return checkbox.checked; }) && !selectAllEl.checked;
+        }
+    }
+
+    function clearSelection() {
+        selectedIds.clear();
+        if (selectAllEl) { selectAllEl.checked = false; selectAllEl.indeterminate = false; }
+        updateBulkControls();
+    }
+
     function hasActiveFilters() {
         return !!(val(sessionEl) || val(classEl) || val(centerEl) || val(instituteEl) || val(searchEl));
     }
 
     function emptyStateHtml() {
         if (hasActiveFilters()) {
-            return '<tr><td colspan="10" class="px-4 py-10 text-center">'
+            return '<tr><td colspan="' + columnCount + '" class="px-4 py-10 text-center">'
                 + '<div class="inline-flex flex-col items-center gap-2 text-slate-400">'
                 + svgIcon(ICON.search, 'w-6 h-6')
                 + '<p class="text-sm font-medium text-slate-500">No pending registrations match the current filters</p>'
@@ -273,7 +307,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 + '<button type="button" class="btn btn-sm btn-light" data-act="reset-filters">Reset filters</button>'
                 + '</div></td></tr>';
         }
-        return '<tr><td colspan="10" class="px-4 py-10 text-center">'
+        return '<tr><td colspan="' + columnCount + '" class="px-4 py-10 text-center">'
             + '<div class="inline-flex flex-col items-center gap-2">'
             + '<span class="inline-flex items-center justify-center rounded-full bg-emerald-50" style="width:3rem;height:3rem">'
             + svgIcon(ICON.checkCircle, 'w-6 h-6 text-emerald-600') + '</span>'
@@ -315,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
         actions += '</div>';
 
         return '<tr>'
+            + (canApprove ? '<td><input type="checkbox" class="pending-select-row" value="' + id + '" aria-label="Select ' + BK.esc(rec.name || 'student') + '"></td>' : '')
             + '<td class="text-slate-400">' + ((pageNum - 1) * PER_PAGE + i + 1) + '</td>'
             + '<td><div class="flex items-center gap-2">'
             + avatarHtml(rec)
@@ -332,6 +367,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function reload() {
+        clearSelection();
         rowsEl.innerHTML = skeletonRows(5);
         const url = BK.qs('/api/pending-students', {
             page: pageNum,
@@ -356,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }).catch(function (err) {
             renderCountChip(0);
-            rowsEl.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-red-600">Could not load the queue</td></tr>';
+            rowsEl.innerHTML = '<tr><td colspan="' + columnCount + '" class="px-4 py-8 text-center text-red-600">Could not load the queue</td></tr>';
             BK.toast(err.message || 'Could not load the queue', 'error');
         });
     }
@@ -390,6 +426,44 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
             pageNum = Number(new URL(link.href).searchParams.get('page') || 1);
             reload();
+        });
+    }
+
+    if (selectAllEl) {
+        selectAllEl.addEventListener('change', function () {
+            rowsEl.querySelectorAll('.pending-select-row').forEach(function (checkbox) {
+                checkbox.checked = selectAllEl.checked;
+                if (checkbox.checked) { selectedIds.add(Number(checkbox.value)); }
+                else { selectedIds.delete(Number(checkbox.value)); }
+            });
+            updateBulkControls();
+        });
+    }
+    rowsEl.addEventListener('change', function (event) {
+        const checkbox = event.target.closest('.pending-select-row');
+        if (!checkbox) { return; }
+        const id = Number(checkbox.value);
+        if (checkbox.checked) { selectedIds.add(id); }
+        else { selectedIds.delete(id); }
+        updateBulkControls();
+    });
+    if (bulkApproveBtn) {
+        bulkApproveBtn.addEventListener('click', function () {
+            const ids = Array.from(selectedIds);
+            if (!ids.length) { return; }
+            BK.confirm('Approve ' + ids.length + ' selected pending registration(s)?').then(function (confirmed) {
+                if (!confirmed) { return; }
+                bulkApproveBtn.disabled = true;
+                BK.post('/api/pending-students/approve-bulk', { ids: ids }).then(function (json) {
+                    const approved = Number((json && json.data && json.data.approved) || 0);
+                    BK.toast(approved + ' registration(s) approved successfully.', 'success');
+                    clearSelection();
+                    reload();
+                    syncNavBadge();
+                }).catch(function (err) {
+                    BK.toast(err.message || 'Could not approve selected registrations.', 'error');
+                }).finally(updateBulkControls);
+            });
         });
     }
 

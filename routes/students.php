@@ -81,6 +81,7 @@ Router::get('/students', function (Request $request) {
         'filters'      => [
             'session'      => $request->query('session'),
             'class'        => $request->query('class'),
+            'status'       => $request->query('status'),
             'center_id'    => $request->query('center_id'),
             'institute_id' => $request->query('institute_id'),
             'search'       => $request->query('search'),
@@ -100,5 +101,6 @@ Router::get('/students', function (Request $request) {
 // ---------------------------------------------------------------
 Router::get('/pending-students', [StudentController::class, 'pagePending'], ['auth', 'permission:student-list|student-approve']);
 Router::get('/api/pending-students', [StudentController::class, 'pending'], ['auth', 'permission:student-list|student-approve']);
+Router::post('/api/pending-students/approve-bulk', [StudentController::class, 'bulkApprove'], 'auth|permission:student-approve');
 Router::post('/api/pending-students/{id}/approve', [StudentController::class, 'approve'], 'auth|permission:student-approve');
 Router::post('/api/pending-students/{id}/reject', [StudentController::class, 'reject'], 'auth|permission:student-approve');

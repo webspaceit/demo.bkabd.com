@@ -84,6 +84,12 @@ final class StudentController extends Controller
         if ($class !== null && $class !== '') {
             $q->where('class', (int) $class);
         }
+        $status = $request->input('status');
+        if ($status === 'active') {
+            $q->whereRaw('`students`.`active` = 1');
+        } elseif ($status === 'pending') {
+            $q->whereRaw('(`students`.`active` = 0 OR `students`.`active` IS NULL)');
+        }
         $instituteId = $request->input('institute_id');
         if ($instituteId !== null && $instituteId !== '') {
             $q->where('institute_id', (int) $instituteId);
@@ -252,6 +258,55 @@ final class StudentController extends Controller
         return $this->sendResponse(
             ['id' => $id, 'registration' => $student['registration'], 'active' => 1],
             'Registration approved successfully.'
+        );
+    }
+
+    /** Approve multiple pending registrations in one request. */
+    public function bulkApprove(Request $request): array
+    {
+        if (!Auth::check()) {
+            Response::json(['status' => 'errors'], 401);
+        }
+
+        $rawIds = $request->input('ids', []);
+        if (!is_array($rawIds) || $rawIds === [] || count($rawIds) > 500) {
+            throw new \App\Core\HttpException(422, 'Select between 1 and 500 pending registrations.');
+        }
+        $ids = [];
+        foreach ($rawIds as $rawId) {
+            $id = filter_var($rawId, FILTER_VALIDATE_INT);
+            if ($id === false || $id <= 0) {
+                throw new \App\Core\HttpException(422, 'The selected registration list is invalid.');
+            }
+            $ids[] = $id;
+        }
+        $ids = array_values(array_unique($ids));
+        if (count($ids) !== count($rawIds)) {
+            throw new \App\Core\HttpException(422, 'The selected registration list contains duplicates.');
+        }
+
+        // Apply the same center ownership check as single-student approval.
+        Auth::assertStudentAccess($ids);
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $students = Database::select(
+            'SELECT `id` FROM `students` WHERE `id` IN (' . $placeholders . ')',
+            $ids
+        );
+        if (count($students) !== count($ids)) {
+            throw new \App\Core\HttpException(404, 'One or more selected students were not found.');
+        }
+
+        $updatedAt = date('Y-m-d H:i:s');
+        $updated = Database::statement(
+            'UPDATE `students` SET `active` = 1, `updated_at` = ? WHERE `id` IN (' . $placeholders . ') '
+            . 'AND (`active` = 0 OR `active` IS NULL)',
+            array_merge([$updatedAt], $ids)
+        );
+
+        return $this->sendResponse(
+            ['approved' => $updated->rowCount(), 'selected' => count($ids)],
+            'Selected registrations approved successfully.'
         );
     }
 

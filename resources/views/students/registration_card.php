@@ -301,15 +301,17 @@ $qrContentEscaped = e($qrContent);
         width: calc(100% - 2rem);
         margin: .1rem 1rem .3rem;
     }
-    .rc-routine-title { margin-bottom: .12rem; font-size: .95rem; font-weight: 700; color: #0f172a; }
+    .rc-routine-title { margin-bottom: .12rem; text-align: center; font-size: .95rem; font-weight: 700; color: #0f172a; }
     .rc-routine-table {
         width: 100%;
         border-collapse: collapse;
-        table-layout: fixed;
+        table-layout: auto;
         font-size: .82rem;
         line-height: 1.2;
         color: #111827;
     }
+    .rc-routine-table-numbered th:first-child,
+    .rc-routine-table-numbered td:first-child { width: 5%; }
     .rc-routine-table th,
     .rc-routine-table td { border: 1px solid #334155; padding: .15rem .3rem; text-align: center; overflow-wrap: anywhere; }
     .rc-routine-table th { font-weight: 700; background: #f1f5f9; }
@@ -619,7 +621,7 @@ $qrContentEscaped = e($qrContent);
             <div class="rc-col">
                 <?= $row('Exam Class', $className((int) ($student['class'] ?? 0))) ?>
                 <?= $row('Exam Center', $student['center_name'] ?? '') ?>
-                <?= $row('Exam Venue', $student['institute_name'] ?? '') ?>
+                <?= $row('Institute Name', $student['institute_name'] ?? '') ?>
                 <?php if (!empty($student['seat_assignment']['room_label'])): ?>
                     <?= $row('Seat Location', $student['seat_assignment']['room_label']) ?>
                 <?php endif; ?>
@@ -653,15 +655,17 @@ $qrContentEscaped = e($qrContent);
 
         <?php if ($isAdmitCard): ?>
         <div class="rc-routine">
-            <div class="rc-routine-title">Exam Routine</div>
-            <table class="rc-routine-table">
-                <thead><tr><th>Subject</th><th>Exam Date</th><th>Day</th><th>Time</th></tr></thead>
+            <div class="rc-routine-title">Exam Schedule</div>
+            <?php $studentRoutineRows = $examRoutineRows($student['session'] ?? '', (int) ($student['class'] ?? 0)); ?>
+            <?php $showRoutineSl = count($studentRoutineRows) > 1; ?>
+            <table class="rc-routine-table<?= $showRoutineSl ? ' rc-routine-table-numbered' : '' ?>">
+                <thead><tr><?php if ($showRoutineSl): ?><th>Sl.</th><?php endif; ?><th>Subject</th><th>Exam Date</th><th>Day</th><th>Time</th></tr></thead>
                 <tbody>
-                <?php $studentRoutineRows = $examRoutineRows($student['session'] ?? '', (int) ($student['class'] ?? 0)); ?>
                 <?php if ($studentRoutineRows === []): ?>
-                    <tr><td colspan="4">Not scheduled</td></tr>
-                <?php else: foreach ($studentRoutineRows as $routineItem): ?>
+                    <tr><td colspan="<?= $showRoutineSl ? '5' : '4' ?>">Not scheduled</td></tr>
+                <?php else: foreach ($studentRoutineRows as $routineIndex => $routineItem): ?>
                     <tr>
+                        <?php if ($showRoutineSl): ?><td><?= $routineIndex + 1 ?></td><?php endif; ?>
                         <td><?= e($routineItem['subject'] ?? '') ?></td>
                         <td><?= e($routineItem['date'] ?? '') ?></td>
                         <td><?= e($routineItem['day'] ?? '') ?></td>

@@ -28,7 +28,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
             <?php endif; ?>
         </div>
         <div class="card-body space-y-4">
-            <div class="filter-bar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div class="filter-bar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
                 <div class="fl">
                     <select id="f-session" class="w-full">
                         <option value="">All Sessions</option>
@@ -72,6 +72,14 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                         <?php endforeach; ?>
                     </select>
                     <label for="f-class">Class</label>
+                </div>
+                <div class="fl">
+                    <select id="f-status" class="w-full">
+                        <option value="">All Statuses</option>
+                        <option value="active" <?= (string) ($filters['status'] ?? '') === 'active' ? 'selected' : '' ?>>Active</option>
+                        <option value="pending" <?= (string) ($filters['status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
+                    </select>
+                    <label for="f-status">Status</label>
                 </div>
                 <div class="fl">
                     <input type="search" id="f-search" class="w-full" placeholder="Name, reg. no, roll, institute..." value="<?= e($filters['search'] ?? '') ?>">
@@ -120,6 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const pagerEl = document.getElementById('student-pagination');
     const sessionEl = document.getElementById('f-session');
     const classEl = document.getElementById('f-class');
+    const statusEl = document.getElementById('f-status');
     const centerEl = document.getElementById('f-center');
     const instituteEl = document.getElementById('f-institute');
     const searchEl = document.getElementById('f-search');
@@ -179,6 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
             per_page: PER_PAGE,
             session: val(sessionEl),
             class: val(classEl),
+            status: val(statusEl),
             center_id: val(centerEl),
             institute_id: val(instituteEl),
             search: val(searchEl)
@@ -214,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const reloadFromFilters = function () { pageNum = 1; reload(); };
 
-    [sessionEl, classEl, centerEl, instituteEl].forEach(function (el) {
+    [sessionEl, classEl, statusEl, centerEl, instituteEl].forEach(function (el) {
         if (el) { el.addEventListener('change', reloadFromFilters); }
     });
 

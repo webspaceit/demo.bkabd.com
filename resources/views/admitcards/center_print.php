@@ -466,7 +466,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                 <div class="rc-col">
                 <?= $row('Exam Class', $className((int)($s['class'] ?? 0))) ?>
                 <?= $row('Exam Center', $s['center_name'] ?? '') ?>
-                <?= $row('Exam Venue', $s['institute_name'] ?? '') ?>
+                <?= $row('Institute Name', $s['institute_name'] ?? '') ?>
                 <?php if (!empty($s['seat_assignment']['room_label'])): ?>
                     <?= $row('Seat Location', $s['seat_assignment']['room_label']) ?>
                 <?php endif; ?>
