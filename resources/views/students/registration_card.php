@@ -288,13 +288,14 @@ $qrContentEscaped = e($qrContent);
        names and addresses must wrap inside the two detail columns. */
     .reg-card.registration-card .rc-body {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 74px;
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, .9fr) 74px;
         column-gap: 1rem;
         width: 100%;
         box-sizing: border-box;
     }
     .reg-card.registration-card .rc-col { min-width: 0; }
-    .reg-card.registration-card .rc-row { min-width: 0; grid-template-columns: minmax(0, 9.5rem) 1rem minmax(0, 1fr); }
+    .reg-card.registration-card .rc-col:first-child .rc-row { min-width: 0; grid-template-columns: minmax(0, 8.4rem) 1rem minmax(0, 1fr); }
+    .reg-card.registration-card .rc-col:nth-child(2) .rc-row { min-width: 0; grid-template-columns: minmax(0, 7rem) 1rem minmax(0, 1fr); }
     .reg-card.registration-card .rc-val { min-width: 0; overflow-wrap: anywhere; }
     .rc-routine {
         width: calc(100% - 2rem);
