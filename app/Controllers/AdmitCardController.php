@@ -216,6 +216,7 @@ final class AdmitCardController extends Controller
             'students'   => $students,
             'cardMode'   => 'admit',
             'twoPerPage' => true,
+            'hideLoginLink' => true,
             'examRoutines' => $this->activeExamRoutines($activeSession),
         ], 'layouts.guest');
     }

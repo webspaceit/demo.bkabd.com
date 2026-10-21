@@ -284,6 +284,18 @@ $qrContentEscaped = e($qrContent);
         grid-template-columns: minmax(0, 8.2rem) .75rem minmax(0, 1fr);
     }
     .rc-body-admit .rc-val { min-width: 0; }
+    /* Keep the registration photo in its own fixed column. Long institute
+       names and addresses must wrap inside the two detail columns. */
+    .reg-card.registration-card .rc-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 64px;
+        column-gap: 1rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .reg-card.registration-card .rc-col { min-width: 0; }
+    .reg-card.registration-card .rc-row { min-width: 0; grid-template-columns: minmax(0, 9.5rem) 1rem minmax(0, 1fr); }
+    .reg-card.registration-card .rc-val { min-width: 0; overflow-wrap: anywhere; }
     .rc-routine {
         width: calc(100% - 2rem);
         margin: .1rem 1rem .3rem;
@@ -506,6 +518,8 @@ $qrContentEscaped = e($qrContent);
         .rc-body { flex-direction: column; gap: .75rem; padding: .5rem .5rem 0; margin-top: .25rem; }
         .rc-col { width: 100%; }
         .rc-row { grid-template-columns: 8rem .75rem 1fr; font-size: .82rem; }
+        .reg-card.registration-card .rc-body { display: flex; flex-direction: column; align-items: stretch; gap: .5rem; }
+        .reg-card.registration-card .rc-row { grid-template-columns: 8rem .75rem minmax(0, 1fr); }
         <?php if ($isAdmitCard): ?>
         .reg-card.admit-card .rc-body-admit { display: flex; flex-direction: column; gap: .5rem; }
         .reg-card.admit-card .rc-body-admit .rc-col { width: 100%; }
