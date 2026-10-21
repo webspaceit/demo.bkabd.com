@@ -408,7 +408,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 <div class="cp-toolbar">
     <div class="cp-toolbar-inner">
         <div>
-            <h2>Admit Cards — <?= e($centerName ?? '') ?> &nbsp;|&nbsp; Session <?= e($session) ?></h2>
+            <h2><?= e($printTitle ?? ('Admit Cards — ' . ($centerName ?? ''))) ?> &nbsp;|&nbsp; Session <?= e($session) ?></h2>
             <small><?= $total ?> students &nbsp;·&nbsp; <?= ceil($total / 2) ?> pages</small>
         </div>
         <div class="cp-toolbar-actions">

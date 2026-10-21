@@ -146,6 +146,109 @@ final class AdmitCardController extends Controller
         ], 'layouts.guest');
     }
 
+    /** Print every active admit card for an institute, optionally one class. */
+    public function printByInstitute(Request $request): string
+    {
+        return $this->printInstituteBatch($request, null);
+    }
+
+    /** Print active admit cards for one institute class. */
+    public function printByClass(Request $request): string
+    {
+        $class = (int) ($request->params['class'] ?? 0);
+        if (!in_array($class, [1, 2, 3, 4, 5, 6], true)) {
+            throw new \App\Core\HttpException(422, 'Select a valid class.');
+        }
+        return $this->printInstituteBatch($request, $class);
+    }
+
+    private function printInstituteBatch(Request $request, ?int $class): string
+    {
+        if (!Auth::check()) {
+            Response::json(['status' => 'errors'], 401);
+        }
+        if (!Auth::can('admit-card')) {
+            Response::json(['message' => 'This action is unauthorized.'], 403);
+        }
+
+        $instituteId = (int) ($request->params['id'] ?? 0);
+        Auth::assertInstituteAccess($instituteId);
+        $institute = Database::selectOne('SELECT `name` FROM `institutes` WHERE `id` = ? LIMIT 1', [$instituteId]);
+        if ($institute === null) {
+            throw new \App\Core\HttpException(404, 'Institute not found.');
+        }
+
+        $session = $request->query('session');
+        if ($session === null) {
+            $session = (string) $this->activeSession();
+        } else {
+            $session = trim((string) $session);
+        }
+
+        $where = ['s.`active` = 1', 's.`institute_id` = ?'];
+        $params = [$instituteId];
+        if ($session !== '') {
+            $where[] = 's.`session` = ?';
+            $params[] = $session;
+        }
+        if ($class !== null) {
+            $where[] = 's.`class` = ?';
+            $params[] = $class;
+        }
+
+        $students = Database::select(
+            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
+                    u.`name` AS center_name,
+                    d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
+               FROM `students` s
+          LEFT JOIN `institutes` i ON i.`id` = s.`institute_id`
+          LEFT JOIN `centers` c ON c.`id` = s.`center_id`
+          LEFT JOIN `users` u ON u.`id` = c.`user_id`
+          LEFT JOIN `divisions` d ON d.`id` = s.`division_id`
+          LEFT JOIN `districts` dt ON dt.`id` = s.`district_id`
+          LEFT JOIN `upozilas` uz ON uz.`id` = s.`upazila_id`
+              WHERE " . implode(' AND ', $where) . "
+           ORDER BY FIELD(s.`class`,6,1,2,3,4,5), s.`roll` ASC",
+            $params
+        );
+
+        $students = SeatAssignmentService::attachLocations($students);
+        $sessionLabel = $session === '' ? 'All Sessions' : $session;
+        $scopeLabel = $class === null ? 'All Classes' : 'Class ' . ClassName($class);
+        $routines = $session === ''
+            ? $this->activeExamRoutinesForAllSessions()
+            : $this->activeExamRoutines($session);
+
+        return View::render('admitcards.center_print', [
+            'title' => 'Admit Cards — ' . $institute['name'] . ' — ' . $scopeLabel,
+            'printTitle' => 'Admit Cards — ' . $institute['name'] . ' — ' . $scopeLabel,
+            'centerName' => $institute['name'] . ' — ' . $scopeLabel,
+            'activeSession' => $sessionLabel,
+            'students' => $students,
+            'cardMode' => 'admit',
+            'twoPerPage' => true,
+            'hideLoginLink' => true,
+            'examRoutines' => $routines,
+        ], 'layouts.guest');
+    }
+
+    /** Active routines for an all-session print, if the routines table exists. */
+    private function activeExamRoutinesForAllSessions(): array
+    {
+        try {
+            return Database::select(
+                "SELECT `subject`, `date`, `day`, `time`, `session`, `class`
+                   FROM `routines` WHERE `active` = 1
+               ORDER BY COALESCE(`order`, 2147483647) ASC, `id` ASC"
+            );
+        } catch (\PDOException $e) {
+            if (in_array((string) $e->getCode(), ['42S02', '42S22'], true)) {
+                return [];
+            }
+            throw $e;
+        }
+    }
+
     /**
      * Print all admit cards for an entire center — 2 cards per A4 page.
      * GET /api/admitcard_center/{id}   where {id} = center_id (0 = all centers for admin)
@@ -159,8 +262,9 @@ final class AdmitCardController extends Controller
             Response::json(['message' => 'This action is unauthorized.'], 403);
         }
 
-        $centerId      = (int) $request->params['id'];
-        $activeSession = $this->activeSession();
+        $centerId = (int) $request->params['id'];
+        $session = $request->query('session');
+        $session = $session === null ? (string) $this->activeSession() : trim((string) $session);
 
         // RLS: center users are pinned to their own center
         if (!Auth::isAdmin()) {
@@ -172,11 +276,15 @@ final class AdmitCardController extends Controller
             }
         }
 
-        $params = [$activeSession];
-        $centerWhere = '';
+        $where = ['s.`active` = 1'];
+        $params = [];
+        if ($session !== '') {
+            $where[] = 's.`session` = ?';
+            $params[] = $session;
+        }
         if ($centerId > 0) {
-            $centerWhere = ' AND s.`center_id` = ?';
-            $params[]    = $centerId;
+            $where[] = 's.`center_id` = ?';
+            $params[] = $centerId;
         }
 
         $students = Database::select(
@@ -190,7 +298,7 @@ final class AdmitCardController extends Controller
           LEFT JOIN `divisions` d   ON d.`id`  = s.`division_id`
           LEFT JOIN `districts` dt  ON dt.`id` = s.`district_id`
           LEFT JOIN `upozilas` uz   ON uz.`id` = s.`upazila_id`
-              WHERE s.`session` = ? AND s.`active` = 1" . $centerWhere . "
+              WHERE " . implode(' AND ', $where) . "
            ORDER BY u.`name` ASC, FIELD(s.`class`,6,1,2,3,4,5), s.`roll` ASC",
             $params
         );
@@ -208,16 +316,20 @@ final class AdmitCardController extends Controller
             : 'All Centers';
 
         $students = SeatAssignmentService::attachLocations($students);
+        $sessionLabel = $session === '' ? 'All Sessions' : $session;
+        $routines = $session === ''
+            ? $this->activeExamRoutinesForAllSessions()
+            : $this->activeExamRoutines($session);
 
         return View::render('admitcards.center_print', [
             'title'      => 'Admit Cards — ' . $centerName,
             'centerName' => $centerName,
-            'activeSession' => $activeSession,
+            'activeSession' => $sessionLabel,
             'students'   => $students,
             'cardMode'   => 'admit',
             'twoPerPage' => true,
             'hideLoginLink' => true,
-            'examRoutines' => $this->activeExamRoutines($activeSession),
+            'examRoutines' => $routines,
         ], 'layouts.guest');
     }
 
