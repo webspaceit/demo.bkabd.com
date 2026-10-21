@@ -53,16 +53,30 @@ final class SeatAssignmentService
             // when the caller is printing only one institute or one student.
             $roster = Database::select(
                 'SELECT `id`, `roll` FROM `students` WHERE `session` = ? AND `center_id` = ? AND `class` = ? '
-                . 'AND `active` = 1 AND `roll` IS NOT NULL ORDER BY `roll` ASC, `id` ASC',
+                . 'AND `active` = 1 ORDER BY `roll` ASC, `id` ASC',
                 [$group['session'], $group['center_id'], $group['class']]
             );
+            // Some centers have not assigned exam rolls yet. In that case,
+            // use the stable roster order as the range sequence so saved room
+            // assignments still appear on the seat plan. If any real rolls
+            // exist, keep roll-range assignments tied to those actual values.
+            $hasRollNumbers = false;
+            foreach ($roster as $student) {
+                if ($student['roll'] !== null && $student['roll'] !== '') {
+                    $hasRollNumbers = true;
+                    break;
+                }
+            }
             foreach ($assignments as $assignment) {
                 if ($assignment['roll_start'] === null || $assignment['roll_end'] === null) {
                     continue;
                 }
                 $seat = 0;
-                foreach ($roster as $student) {
-                    $roll = (int) $student['roll'];
+                foreach ($roster as $index => $student) {
+                    if ($hasRollNumbers && ($student['roll'] === null || $student['roll'] === '')) {
+                        continue;
+                    }
+                    $roll = $hasRollNumbers ? (int) $student['roll'] : $index + 1;
                     if ($roll < (int) $assignment['roll_start'] || $roll > (int) $assignment['roll_end']) {
                         continue;
                     }
