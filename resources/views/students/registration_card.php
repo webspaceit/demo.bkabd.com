@@ -476,6 +476,7 @@ $qrContentEscaped = e($qrContent);
     .sig-name { font-size: .82rem; }
     .sig-role { font-size: .68rem; }
     .rc-note { font-size: .75rem; line-height: 1.15; }
+    .reg-card.admit-card .rc-note { font-size: 10px; }
     .rc-foot { font-size: .75rem; }
     <?php endif; ?>
 
@@ -722,12 +723,12 @@ $qrContentEscaped = e($qrContent);
             <span class="text-xs">&copy; Copyright 1984 - <?= e($copyrightYear) ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by Web Space IT</span>
         </p>
 
+        <?php if (!$isAdmitCard): ?>
         <div class="rc-foot">
-            <?php if (!$isAdmitCard): ?>
             <div>Date of Registration &amp; Time: <?= e(DateFormat($student['created_at'] ?? '', 'd-m-Y, h:i A')) ?></div>
-            <?php endif; ?>
             <div>Print Date: <?= e($printDate) ?></div>
         </div>
+        <?php endif; ?>
         </div>
     </div>
     </div>

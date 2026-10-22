@@ -1,7 +1,7 @@
 <?php
 /**
  * Authenticated app shell — Rubick-style layout with the BKABD emerald brand:
- * a deep-green (#064e3b) backdrop, a rounded-left light canvas (#f1f5f9),
+ * a deep-green (#064e3b) backdrop, a rounded-left mint canvas (#ecfdf5),
  * and a curved "notch" active nav item (see .active-nav-notch in app.css).
  * Used by every authenticated page.
  * Receives $content, optional $title, $pageScripts (extra <script> urls).
@@ -265,7 +265,7 @@ $activeSession = Auth::activeSession();
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
 
     <!-- Light canvas -->
-    <main class="flex-1 bg-[#f1f5f9] lg:rounded-l-[30px] px-4 md:px-8 py-5 min-w-0 relative z-10">
+    <main id="app-main" class="flex-1 bg-emerald-50 lg:rounded-l-[30px] px-4 md:px-8 py-5 min-w-0 relative z-10">
         <!-- Top bar -->
         <header class="flex flex-col sm:flex-row sm:items-center justify-between pb-5 gap-4">
             <div class="flex items-center gap-3 min-w-0">

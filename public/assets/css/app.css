@@ -2553,6 +2553,52 @@ input[type=radio]:focus {
     height: 0;
 }
 
+/* Carry the sidebar's emerald brand through the dashboard content blocks. */
+#app-main .card,
+#app-main .bg-white.rounded-xl,
+#app-main .bg-white.rounded-lg {
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+#app-main .card-header {
+    background-color: #dcfce7;
+    border-bottom-color: #bbf7d0;
+}
+
+#app-main .table thead th {
+    background: linear-gradient(110deg, #047857 0%, #065f46 100%);
+    color: #fff;
+    border-color: #047857;
+    border-right: 1px solid rgba(167, 243, 208, .42);
+    border-bottom: 2px solid #064e3b;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+
+#app-main .table tbody td {
+    border-color: #a7f3d0;
+    border-right: 1px solid #86efac;
+    border-bottom: 1px solid #a7f3d0;
+}
+
+#app-main .table {
+    border: 1.5px solid #16a34a;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: .65rem;
+    overflow: hidden;
+}
+
+#app-main .table thead th:last-child,
+#app-main .table tbody td:last-child {
+    border-right: 0;
+}
+
+#app-main .table tbody tr:hover {
+    background-color: rgba(167, 243, 208, .35);
+}
+
 /* Hover: extend background to right edge, matching the active notch */
 #sidebar [data-nav-item]:not(.active-nav-notch):hover {
     margin-right: -1.25rem;

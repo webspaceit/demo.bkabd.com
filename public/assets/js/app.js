@@ -270,6 +270,33 @@ window.BK = (function () {
     const toggle = document.getElementById('sidebar-toggle');
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) {
+        const scrollKey = 'bk-sidebar-scroll-top';
+        try {
+            const savedScrollTop = Number(sessionStorage.getItem(scrollKey));
+            if (Number.isFinite(savedScrollTop) && savedScrollTop > 0) {
+                sidebar.scrollTop = savedScrollTop;
+            }
+        } catch (e) { /* Storage can be unavailable in private browsing. */ }
+
+        let scrollSavePending = false;
+        const saveScrollTop = function () {
+            if (scrollSavePending) { return; }
+            scrollSavePending = true;
+            window.requestAnimationFrame(function () {
+                scrollSavePending = false;
+                try { sessionStorage.setItem(scrollKey, String(sidebar.scrollTop)); }
+                catch (e) { /* Storage can be unavailable in private browsing. */ }
+            });
+        };
+        sidebar.addEventListener('scroll', saveScrollTop, { passive: true });
+        sidebar.querySelectorAll('a[data-nav-item]').forEach(function (link) {
+            link.addEventListener('click', function () {
+                try { sessionStorage.setItem(scrollKey, String(sidebar.scrollTop)); }
+                catch (e) { /* Storage can be unavailable in private browsing. */ }
+            });
+        });
+    }
     if (toggle && sidebar) {
         const close = function () {
             sidebar.classList.add('-translate-x-full');
