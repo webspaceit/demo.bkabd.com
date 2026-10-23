@@ -55,6 +55,7 @@ $nav = [
         ['Session', '/sessions', 'session-list', 'calendar-clock'],
         ['Manage User', '/userrole', 'role-list', 'shield'],
         ['Settings', '/settings', 'settings', 'settings'],
+        ['Database Sync', '/database-sync', 'settings', 'layers'],
         ['Branding', '/settings/branding', 'settings', 'settings'],
         ['Mark Distribution', '/mark-distributions', 'mark-distributions', 'sliders'],
         ['Role Place', '/role-place', 'role-place', 'key'],

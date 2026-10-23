@@ -2,6 +2,7 @@
 
 use App\Controllers\SettingController;
 use App\Controllers\BrandingController;
+use App\Controllers\DatabaseSyncController;
 use App\Core\Router;
 
 /**
@@ -20,6 +21,14 @@ Router::get('/settings', [SettingController::class, 'pageIndex'], 'auth|permissi
 Router::get('/settings/branding', [BrandingController::class, 'page'], 'auth|permission:settings');
 Router::get('/instructions', [SettingController::class, 'pageInstructions'], 'auth');
 Router::get('/role-place', [SettingController::class, 'pageRolePlace'], 'auth|permission:role-place');
+Router::get('/database-sync', function () {
+    return \App\Core\View::render('settings.database_sync', [
+        'title' => 'Database Sync',
+    ], 'layouts.dashboard');
+}, 'auth|permission:settings');
+Router::get('/api/database-sync/status', [DatabaseSyncController::class, 'status'], 'auth|permission:settings');
+Router::post('/api/database-sync/compare', [DatabaseSyncController::class, 'compare'], 'auth|permission:settings');
+Router::post('/api/database-sync/apply', [DatabaseSyncController::class, 'apply'], 'auth|permission:settings');
 
 // API (original apiResource('settings') — full resource now ported)
 Router::get('/api/settings', [SettingController::class, 'index'], 'auth|permission:settings');
