@@ -2510,6 +2510,12 @@ input[type=radio]:focus {
     box-shadow:0 0 0 2px #064e3b;
 }
 
+/* Align the Pending Registration center/institute labels with its other filters. */
+#pending-list .fl label.f-center-search,
+#pending-list .fl label.f-institute {
+    top:-.99rem;
+}
+
 .fl .input,
 .fl select.input {
     padding-top: .55rem;

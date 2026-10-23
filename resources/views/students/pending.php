@@ -192,7 +192,6 @@ document.addEventListener('DOMContentLoaded', function () {
         x: '<path d="M18 6 6 18M6 6l12 12"/>',
         printer: '<path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="2"/>',
         search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
-        person: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
         clock: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', 'w-4 h-4 shrink-0')
     };
 
@@ -241,23 +240,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // -----------------------------------------------------------------
     // Photo avatar — uploaded photo or a soft emerald person placeholder.
     // -----------------------------------------------------------------
-    function avatarHtml(rec) {
-        const size = 'width:2.5rem;height:2.5rem';
-        const box = 'inline-flex items-center justify-center rounded-full bg-emerald-50';
-        const fallback = '<span class="' + box + '" style="' + size + '" aria-hidden="true">'
-            + svgIcon(ICON.person, 'w-4 h-4 text-emerald-600') + '</span>';
-        let img = '';
-        if (rec.photo) {
-            img = '<img src="/' + BK.esc(rec.photo) + '" alt="" loading="lazy"'
-                + ' class="rounded-full object-cover border border-slate-200" style="' + size + '"'
-                + ' onerror="this.classList.add(\'hidden\');this.nextElementSibling.classList.remove(\'hidden\')">';
-        }
-        return '<span class="inline-flex shrink-0">'
-            + (img || fallback)
-            + (img ? fallback : '')
-            + '</span>';
-    }
-
     // -----------------------------------------------------------------
     // Loading skeletons + empty states.
     // -----------------------------------------------------------------
@@ -351,9 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return '<tr>'
             + (canApprove ? '<td><input type="checkbox" class="pending-select-row" value="' + id + '" aria-label="Select ' + BK.esc(rec.name || 'student') + '"></td>' : '')
             + '<td class="text-slate-400">' + ((pageNum - 1) * PER_PAGE + i + 1) + '</td>'
-            + '<td><div class="flex items-center gap-2">'
-            + avatarHtml(rec)
-            + '<div class="min-w-0"><div class="font-medium text-slate-800">' + BK.esc(rec.name) + '</div>'
+            + '<td><div class="min-w-0"><div class="font-medium text-slate-800">' + BK.esc(rec.name) + '</div>'
             + (rec.phone ? '<div class="text-xs text-slate-400 mt-0.5">' + BK.esc(rec.phone) + '</div>' : '')
             + '</div></div></td>'
             + '<td><div class="font-semibold text-slate-800">' + BK.esc(rec.registration) + '</div></td>'
