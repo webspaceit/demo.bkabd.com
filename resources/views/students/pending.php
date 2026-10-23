@@ -333,9 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return '<tr>'
             + (canApprove ? '<td><input type="checkbox" class="pending-select-row" value="' + id + '" aria-label="Select ' + BK.esc(rec.name || 'student') + '"></td>' : '')
             + '<td class="text-slate-400">' + ((pageNum - 1) * PER_PAGE + i + 1) + '</td>'
-            + '<td><div class="min-w-0"><div class="font-medium text-slate-800">' + BK.esc(rec.name) + '</div>'
-            + (rec.phone ? '<div class="text-xs text-slate-400 mt-0.5">' + BK.esc(rec.phone) + '</div>' : '')
-            + '</div></div></td>'
+            + '<td><div class="min-w-0"><div class="font-medium text-slate-800">' + BK.esc(rec.name) + '</div></div></td>'
             + '<td><div class="font-semibold text-slate-800">' + BK.esc(rec.registration) + '</div></td>'
             + '<td>' + dash(rec.roll) + '</td>'
             + '<td><span class="badge badge-gray">' + BK.esc(className) + '</span></td>'
