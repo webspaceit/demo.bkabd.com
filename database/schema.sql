@@ -359,7 +359,8 @@ CREATE TABLE `students` (
   UNIQUE KEY `registration` (`registration`),
   UNIQUE KEY `unique_roll_session_class` (`session`,`roll`,`class`),
   KEY `idx_session_center_class` (`session`,`center_id`,`class`),
-  KEY `idx_session_class_roll` (`session`,`class`,`roll`)
+  KEY `idx_session_class_roll` (`session`,`class`,`roll`),
+  KEY `idx_students_session_created_id` (`session`,`created_at`,`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=116862 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

@@ -466,7 +466,7 @@ final class DatabaseSyncService
             // Record only after every statement completes. Migration scripts should be idempotent
             // (for example, use CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS).
             foreach ($statements as $sql) {
-                $pdo->exec($sql);
+                $this->executeAdditiveDdl($pdo, $sql);
             }
             $stmt = $pdo->prepare('INSERT INTO `codex_schema_migrations` (`migration`, `applied_at`) VALUES (?, NOW())');
             $stmt->execute([$name]);
@@ -576,6 +576,20 @@ final class DatabaseSyncService
     private function ensureMigrationTable(PDO $pdo): void
     {
         $pdo->exec("CREATE TABLE IF NOT EXISTS `codex_schema_migrations` (`migration` varchar(190) NOT NULL, `applied_at` datetime NOT NULL, PRIMARY KEY (`migration`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    /** Execute MySQL-compatible additive DDL, including idempotent index additions. */
+    private function executeAdditiveDdl(PDO $pdo, string $sql): void
+    {
+        if (preg_match('/^ALTER TABLE\s+`?([A-Za-z0-9_]+)`?\s+ADD\s+(?:INDEX|KEY)\s+IF\s+NOT\s+EXISTS\s+`?([A-Za-z0-9_]+)`?/i', trim($sql), $match)) {
+            $check = $pdo->prepare('SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ? LIMIT 1');
+            $check->execute([$match[1], $match[2]]);
+            if ($check->fetchColumn()) {
+                return;
+            }
+            $sql = preg_replace('/\s+IF\s+NOT\s+EXISTS\s+/i', ' ', $sql, 1);
+        }
+        $pdo->exec($sql);
     }
 
     private function isAllowedDdl(string $sql): bool
