@@ -46,7 +46,7 @@
                 <table class="table min-w-[850px]">
                     <thead><tr>
                         <th>Building Name</th><th>Floor Number</th><th>Room Number</th>
-                        <th>Assign By</th><th>Roll Start</th><th>Roll End</th><th>Capacity</th><th></th>
+                        <th>Assign By</th><th>Roll Start</th><th>Roll End</th><th>Capacity</th><th>Action</th>
                     </tr></thead>
                     <tbody id="seatplan-room-rows"></tbody>
                 </table>

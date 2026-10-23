@@ -3333,3 +3333,137 @@ textarea:focus {
         row-gap: 2.25rem;
     }
 }
+
+/* Shared dashboard table finish: compact rows, consistent headings and actions. */
+#app-main .table,
+.table {
+    border: 1.5px solid #16a34a;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: .65rem;
+    overflow: hidden;
+}
+
+#app-main .table thead th,
+.table thead th {
+    padding: .5rem .75rem;
+    border-right: 1px solid rgba(167, 243, 208, .42);
+    border-bottom: 2px solid #047253;
+    background: #047253;
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+#app-main .table tbody td,
+.table tbody td {
+    height: 38px;
+    padding: .4rem .5rem;
+    border-right: 1px solid #86efac;
+    border-bottom: 1px solid #a7f3d0;
+    vertical-align: middle;
+}
+
+#app-main .table thead th:last-child,
+#app-main .table tbody td:last-child,
+.table thead th:last-child,
+.table tbody td:last-child {
+    border-right: 0;
+}
+
+/* Keep action columns a consistent compact width, like Student Details. */
+.table:has(tbody .row-actions) thead th:last-child,
+.table:has(tbody .row-actions) tbody td:has(.row-actions) {
+    width: 90px !important;
+    min-width: 90px !important;
+    text-align: center;
+}
+
+.table .row-actions {
+    align-items: center;
+    justify-content: center;
+}
+
+.table .row-actions > .btn,
+.table .row-actions > a.btn {
+    display: inline-flex;
+    width: 25px;
+    min-width: 25px;
+    height: 25px;
+    min-height: 25px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 6px;
+    font-size: .8rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: none;
+}
+
+.table .row-actions > .btn:hover,
+.table .row-actions > a.btn:hover,
+.table .row-actions > .btn:focus-visible,
+.table .row-actions > a.btn:focus-visible {
+    box-shadow: none;
+}
+
+/* Center short identifiers, numeric fields, statuses and actions consistently. */
+#centers-list .table th:nth-child(1), #centers-list .table td:nth-child(1),
+#centers-list .table th:nth-child(2), #centers-list .table td:nth-child(2),
+#centers-list .table th:nth-child(11), #centers-list .table td:nth-child(11),
+#centers-list .table th:nth-child(12), #centers-list .table td:nth-child(12),
+#institutes-page .table th:nth-child(1), #institutes-page .table td:nth-child(1),
+#institutes-page .table th:nth-child(5), #institutes-page .table td:nth-child(5),
+#institutes-page .table th:nth-child(6), #institutes-page .table td:nth-child(6),
+#institutes-page .table th:nth-child(7), #institutes-page .table td:nth-child(7),
+#institutes-page .table th:nth-child(8), #institutes-page .table td:nth-child(8),
+#geo-page .table th:first-child, #geo-page .table td:first-child,
+#geo-page .table th:last-child, #geo-page .table td:last-child,
+#roles-page .table th:first-child, #roles-page .table td:first-child,
+#roles-page .table th:last-child, #roles-page .table td:last-child,
+#users-page .table th:first-child, #users-page .table td:first-child,
+#users-page .table th:last-child, #users-page .table td:last-child,
+#admitcard-list .table th:nth-child(1), #admitcard-list .table td:nth-child(1),
+#admitcard-list .table th:nth-child(2), #admitcard-list .table td:nth-child(2),
+#admitcard-list .table th:nth-child(3), #admitcard-list .table td:nth-child(3),
+#admitcard-list .table th:nth-child(7), #admitcard-list .table td:nth-child(7),
+#admitcard-list .table th:last-child, #admitcard-list .table td:last-child,
+#notices-page .table th:first-child, #notices-page .table td:first-child,
+#notices-page .table th:last-child, #notices-page .table td:last-child,
+#markdist-page .table th:first-child, #markdist-page .table td:first-child,
+#markdist-page .table th:nth-child(2), #markdist-page .table td:nth-child(2),
+#markdist-page .table th:nth-child(3), #markdist-page .table td:nth-child(3),
+#markdist-page .table th:nth-child(4), #markdist-page .table td:nth-child(4),
+#markdist-page .table th:nth-child(5), #markdist-page .table td:nth-child(5),
+#markdist-page .table th:nth-child(6), #markdist-page .table td:nth-child(6),
+#markdist-page .table th:last-child, #markdist-page .table td:last-child,
+#sessions-page .table th, #sessions-page .table td,
+#database-sync-page #db-sync-students-table .table th:nth-child(2),
+#database-sync-page #db-sync-students-table .table td:nth-child(2),
+#database-sync-page #db-sync-students-table .table th:nth-child(4),
+#database-sync-page #db-sync-students-table .table td:nth-child(4),
+#database-sync-page #db-sync-students-table .table th:nth-child(5),
+#database-sync-page #db-sync-students-table .table td:nth-child(5),
+#database-sync-page #db-sync-students-table .table th:last-child,
+#database-sync-page #db-sync-students-table .table td:last-child,
+#seatplan-page .table th:nth-child(n+4), #seatplan-page .table td:nth-child(n+4),
+#role-place-page .table th:last-child, #role-place-page .table td:last-child {
+    text-align: center;
+}
+
+#routines-page[data-perm-delete="1"] .table th:nth-child(2),
+#routines-page[data-perm-delete="1"] .table td:nth-child(2),
+#routines-page:not([data-perm-delete="1"]) .table th:first-child,
+#routines-page:not([data-perm-delete="1"]) .table td:first-child {
+    text-align: center;
+}
+
+/* Keep the key/value table inside the student detail modal compact. */
+#student-modal .table tbody td {
+    height: auto;
+    padding: .25rem .5rem;
+    border-right: 0;
+}

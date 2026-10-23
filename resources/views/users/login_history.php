@@ -1,3 +1,34 @@
+<style>
+#login-history-pagination-footer {
+    display: flex;
+    width: 100%;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    overflow-x: auto;
+}
+#login-history-size-control {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .6rem;
+    margin: 0;
+    white-space: nowrap;
+}
+#login-history-size {
+    width: 5rem;
+    min-width: 5rem;
+    height: 2.4rem;
+    padding: 0 .65rem;
+    border: 1px solid #047253;
+    border-radius: .4rem;
+    background: #fff;
+    color: #334155;
+}
+#login-history-pagination { flex: 0 0 auto; margin-left: auto; }
+#login-history-pagination nav { flex-wrap: nowrap; white-space: nowrap; }
+</style>
 <div class="card" id="login-history-page">
     <div class="card-header flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -16,9 +47,9 @@
                 <tbody id="login-history-rows"><tr><td colspan="5" class="py-6 text-center text-slate-500">Loading…</td></tr></tbody>
             </table>
         </div>
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <label class="flex items-center gap-2 text-sm text-slate-600">Rows per page
-                <select id="login-history-size" class="form-control"><option>25</option><option>50</option><option>100</option></select>
+        <div id="login-history-pagination-footer" class="mt-4">
+            <label id="login-history-size-control" for="login-history-size" class="text-sm text-slate-600">Rows per page
+                <select id="login-history-size"><option>25</option><option>50</option><option>100</option></select>
             </label>
             <div id="login-history-pagination"></div>
         </div>
