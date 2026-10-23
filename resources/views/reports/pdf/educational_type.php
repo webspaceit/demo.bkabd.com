@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <link rel="icon" type="image/png" href="/assets/img/result/logo.png?v=<?= (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png') ?>">
+    <link rel="icon" href="<?= e(brand_asset('favicon_path', '/assets/img/result/logo.png')) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Educational Type Student Count Report</title>
     <style>
@@ -46,8 +46,8 @@
 
     <!-- Association header -->
     <div class="head">
-        <h3>BANGLADESH KINDERGARTEN ASSOCIATION</h3>
-        <h5>Govt. Reg. No.: S-1028/98</h5>
+        <h3><?= e(brand('authority_name')) ?></h3>
+        <h5><?= e(brand('registration_label')) ?>: <?= e(brand('registration_no')) ?></h5>
         <h4>SCHOLARSHIP EXAM - <?= e($activeSession) ?></h4>
         <h4>Educational Type Student Count Report</h4>
     </div>
@@ -195,14 +195,14 @@
     <!-- Signatures -->
     <table class="sign">
         <tr>
-            <td>MONOWARA BHUIYAN<br>Chairman</td>
-            <td>Md. Mizanur Rahman<br>General Secretary</td>
-            <td>Md. Faruk Hossen<br>Controller of Exam</td>
-            <td>Md. Abdul Alim<br>Education Secretary</td>
+            <td><?= e(brand('chairman_name')) ?><br><?= e(brand('chairman_title')) ?></td>
+            <td><?= e(brand('general_secretary_name')) ?><br><?= e(brand('general_secretary_title')) ?></td>
+            <td><?= e(brand('controller_name')) ?><br><?= e(brand('controller_title')) ?></td>
+            <td><?= e(brand('education_secretary_name')) ?><br><?= e(brand('education_secretary_title')) ?></td>
         </tr>
     </table>
 
-    <div class="copy">&copy; Copyright 1984 - <?= date('Y') ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by BKABD</div>
+    <div class="copy">&copy; <?= date('Y') ?> <?= e(brand('authority_name')) ?>. <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?></div>
     <div class="stamp"><?= date('Y-m-d H:i:s') ?></div>
 
 </div>

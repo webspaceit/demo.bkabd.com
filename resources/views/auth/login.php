@@ -3,7 +3,7 @@
     <div class="w-full max-w-md">
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
             <h1 class="text-xl font-bold text-slate-900">Sign in</h1>
-            <p class="text-sm text-slate-500 mt-1">BKABD Scholarship Exam Management System</p>
+            <p class="text-sm text-slate-500 mt-1"><?= e(brand('app_name', 'BKABD Exam')) ?> Management System</p>
 
             <div id="login-error" class="hidden mt-4 rounded border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm"></div>
 

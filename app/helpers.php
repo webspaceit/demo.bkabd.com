@@ -4,10 +4,26 @@ use App\Core\Auth;
 use App\Core\Request;
 use App\Core\Session;
 use App\Core\View;
+use App\Core\Branding;
 
 // ---------------------------------------------------------------
 // Display helpers (ported 1:1 from original app/Helpers/helpers.php)
 // ---------------------------------------------------------------
+
+if (!function_exists('brand')) {
+    function brand(string $key, ?string $fallback = null): string
+    {
+        return Branding::get($key, $fallback);
+    }
+}
+
+if (!function_exists('brand_asset')) {
+    function brand_asset(string $key, string $fallback): string
+    {
+        $path = trim(Branding::get($key));
+        return asset_v($path !== '' ? $path : $fallback);
+    }
+}
 
 if (!function_exists('DateFormat')) {
     /**

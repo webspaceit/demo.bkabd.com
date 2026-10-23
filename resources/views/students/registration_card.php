@@ -33,11 +33,14 @@ $resolve = static function (string $file): ?string {
 
 // The QR does not link back to this staff-only page; it carries the
 // association's identity and contact details printed in the banner.
+$brandPhone = brand('phone');
+$brandEmail = brand('email');
+$brandWebsite = brand('website');
 $qrContent = implode("\n", [
-    'BANGLADESH KINDERGARTEN ASSOCIATION',
-    'Govt. Reg. No.: S-1028/98',
-    '59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009',
-    'Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd',
+    brand('authority_name'),
+    brand('registration_label') . ': ' . brand('registration_no'),
+    brand('address') . ($brandPhone !== '' ? ', Mobile: ' . $brandPhone : ''),
+    ($brandEmail !== '' ? 'Email: ' . $brandEmail : '') . ($brandWebsite !== '' ? ', Web: ' . $brandWebsite : ''),
 ]);
 
 /** A "Label : value" details row. */
@@ -124,7 +127,7 @@ $qrContentEscaped = e($qrContent);
         max-width: 820px;
         margin: 0 auto;
         padding: .4125rem;
-        background-image: url("<?= asset_v('/assets/img/result/pattern.png') ?>");
+        background-image: url("<?= brand_asset('pattern_path', '/assets/img/result/pattern.png') ?>");
         background-repeat: repeat;
         background-position: 0 0;
         background-size: 424px 424px;
@@ -133,11 +136,15 @@ $qrContentEscaped = e($qrContent);
     /* Watermark logo, centred and painted over the pattern (same as the
        result sheet's .rs-inner). */
     .rc-inner {
-        background-image: url("<?= asset_v('/assets/img/result/for-registration.png') ?>");
+        background-image: url("<?= brand_asset('watermark_path', '/assets/img/result/for-registration.png') ?>");
         background-repeat: no-repeat;
         background-position: center center;
         background-size: 220px 220px;
     }
+
+    .rc-brand-art { display: block; max-width: 100%; height: auto; margin-left: auto; margin-right: auto; }
+    .rc-brand-art-header { margin-bottom: .35rem; }
+    .rc-brand-art-footer { margin-top: .35rem; }
 
     /* ---- Banner header (transparent so the pattern + watermark show through) ---- */
     .rc-banner {
@@ -577,17 +584,28 @@ $qrContentEscaped = e($qrContent);
 <?php foreach ($cardStudents as $student): ?>
 <?php $photoSrc = $resolveStudentPhoto((array) $student); ?>
 <div class="py-6 print:py-0">
+    <?php if ($isAdmitCard): ?>
+    <div class="mb-3 flex justify-center gap-2 print:hidden">
+        <a href="/admitcards" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }" class="btn bg-slate-500 text-white hover:bg-slate-600">Back</a>
+        <button type="button" class="btn btn-primary" data-print-card
+                data-session="<?= e($student['session'] ?? '') ?>"
+                data-registration="<?= e($student['registration'] ?? '') ?>">Print / Save this card as PDF</button>
+    </div>
+    <?php endif; ?>
     <div class="rc-page">
     <div class="reg-card <?= $isAdmitCard ? 'admit-card' : 'registration-card' ?> border-2 border-black bg-white">
         <div class="rc-inner border-2 border-black">
+        <?php if (brand('header_image_path') !== ''): ?>
+            <img class="rc-brand-art rc-brand-art-header" src="<?= e(brand_asset('header_image_path', '')) ?>" alt="">
+        <?php endif; ?>
         <div class="rc-banner">
-            <span class="rc-logo"><img src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD" onerror="this.style.display='none'"></span>
+            <span class="rc-logo"><img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>" onerror="this.style.display='none'"></span>
             <div>
-                <h1>BANGLADESH KINDERGARTEN ASSOCIATION</h1>
-                <p class="rc-reg">Govt. Reg. No.: S-1028/98</p>
+                <h1><?= e(brand('authority_name')) ?></h1>
+                <p class="rc-reg"><?= e(brand('registration_label')) ?>: <?= e(brand('registration_no')) ?></p>
                 <p class="rc-gov">
-                    59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009<br>
-                    Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd
+                    <?= e(brand('address')) ?><?= $brandPhone !== '' ? ', Mobile: ' . e($brandPhone) : '' ?><br>
+                    <?= $brandEmail !== '' ? 'Email: ' . e($brandEmail) : '' ?><?= $brandWebsite !== '' ? ', Web: ' . e($brandWebsite) : '' ?>
                 </p>
             </div>
             <div class="rc-qr">
@@ -599,7 +617,7 @@ $qrContentEscaped = e($qrContent);
         <p class="rc-welcome">Thank you. Your Registration has been completed successfully. You must save this Card. It will be required to participate in the next Scholarship Examination.</p>
         <?php endif; ?>
 
-        <p class="rc-exam-head">Scholarship Examination - <?= e($student['session'] ?? '') ?></p>
+        <p class="rc-exam-head"><?= e(brand('exam_name')) ?> - <?= e($student['session'] ?? '') ?></p>
 
         <div class="rc-top">
             <div class="rc-tags">
@@ -697,10 +715,10 @@ $qrContentEscaped = e($qrContent);
         <table class="sig-tbl mt-4 w-full text-[10px] sm:text-xs">
             <tr>
                 <?php foreach ([
-                    ['chairman',           'MONOWARA BHUIYAN',   'Chairman'],
-                    ['general_secretary',  'MD. MIZANUR RAHMAN', 'General Secretary'],
-                    ['controller',         'MD. FARUK HOSSEN',  'Controller of Exam'],
-                    ['education_secretary','MD. ABDUL ALIM',    'Education Secretary'],
+                    ['chairman',           brand('chairman_name'), 'Chairman'],
+                    ['general_secretary',  brand('general_secretary_name'), brand('general_secretary_title')],
+                    ['controller',         brand('controller_name'), brand('controller_title')],
+                    ['education_secretary', brand('education_secretary_name'), brand('education_secretary_title')],
                 ] as [$signKey, $signName, $signRole]): ?>
                 <td>
                     <div class="sig-img"><img src="<?= e(result_signature($signKey)) ?>" alt=""></div>
@@ -720,11 +738,12 @@ $qrContentEscaped = e($qrContent);
             <?php else: ?>
             <b>Note:</b> This registration card is valid upto this session. Examinee must bring this card in the examination hall.
             <?php endif; ?><br>
-            <span class="text-xs">&copy; Copyright 1984 - <?= e($copyrightYear) ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by Web Space IT</span>
+            <span class="text-xs">&copy; <?= e($copyrightYear) ?> <?= e(brand('authority_name')) ?>. <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?></span>
         </p>
 
         <?php if (!$isAdmitCard): ?>
-        <div class="rc-foot">
+            <?php if (brand('footer_image_path') !== ''): ?><img class="rc-brand-art rc-brand-art-footer" src="<?= e(brand_asset('footer_image_path', '')) ?>" alt=""><?php endif; ?>
+            <div class="rc-foot">
             <div>Date of Registration &amp; Time: <?= e(DateFormat($student['created_at'] ?? '', 'd-m-Y, h:i A')) ?></div>
             <div>Print Date: <?= e($printDate) ?></div>
         </div>
@@ -732,21 +751,16 @@ $qrContentEscaped = e($qrContent);
         </div>
     </div>
     </div>
-    <?php if ($isAdmitCard): ?>
-    <div class="mt-2 flex justify-center print:hidden">
-        <button type="button" class="btn btn-primary" data-print-card
-                data-session="<?= e($student['session'] ?? '') ?>"
-                data-registration="<?= e($student['registration'] ?? '') ?>">Print / Save this card as PDF</button>
-    </div>
-    <?php endif; ?>
 </div>
 <?php endforeach; ?>
 </div>
 
+<?php if (!$isAdmitCard): ?>
 <div class="mt-4 flex justify-center gap-3 print:hidden">
     <a href="/admitcards" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }" class="btn bg-slate-500 text-white hover:bg-slate-600">Back</a>
     <button type="button" onclick="window.print();" class="btn bg-emerald-500 text-white hover:bg-emerald-600">Print</button>
 </div>
+<?php endif; ?>
 
 <script src="/assets/js/vendor/qrcode.min.js"></script>
 <script>

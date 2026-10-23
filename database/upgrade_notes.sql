@@ -186,3 +186,40 @@ WHERE p.`name` = 'student-approve'
       SELECT 1 FROM `role_has_permissions` x
       WHERE x.`permission_id` = p.`id` AND x.`role_id` = 5
   );
+
+-- ---------------------------------------------------------------
+-- Shared white-label authority branding. Run this once on existing installs.
+-- ---------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `branding_settings` (
+  `id` tinyint unsigned NOT NULL DEFAULT 1,
+  `authority_name` varchar(255) NOT NULL DEFAULT 'Bangladesh Kindergarten Association',
+  `short_name` varchar(100) NOT NULL DEFAULT 'BKABD',
+  `app_name` varchar(160) NOT NULL DEFAULT 'BKABD Exam',
+  `exam_name` varchar(160) NOT NULL DEFAULT 'Scholarship Examination',
+  `registration_label` varchar(100) NOT NULL DEFAULT 'Govt. Reg. No.',
+  `registration_no` varchar(160) NOT NULL DEFAULT 'S-1028/98',
+  `address` varchar(500) NOT NULL DEFAULT '59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh',
+  `phone` varchar(255) NOT NULL DEFAULT '+88-02-224458009',
+  `email` varchar(255) NOT NULL DEFAULT 'infobkabd@gmail.com, info@bkabd.com',
+  `website` varchar(500) NOT NULL DEFAULT 'www.bkabd.com, www.bka.com.bd, www.bka.org.bd',
+  `copyright_text` varchar(255) NOT NULL DEFAULT 'All Rights Reserved.',
+  `developer_credit` varchar(255) NOT NULL DEFAULT 'Developed by Web Space IT',
+  `chairman_name` varchar(160) NOT NULL DEFAULT 'MONOWARA BHUIYAN',
+  `chairman_title` varchar(100) NOT NULL DEFAULT 'Chairman',
+  `general_secretary_name` varchar(160) NOT NULL DEFAULT 'MD. MIZANUR RAHMAN',
+  `general_secretary_title` varchar(100) NOT NULL DEFAULT 'General Secretary',
+  `controller_name` varchar(160) NOT NULL DEFAULT 'MD. FARUK HOSSEN',
+  `controller_title` varchar(100) NOT NULL DEFAULT 'Controller of Exam',
+  `education_secretary_name` varchar(160) NOT NULL DEFAULT 'MD. ABDUL ALIM',
+  `education_secretary_title` varchar(100) NOT NULL DEFAULT 'Education Secretary',
+  `logo_path` varchar(500) NOT NULL DEFAULT '',
+  `header_image_path` varchar(500) NOT NULL DEFAULT '',
+  `footer_image_path` varchar(500) NOT NULL DEFAULT '',
+  `favicon_path` varchar(500) NOT NULL DEFAULT '',
+  `watermark_path` varchar(500) NOT NULL DEFAULT '',
+  `pattern_path` varchar(500) NOT NULL DEFAULT '',
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `branding_settings` (`id`) VALUES (1);

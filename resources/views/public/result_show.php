@@ -37,7 +37,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
        painted on top of it (see .rs-inner) so neither hides the other. */
     #result-sheet {
         padding: .4125rem;
-        background-image: url("<?= asset_v('/assets/img/result/pattern.png') ?>");
+        background-image: url("<?= brand_asset('pattern_path', '/assets/img/result/pattern.png') ?>");
         background-repeat: repeat;
         background-position: 0 0;
         background-size: 424px 424px;
@@ -45,7 +45,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 
     /* Watermark logo, centred and painted over the pattern. */
     .rs-inner {
-        background-image: url("<?= asset_v('/assets/img/result/water-mark.webp') ?>");
+        background-image: url("<?= brand_asset('watermark_path', '/assets/img/result/for-registration.png') ?>");
         background-repeat: no-repeat;
         background-position: center center;
         background-size: 400px 400px;
@@ -111,13 +111,13 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 <div class="mx-auto max-w-4xl px-3 py-6 print:max-w-none print:px-0 print:py-0">
     <div id="result-sheet" class="border-2 border-black bg-white">
         <div class="rs-inner border-2 border-black p-3 sm:p-4">
-        <img src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD" class="mx-auto block w-20 rounded-full">
+        <img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>" class="mx-auto block w-20 rounded-full">
 
-        <h1 class="rs-org mt-2 text-center font-bold">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
-        <p class="rs-regno text-center font-semibold">Govt. Reg. No.: S-1028/98</p>
+        <h1 class="rs-org mt-2 text-center font-bold"><?= e(brand('authority_name')) ?></h1>
+        <p class="rs-regno text-center font-semibold"><?= e(brand('registration_label')) ?>: <?= e(brand('registration_no')) ?></p>
         <p class="rs-contact my-3 text-center leading-relaxed mt-1 mb-1">
-            59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009<br>
-            Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd
+            <?= e(brand('address')) ?><?= brand('phone') !== '' ? ', Mobile: ' . e(brand('phone')) : '' ?><br>
+            <?= brand('email') !== '' ? 'Email: ' . e(brand('email')) : '' ?><?= brand('website') !== '' ? ', Web: ' . e(brand('website')) : '' ?>
         </p>
 
         <hr class="rs-rule">
@@ -230,10 +230,10 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
         <table class="sig-tbl mt-6 w-full text-[10px] sm:text-xs">
             <tr>
                 <?php foreach ([
-                    ['chairman',           'MONOWARA BHUIYAN',   'Chairman'],
-                    ['general_secretary',  'MD. MIZANUR RAHMAN', 'General Secretary'],
-                    ['controller',         'MD. FARUK HOSSEN',  'Controller of Exam'],
-                    ['education_secretary','MD. ABDUL ALIM',    'Education Secretary'],
+                    ['chairman',           brand('chairman_name'), brand('chairman_title')],
+                    ['general_secretary',  brand('general_secretary_name'), brand('general_secretary_title')],
+                    ['controller',         brand('controller_name'), brand('controller_title')],
+                    ['education_secretary', brand('education_secretary_name'), brand('education_secretary_title')],
                 ] as [$signKey, $signName, $signRole]): ?>
                 <td>
                     <div class="sig-img"><img src="<?= e(result_signature($signKey)) ?>" alt=""></div>
@@ -249,7 +249,7 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 
         <div class="mt-4 text-center text-[13px] leading-6">
             <span class="text-sm"><b>Note:</b> Any kind of objection this result should be reported to the authority within 7 days of published.</span><br>
-            <span class="text-xs">&copy; Copyright 1984 - <?= date('Y') ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by BKABD</span>
+            <span class="text-xs">&copy; <?= date('Y') ?> <?= e(brand('authority_name')) ?>. <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?></span>
         </div>
 
         <div class="mt-2 flex w-full justify-between text-[11px]">

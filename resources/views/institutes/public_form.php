@@ -8,11 +8,13 @@
  * @var array $divisions rows: id, name
  */
 $val = fn(string $f, string $d = '') => (string) ($old[$f] ?? $d);
+$mainWebsite = trim(explode(',', brand('website'))[0] ?? '');
+if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWebsite = 'https://' . $mainWebsite; }
 ?>
 <div class="max-w-4xl mx-auto px-4 py-6">
     <div class="mb-5 text-center text-xs leading-relaxed text-slate-500">
-        <p><b>59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009</b></p>
-        <p><b>Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com/www.bka.com.bd/www.bka.org.bd</b></p>
+        <p><b><?= e(brand('address')) ?><?= brand('phone') !== '' ? ', Mobile: ' . e(brand('phone')) : '' ?></b></p>
+        <p><b><?= brand('email') !== '' ? 'Email: ' . e(brand('email')) : '' ?><?= brand('website') !== '' ? ', Web: ' . e(brand('website')) : '' ?></b></p>
     </div>
 
     <div class="card rounded-3xl border-dashed">
@@ -209,7 +211,7 @@ $val = fn(string $f, string $d = '') => (string) ($old[$f] ?? $d);
     </div>
 
     <p class="mt-5 text-center">
-        <a href="https://www.bkabd.com" class="btn btn-dark btn-sm">Go to Main Website</a>
+        <?php if ($mainWebsite !== ''): ?><a href="<?= e($mainWebsite) ?>" class="btn btn-dark btn-sm">Go to <?= e(brand('authority_name')) ?> Website</a><?php endif; ?>
     </p>
 </div>
 

@@ -31,7 +31,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
                     </div>
                     <div class="min-w-0">
                         <h1 class="text-2xl font-bold text-white tracking-tight">Student Registration</h1>
-                        <p class="text-sm text-emerald-100/90 mt-1">Register a new examinee for the BKABD Scholarship Examination.</p>
+                        <p class="text-sm text-emerald-100/90 mt-1">Register a new examinee for the <?= e(brand('short_name')) ?> <?= e(brand('exam_name')) ?>.</p>
                     </div>
                 </div>
                 <div class="shrink-0 flex sm:flex-col items-center sm:items-end gap-2">

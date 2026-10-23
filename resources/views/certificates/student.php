@@ -13,8 +13,8 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <link rel="icon" type="image/png" href="/assets/img/result/logo.png?v=<?= (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png') ?>">
-    <title>BKABD — Student Certificate</title>
+    <link rel="icon" href="<?= e(brand_asset('favicon_path', '/assets/img/result/logo.png')) ?>">
+    <title><?= e(brand('short_name')) ?> — Student Certificate</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: "Monotype Corsiva", cursive; margin: 0; }
@@ -48,8 +48,8 @@
                 Mr. <u><?= e($s['father_name']) ?></u> and Mrs. <u><?= e($s['mother_name']) ?></u>,
                 Class <u><?= e(ClassName((int) $s['class'])) ?></u>, Roll No. <u><?= e($s['roll']) ?></u>,
                 Reg. No. <u><?= e($s['registration']) ?></u> is a student of
-                <u><?= e($s['institute_name'] ?? '') ?></u>. He/She appeared at the Bangladesh Kindergarten
-                Association Scholarship Examination <u><?= e($s['session']) ?></u> and obtained
+                <u><?= e($s['institute_name'] ?? '') ?></u>. He/She appeared at the <?= e(brand('authority_name')) ?>
+                <?= e(brand('authority_name')) ?> <?= e(brand('exam_name')) ?> <u><?= e($s['session']) ?></u> and obtained
                 <u><?= e(GradeName((int) $s['grade'])) ?> <?= (int) $s['ml'] !== 0 ? '(' . e(MeritName((int) $s['ml'])) . ')' : '' ?></u>
                 Grade.<br>
                 We wish his/her all success in life.<br>

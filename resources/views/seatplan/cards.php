@@ -17,8 +17,8 @@ $pages = array_chunk($students, 8);
         .toolbar button { border: 0; border-radius: 5px; padding: 9px 18px; color: #fff; background: #087443; font-weight: 700; cursor: pointer; }
         .sheet { width: 202mm; height: 288mm; margin: 12px auto; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 2.5mm; background: #fff; }
         .sheet.page-break { page-break-after: always; break-after: page; }
-        .seat-card { position: relative; isolation: isolate; min-width: 0; min-height: 0; padding: 2mm 2.5mm 1.7mm; border: .65mm solid #111; display: flex; flex-direction: column; overflow: hidden; background: url("<?= e(asset_v('/assets/img/result/pattern.png')) ?>") repeat; background-size: 88mm 88mm; }
-        .seat-card::before { content: ""; position: absolute; z-index: 0; inset: 0; background: url("<?= e(asset_v('/assets/img/result/for-registration.png')) ?>") no-repeat center center / 43.2mm 43.2mm; opacity: .35; pointer-events: none; }
+        .seat-card { position: relative; isolation: isolate; min-width: 0; min-height: 0; padding: 2mm 2.5mm 1.7mm; border: .65mm solid #111; display: flex; flex-direction: column; overflow: hidden; background: url("<?= e(brand_asset('pattern_path', '/assets/img/result/pattern.png')) ?>") repeat; background-size: 88mm 88mm; }
+        .seat-card::before { content: ""; position: absolute; z-index: 0; inset: 0; background: url("<?= e(brand_asset('watermark_path', '/assets/img/result/for-registration.png')) ?>") no-repeat center center / 43.2mm 43.2mm; opacity: .35; pointer-events: none; }
         .seat-card > * { position: relative; z-index: 1; }
         .card-head { position: relative; min-height: 13mm; padding: 0 1mm 1mm 13mm; text-align: center; border-bottom: .25mm solid #065f46; }
         .card-head img { position: absolute; left: 0; top: .5mm; width: 11mm; height: 11mm; object-fit: contain; }
@@ -51,10 +51,10 @@ $pages = array_chunk($students, 8);
         <?php foreach ($page as $student): ?>
             <article class="seat-card">
                 <header class="card-head">
-                    <img src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD logo">
-                    <h1 class="association">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
-                    <div class="reg">Govt. Reg. No.: S-1028/98</div>
-                    <div class="session">Scholarship Examination - <?= e($session) ?></div>
+                    <img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?> logo">
+                    <h1 class="association"><?= e(brand('authority_name')) ?></h1>
+                    <div class="reg"><?= e(brand('registration_label')) ?>: <?= e(brand('registration_no')) ?></div>
+                    <div class="session"><?= e(brand('exam_name')) ?> - <?= e($session) ?></div>
                 </header>
                 <div class="pill">Seat Arrangement</div>
                 <div class="details">
@@ -70,11 +70,11 @@ $pages = array_chunk($students, 8);
                 <footer class="signatures">
                     <div class="sign">
                         <img src="<?= e(result_signature('controller')) ?>" alt="">
-                        <span>Controller of Exam</span>
+                        <span><?= e(brand('controller_title')) ?></span>
                     </div>
                     <div class="sign">
                         <img src="<?= e(result_signature('education_secretary')) ?>" alt="">
-                        <span>Education Secretary</span>
+                        <span><?= e(brand('education_secretary_title')) ?></span>
                     </div>
                 </footer>
             </article>

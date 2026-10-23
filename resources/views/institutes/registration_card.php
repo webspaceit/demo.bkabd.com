@@ -21,9 +21,9 @@ $declaration = "I here by declare that, If this/My educational institution recog
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <link rel="icon" type="image/png" href="/assets/img/result/logo.png?v=<?= (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png') ?>">
+    <link rel="icon" href="<?= e(brand_asset('favicon_path', '/assets/img/result/logo.png')) ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= e($institute['name'] ?? 'Institute Registration Card') ?> — BKABD</title>
+    <title><?= e($institute['name'] ?? 'Institute Registration Card') ?> — <?= e(brand('short_name')) ?></title>
     <style>
         body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; }
         .content { border: 2px solid #333; margin: 10px; }
@@ -52,14 +52,16 @@ $declaration = "I here by declare that, If this/My educational institution recog
 <div class="no-print"><button type="button" onclick="window.print()">Click to Print</button></div>
 <div class="content">
     <div class="inner">
+        <?php if (brand('header_image_path') !== ''): ?><img src="<?= e(brand_asset('header_image_path', '')) ?>" alt="" style="display:block;max-width:100%;height:auto;margin:0 auto 8px"><?php endif; ?>
         <div class="date">Date of Registration : <?= e(DateFormat($institute['created_at'] ?? '', 'd-m-Y')) ?><br><br>
             <span>Thank You, Your Membership Registration has been completed successfully.<br>
             You must print and save the Membership Registration Card.</span>
         </div>
-        <h1>BANGLADESH KINDERGARTEN ASSOCIATION</h1>
-        <h2>Govt. Reg. No.: S-1028/98</h2>
-        <p class="contact">59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009<br>
-            Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd</p>
+        <img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>" style="display:block;width:70px;height:70px;object-fit:contain;margin:0 auto">
+        <h1><?= e(brand('authority_name')) ?></h1>
+        <h2><?= e(brand('registration_label')) ?>: <?= e(brand('registration_no')) ?></h2>
+        <p class="contact"><?= e(brand('address')) ?><?= brand('phone') !== '' ? ', Mobile: ' . e(brand('phone')) : '' ?><br>
+            <?= brand('email') !== '' ? 'Email: ' . e(brand('email')) : '' ?><?= brand('website') !== '' ? ', Web: ' . e(brand('website')) : '' ?></p>
         <div class="banner">Membership/Institute Registration Card</div>
         <div class="certno">Membership Certificate No. - <?= e($institute['certificate_no'] ?? '') ?></div>
         <table>
@@ -80,7 +82,8 @@ $declaration = "I here by declare that, If this/My educational institution recog
         </table>
         <hr>
         <p class="note"><b>Note:</b> <?= e($validityNote) ?></p>
-        <span class="copy">&copy; Copyright 1984 - <?= e(date('Y')) ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by BKABD</span>
+        <?php if (brand('footer_image_path') !== ''): ?><img src="<?= e(brand_asset('footer_image_path', '')) ?>" alt="" style="display:block;max-width:100%;height:auto;margin:8px auto 0"><?php endif; ?>
+        <span class="copy">&copy; <?= e(date('Y')) ?> <?= e(brand('authority_name')) ?>. <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?></span>
     </div>
 </div>
 </body>

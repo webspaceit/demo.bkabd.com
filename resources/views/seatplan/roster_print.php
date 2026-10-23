@@ -15,7 +15,7 @@ $printDate = date('d-m-Y');
         body { background: #e9eef4; }
         .toolbar { position: sticky; z-index: 2; top: 0; padding: 10px; text-align: center; background: #172033; }
         .toolbar button { border: 0; border-radius: 5px; padding: 9px 18px; color: #fff; background: #087443; font-weight: 700; cursor: pointer; }
-        .sheet { position: relative; width: 194mm; min-height: 281mm; margin: 12px auto; padding: 3mm; border: 2px solid #111; background: url("<?= e(asset_v('/assets/img/result/pattern.png')) ?>") repeat; background-size: 92mm 92mm; box-shadow: 0 2px 10px #0003; }
+        .sheet { position: relative; width: 194mm; min-height: 281mm; margin: 12px auto; padding: 3mm; border: 2px solid #111; background: url("<?= e(brand_asset('pattern_path', '/assets/img/result/pattern.png')) ?>") repeat; background-size: 92mm 92mm; box-shadow: 0 2px 10px #0003; }
         .inner { position: relative; min-height: 273mm; padding: 3mm; border: 2px solid #111; background: rgba(255,255,255,.42); }
         .watermark { position: absolute; z-index: 0; top: 50%; left: 50%; width: 100mm; height: 100mm; transform: translate(-50%, -50%); object-fit: contain; opacity: 1; pointer-events: none; }
         .content { position: relative; z-index: 1; }
@@ -51,20 +51,20 @@ $printDate = date('d-m-Y');
 <div class="toolbar"><button type="button" onclick="window.print()">Print Seat Plan</button></div>
 <main class="sheet">
     <div class="inner">
-        <img class="watermark" src="<?= e(asset_v('/assets/img/result/for-registration.png')) ?>" alt="">
+        <img class="watermark" src="<?= e(brand_asset('watermark_path', '/assets/img/result/for-registration.png')) ?>" alt="">
         <div class="content">
             <header class="banner">
-                <img class="logo" src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD">
+                <img class="logo" src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>">
                 <div class="brand">
-                    <h1>BANGLADESH KINDERGARTEN ASSOCIATION</h1>
-                    <div class="gov">Govt. Reg. No.: S-1028/98</div>
+                    <h1><?= e(brand('authority_name')) ?></h1>
+                    <div class="gov"><?= e(brand('registration_label')) ?>: <?= e(brand('registration_no')) ?></div>
                     <div class="contact">
-                        59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009<br>
-                        Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd
+                        <?= e(brand('address')) ?><?= brand('phone') !== '' ? ', Mobile: ' . e(brand('phone')) : '' ?><br>
+                        <?= brand('email') !== '' ? 'Email: ' . e(brand('email')) : '' ?><?= brand('website') !== '' ? ', Web: ' . e(brand('website')) : '' ?>
                     </div>
                 </div>
             </header>
-            <h2 class="exam-title">Scholarship Examination - <?= e($session) ?></h2>
+                <h2 class="exam-title"><?= e(brand('exam_name')) ?> - <?= e($session) ?></h2>
             <div class="badge">Seat Plan</div>
             <div class="summary">Class: <?= e($className) ?> &nbsp; | &nbsp; Center: <?= e($centerName) ?> &nbsp; | &nbsp; Total: <?= count($students) ?></div>
             <table>
@@ -94,7 +94,7 @@ $printDate = date('d-m-Y');
                 <?php endforeach; ?>
                 </tbody>
             </table>
-            <div class="foot"><span>Print Date: <?= e($printDate) ?></span><span>Bangladesh Kindergarten Association</span></div>
+            <div class="foot"><span>Print Date: <?= e($printDate) ?></span><span><?= e(brand('authority_name')) ?></span></div>
         </div>
     </div>
 </main>

@@ -619,6 +619,30 @@ final class AdmitCardController extends Controller
                   </div>
               </div>';
         }
+        $brandPhone = brand('phone');
+        $brandEmail = brand('email');
+        $brandWebsite = brand('website');
+        $str = str_replace(
+            [
+                'src="/logo2.png"',
+                'BANGLADESH KINDERGARTEN ASSOCIATION',
+                'Govt. Reg. No.: S-1028/98',
+                '59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009',
+                'Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com/www.bka.com.bd/www.bka.org.bd',
+                'Scholarship Examination - ',
+                '© Copyright 1984 - ' . e($activeSession) . ' Bangladesh Kindergarten Association. All Rights Reserved. Developed by BKABD',
+            ],
+            [
+                'src="' . e(brand_asset('logo_path', '/assets/img/result/logo.png')) . '"',
+                e(brand('authority_name')),
+                e(brand('registration_label')) . ': ' . e(brand('registration_no')),
+                e(brand('address')) . ($brandPhone !== '' ? ', Mobile: ' . e($brandPhone) : ''),
+                ($brandEmail !== '' ? 'Email: ' . e($brandEmail) : '') . ($brandWebsite !== '' ? ', Web: ' . e($brandWebsite) : ''),
+                e(brand('exam_name')) . ' - ',
+                '© ' . date('Y') . ' ' . e(brand('authority_name')) . '. ' . e(brand('copyright_text')) . ' ' . e(brand('developer_credit')),
+            ],
+            $str
+        );
         return $str;
     }
 

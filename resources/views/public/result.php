@@ -21,8 +21,8 @@ $fieldError = function (string $field) use ($errors): string {
     return '<p class="' . $cls . '" data-error-for="' . $field . '">' . e(implode(' ', $msgs)) . '</p>';
 };
 $fallbackUsed = (string) $val('session_id') !== '' || (string) $val('roll') !== '' || (string) $val('class') !== '';
-$logoV = (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png');
-$hdrV = (int) @filemtime(BASE_PATH . '/public/assets/img/result/header.png');
+$mainWebsite = trim(explode(',', brand('website'))[0] ?? '');
+if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWebsite = 'https://' . $mainWebsite; }
 ?>
 <div class="bg-gradient-to-b from-emerald-50 via-slate-50 to-slate-100">
     <div class="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12">
@@ -30,14 +30,14 @@ $hdrV = (int) @filemtime(BASE_PATH . '/public/assets/img/result/header.png');
         <!-- Branded hero -->
         <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70">
             <div class="bg-gradient-to-r from-emerald-800 via-emerald-700 to-emerald-600 px-6 py-7 text-center text-white">
-                <img src="/assets/img/result/logo.png?v=<?= $logoV ?>" alt="BKABD"
+                <img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>"
                      class="mx-auto mb-3 h-16 w-16 rounded-full bg-white object-contain shadow-sm ring-2 ring-white/50">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/90">Bangladesh Kindergarten Association</p>
-                <h1 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Scholarship Exam Result</h1>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/90"><?= e(brand('authority_name')) ?></p>
+                <h1 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl"><?= e(brand('exam_name')) ?> Result</h1>
                 <p class="mx-auto mt-2 max-w-md text-sm text-emerald-50/90">Enter your registration number to view the published result.</p>
             </div>
             <!-- <div class="bg-white px-4 py-4 text-center sm:px-6">
-                <img src="/assets/img/result/header.png?v=<?= $hdrV ?>" alt="BKABD"
+                <img src="<?= e(brand_asset('header_image_path', '/assets/img/result/header.png')) ?>" alt="<?= e(brand('short_name')) ?>"
                      class="mx-auto block w-full" width="1920" height="184">
             </div> -->
         </div>
@@ -138,20 +138,20 @@ $hdrV = (int) @filemtime(BASE_PATH . '/public/assets/img/result/header.png');
         <div class="mt-6 grid gap-3 rounded-2xl bg-white/70 px-6 py-5 text-center text-xs text-slate-500 ring-1 ring-slate-200/70 sm:grid-cols-3 sm:text-left">
             <div class="flex items-start justify-center gap-2 sm:justify-start">
                 <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                <span>59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh</span>
+                <span><?= e(brand('address')) ?></span>
             </div>
             <div class="flex items-start justify-center gap-2 sm:justify-start">
                 <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="m4 6 8 6 8-6"/></svg>
-                <span>infobkabd@gmail.com, info@bkabd.com</span>
+                <span><?= e(brand('email')) ?></span>
             </div>
             <div class="flex items-start justify-center gap-2 sm:justify-start">
                 <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18Z"/></svg>
-                <span>www.bkabd.com &middot; www.bka.org.bd</span>
+                <span><?= e(brand('website')) ?></span>
             </div>
         </div>
 
         <p class="mt-6 text-center">
-            <a href="https://www.bkabd.com" class="btn btn-dark btn-sm">Go to Main Website</a>
+            <?php if ($mainWebsite !== ''): ?><a href="<?= e($mainWebsite) ?>" class="btn btn-dark btn-sm">Go to <?= e(brand('authority_name')) ?> Website</a><?php endif; ?>
         </p>
     </div>
 </div>

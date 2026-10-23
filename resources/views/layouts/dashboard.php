@@ -55,6 +55,7 @@ $nav = [
         ['Session', '/sessions', 'session-list', 'calendar-clock'],
         ['Manage User', '/userrole', 'role-list', 'shield'],
         ['Settings', '/settings', 'settings', 'settings'],
+        ['Branding', '/settings/branding', 'settings', 'settings'],
         ['Mark Distribution', '/mark-distributions', 'mark-distributions', 'sliders'],
         ['Role Place', '/role-place', 'role-place', 'key'],
     ]],
@@ -144,13 +145,13 @@ $activeSession = Auth::activeSession();
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <link rel="icon" type="image/png" href="/assets/img/result/logo.png?v=<?= (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png') ?>">
+    <link rel="icon" href="<?= e(brand_asset('favicon_path', '/assets/img/result/logo.png')) ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
-    <title><?= e($title ?? 'Dashboard') ?> | <?= e(\App\Core\Config::get('APP_NAME', 'BKABD')) ?></title>
+    <title><?= e($title ?? 'Dashboard') ?> | <?= e(brand('app_name', \App\Core\Config::get('APP_NAME', 'BKABD'))) ?></title>
     <link rel="stylesheet" href="/assets/css/app.css?v=<?= (int) @filemtime(__DIR__ . '/../../../public/assets/css/app.css') ?>">
 <?php foreach ((array) ($pageStyles ?? []) as $href): ?>
     <link rel="stylesheet" href="<?= e($href) ?>">
@@ -166,10 +167,8 @@ $activeSession = Auth::activeSession();
            aria-label="Main navigation">
         <div class="flex flex-col">
             <div class="flex items-center gap-3 px-3 mb-5">
-                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center border border-white/30 shrink-0">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/></svg>
-                </div>
-                <span class="text-xl font-bold tracking-tight text-white whitespace-nowrap">BKABD Exam</span>
+                <img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>" class="w-8 h-8 rounded-lg object-contain bg-white/20 border border-white/30 shrink-0">
+                <span class="text-xl font-bold tracking-tight text-white whitespace-nowrap"><?= e(brand('app_name', 'BKABD Exam')) ?></span>
             </div>
 
             <div class="px-3 pr-5 mb-4">
@@ -273,7 +272,7 @@ $activeSession = Auth::activeSession();
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
                 <nav class="flex items-center text-sm font-medium text-slate-500 gap-2 min-w-0" aria-label="Breadcrumb">
-                    <span class="hidden sm:inline">BKABD</span>
+                    <span class="hidden sm:inline"><?= e(brand('short_name', 'BKABD')) ?></span>
                     <svg class="hidden sm:inline w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
                     <span class="text-slate-800 font-semibold truncate"><?= e($title ?? 'Dashboard') ?></span>
                 </nav>
@@ -350,7 +349,7 @@ $activeSession = Auth::activeSession();
         <?= $content ?>
 
         <footer class="pt-6 pb-2 text-xs text-slate-400">
-            &copy; <?= date('Y') ?> BKABD Scholarship Exam — All rights reserved.
+            &copy; <?= date('Y') ?> <?= e(brand('authority_name')) ?> <?= e(brand('app_name')) ?> — <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?>
         </footer>
     </main>
 </div>

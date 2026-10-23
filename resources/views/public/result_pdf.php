@@ -31,8 +31,8 @@ $img = static function (string $url): string {
 };
 
 // Pre-faded logo watermark, as a forward-slash path (CSS url() treats "\" as an escape).
-$wmUrl = str_replace('\\', '/', $img('/assets/img/result/water-mark.webp'));
-$patUrl = str_replace('\\', '/', $img('/assets/img/result/pattern.png'));
+$wmUrl = str_replace('\\', '/', $img(brand('watermark_path') !== '' ? brand('watermark_path') : '/assets/img/result/for-registration.png'));
+$patUrl = str_replace('\\', '/', $img(brand('pattern_path') !== '' ? brand('pattern_path') : '/assets/img/result/pattern.png'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -88,16 +88,16 @@ $patUrl = str_replace('\\', '/', $img('/assets/img/result/pattern.png'));
 <body>
 <div class="sheet">
 <div class="inner">
-    <div class="center"><img class="logo" src="<?= e($img('/assets/img/result/logo.png')) ?>" alt="BKABD"></div>
-    <h1 class="center">BANGLADESH KINDERGARTEN ASSOCIATION</h1>
-    <div class="center regno">Govt. Reg. No.: S-1028/98</div>
+    <div class="center"><img class="logo" src="<?= e($img(brand('logo_path') !== '' ? brand('logo_path') : '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>"></div>
+    <h1 class="center"><?= e(brand('authority_name')) ?></h1>
+    <div class="center regno"><?= e(brand('registration_label')) ?>: <?= e(brand('registration_no')) ?></div>
     <div class="center contact">
-        59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009<br>
-        Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd
+        <?= e(brand('address')) ?><?= brand('phone') !== '' ? ', Mobile: ' . e(brand('phone')) : '' ?><br>
+        <?= brand('email') !== '' ? 'Email: ' . e(brand('email')) : '' ?><?= brand('website') !== '' ? ', Web: ' . e(brand('website')) : '' ?>
     </div>
 
     <div class="rule"></div>
-    <h2 class="center">SCHOLARSHIP RESULT - <?= e($student['session']) ?></h2>
+    <h2 class="center"><?= e(strtoupper(brand('exam_name'))) ?> RESULT - <?= e($student['session']) ?></h2>
 
     <div class="bar">Student Details Information</div>
 
@@ -154,10 +154,10 @@ $patUrl = str_replace('\\', '/', $img('/assets/img/result/pattern.png'));
     <table class="sig">
         <tr>
             <?php foreach ([
-                ['chairman',           'MONOWARA BHUIYAN',   'Chairman'],
-                ['general_secretary',  'MD. MIZANUR RAHMAN', 'General Secretary'],
-                ['controller',         'MD. FARUK HOSSEN',  'Controller of Exam'],
-                ['education_secretary','MD. ABDUL ALIM',    'Education Secretary'],
+                ['chairman',           brand('chairman_name'), brand('chairman_title')],
+                ['general_secretary',  brand('general_secretary_name'), brand('general_secretary_title')],
+                ['controller',         brand('controller_name'), brand('controller_title')],
+                ['education_secretary', brand('education_secretary_name'), brand('education_secretary_title')],
             ] as [$signKey, $signName, $signRole]): ?>
             <td>
                 <div class="sig-img"><img src="<?= e($img(result_signature($signKey))) ?>" alt=""></div>
@@ -172,7 +172,7 @@ $patUrl = str_replace('\\', '/', $img('/assets/img/result/pattern.png'));
 
     <div class="note">
         <b>Note:</b> Any kind of objection this result should be reported to the authority within 7 days of published.<br>
-        &copy; Copyright 1984 - <?= date('Y') ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by BKABD
+        &copy; <?= date('Y') ?> <?= e(brand('authority_name')) ?>. <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?>
     </div>
 
     <table class="dates">

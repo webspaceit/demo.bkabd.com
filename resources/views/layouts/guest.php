@@ -8,19 +8,19 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <link rel="icon" type="image/png" href="/assets/img/result/logo.png?v=<?= (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png') ?>">
+    <link rel="icon" href="<?= e(brand_asset('favicon_path', '/assets/img/result/logo.png')) ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
-    <title><?= e($title ?? 'Login') ?> | <?= e(\App\Core\Config::get('APP_NAME', 'BKABD')) ?></title>
+    <title><?= e($title ?? 'Login') ?> | <?= e(brand('app_name', \App\Core\Config::get('APP_NAME', 'BKABD'))) ?></title>
     <link rel="stylesheet" href="/assets/css/app.css?v=<?= (int) @filemtime(__DIR__ . '/../../../public/assets/css/app.css') ?>">
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col">
 <header class="bg-slate-900 text-white">
     <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-        <a href="/" class="text-lg font-bold tracking-wide">BKABD <span class="text-emerald-400">Exam</span></a>
+        <a href="/" class="flex items-center gap-2 text-lg font-bold tracking-wide"><img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="" class="h-8 w-8 object-contain"><span><?= e(brand('app_name', 'BKABD Exam')) ?></span></a>
         <nav class="flex items-center gap-4 text-sm">
             <a href="/scholarship-result" class="hover:text-emerald-400">Results</a>
             <?php if (empty($hideLoginLink)): ?>
@@ -33,7 +33,7 @@
     <?= $content ?>
 </main>
 <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-    &copy; <?= date('Y') ?> BKABD Scholarship Exam
+    &copy; <?= date('Y') ?> <?= e(brand('authority_name')) ?> <?= e(brand('app_name')) ?> — <?= e(brand('copyright_text')) ?>
 </footer>
 <div id="toast-stack" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 <script src="/assets/js/app.js?v=<?= (int) @filemtime(__DIR__ . '/../../../public/assets/js/app.js') ?>"></script>

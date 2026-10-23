@@ -2494,6 +2494,22 @@ input[type=radio]:focus {
     padding-bottom: .55rem
 }
 
+.filter-record-count {
+    display: inline-flex;
+    align-items: center;
+    margin-left: .2rem;
+    padding: .12rem .38rem;
+    border: 1px solid #86efac;
+    border-radius: 9999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: .62rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: .01em;
+    vertical-align: middle;
+}
+
 /* Searchable Center selectors keep their native select for existing form logic. */
 .bk-center-picker {
     position: relative;

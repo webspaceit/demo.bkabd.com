@@ -10,8 +10,8 @@ $inst = $institute;
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <link rel="icon" type="image/png" href="/assets/img/result/logo.png?v=<?= (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png') ?>">
-    <title>BKABD — Institute Certificate</title>
+    <link rel="icon" href="<?= e(brand_asset('favicon_path', '/assets/img/result/logo.png')) ?>">
+    <title><?= e(brand('short_name')) ?> — Institute Certificate</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: "Monotype Corsiva", cursive; margin: 0; }
@@ -31,12 +31,12 @@ $inst = $institute;
     <div class="clear"></div>
     <div class="main-body">
         This is to certify that <u><b><?= e($inst['name']) ?></b></u> address is
-        <u><?= e($inst['address'] ?? '') ?></u> is the Registered member of Bangladesh Kindergarten Association
+        <u><?= e($inst['address'] ?? '') ?></u> is the Registered member of <?= e(brand('authority_name')) ?>
         <u><?= e($inst['director_name'] ?? '') ?></u>
         is the Founder/Director /Principal/Headmaster of this institution. It is established in
         <u><?= e($inst['established_date'] ?? '') ?></u>.
         The Education System, Syllabus, Curriculum &amp; Management system of this institution is controlled by
-        Bangladesh Kindergarten Association.
+        <?= e(brand('authority_name')) ?>.
         The membership registration number of this institution is <u><?= e($inst['certificate_no'] ?? '') ?></u>.
         The Validity time of this certificate is <u><?= e(date('d-m-Y', strtotime($inst['validity_date']))) ?></u>
         and the last renewal date is <u><?= e(empty($inst['last_renewal_date']) ? '' : date('d-m-Y', strtotime($inst['last_renewal_date']))) ?></u>.<br>

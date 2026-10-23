@@ -3,6 +3,8 @@
  * Admit Cards index page
  */
 $classes = [1, 2, 3, 4, 5, 6];
+$centerCount = count((array) ($centers ?? []));
+$instituteCount = count((array) ($institutes ?? []));
 ?>
 <div class="space-y-4">
     <div class="card" id="admitcard-list">
@@ -22,6 +24,27 @@ $classes = [1, 2, 3, 4, 5, 6];
             </div>
         </div>
         <div class="card-body space-y-4">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div id="selected-center-summary" class="hidden flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3" role="status" aria-live="polite">
+                <div class="min-w-0">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Selected Center</p>
+                    <p id="selected-center-name" class="mt-0.5 truncate text-sm font-semibold text-emerald-950"></p>
+                </div>
+                <div class="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">
+                    <span id="selected-center-student-count">…</span> active students
+                </div>
+            </div>
+            <div id="selected-institute-summary" class="hidden flex flex-wrap items-center justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3" role="status" aria-live="polite">
+                <div class="min-w-0">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">Selected Institute</p>
+                    <p id="selected-institute-name" class="mt-0.5 truncate text-sm font-semibold text-teal-950"></p>
+                </div>
+                <div class="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-teal-800 ring-1 ring-teal-200">
+                    <span id="selected-institute-student-count">…</span> active students
+                </div>
+            </div>
+            </div>
 
             <!-- Filter bar — same style as students list -->
             <div class="filter-bar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -44,13 +67,13 @@ $classes = [1, 2, 3, 4, 5, 6];
                             <option value="<?= (int) $c['id'] ?>"><?= e($c['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-center">Center</label>
+                    <label for="f-center">Center <span class="filter-record-count" id="center-record-count" title="Available centers"><?= $centerCount ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-institute" class="w-full">
                         <option value="">All Institutes</option>
                     </select>
-                    <label for="f-institute">Institute</label>
+                    <label for="f-institute">Institute <span class="filter-record-count" id="institute-record-count" data-total-count="<?= $instituteCount ?>" title="Available institutes"><?= $instituteCount ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-class" class="w-full">
@@ -107,6 +130,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnPrintCenter = document.getElementById('btn-print-center');
     const btnPrintInstitute = document.getElementById('btn-print-institute');
     const btnPrintClass = document.getElementById('btn-print-class');
+    const instituteCountEl = document.getElementById('institute-record-count');
+    const centerSummaryEl = document.getElementById('selected-center-summary');
+    const centerSummaryNameEl = document.getElementById('selected-center-name');
+    const centerSummaryCountEl = document.getElementById('selected-center-student-count');
+    const instituteSummaryEl = document.getElementById('selected-institute-summary');
+    const instituteSummaryNameEl = document.getElementById('selected-institute-name');
+    const instituteSummaryCountEl = document.getElementById('selected-institute-student-count');
     const PER_PAGE    = 20;
     const CLASS_NAMES = { 6:'KG', 1:'ONE', 2:'TWO', 3:'THREE', 4:'FOUR', 5:'FIVE' };
 
@@ -115,16 +145,60 @@ document.addEventListener('DOMContentLoaded', function () {
     let centerCountRequest = 0;
     const val = el => el ? el.value : '';
 
+    function syncInstituteRecordCount(count) {
+        if (!instituteCountEl) return;
+        const totalCount = Number(instituteCountEl.dataset.totalCount || 0);
+        const visibleCount = typeof count === 'number'
+            ? count
+            : (val(centerEl) ? Math.max(0, instituteEl.options.length - 1) : totalCount);
+        instituteCountEl.textContent = visibleCount.toLocaleString('en-US');
+        instituteCountEl.title = visibleCount + ' available institute(s)';
+    }
+
+    let instituteSummaryRequest = 0;
+    function syncInstituteSummary() {
+        const instituteId = val(instituteEl);
+        const requestId = ++instituteSummaryRequest;
+        if (!instituteSummaryEl) return;
+        instituteSummaryEl.classList.toggle('hidden', !instituteId);
+        if (!instituteId) return;
+
+        const selectedInstitute = instituteEl.options[instituteEl.selectedIndex];
+        if (instituteSummaryNameEl) instituteSummaryNameEl.textContent = selectedInstitute ? selectedInstitute.textContent.trim() : '';
+        if (instituteSummaryCountEl) instituteSummaryCountEl.textContent = '…';
+
+        BK.get(BK.qs('/api/students', {
+            session: val(sessionEl),
+            center_id: val(centerEl),
+            institute_id: instituteId,
+            status: 'active',
+            per_page: 1,
+            page: 1
+        })).then(function (json) {
+            if (requestId !== instituteSummaryRequest) return;
+            const total = Number((json.data && json.data.total) || 0);
+            if (instituteSummaryCountEl) instituteSummaryCountEl.textContent = total.toLocaleString('en-US');
+        }).catch(function () {
+            if (requestId === instituteSummaryRequest && instituteSummaryCountEl) instituteSummaryCountEl.textContent = 'unavailable';
+        });
+    }
+
     // Show/hide Print All button based on center selection
     function syncPrintBtn() {
         const cid = centerEl.value;
         const requestId = ++centerCountRequest;
+        const selectedCenter = centerEl.options[centerEl.selectedIndex];
         if (btnPrintCenter) {
             btnPrintCenter.classList.toggle('hidden', !cid);
             btnPrintCenter.dataset.centerId = cid || '0';
             btnPrintCenter.disabled = !cid;
             const count = btnPrintCenter.querySelector('[data-page-count]');
             if (count) count.textContent = cid ? '…' : '0 pages';
+        }
+        if (centerSummaryEl) {
+            centerSummaryEl.classList.toggle('hidden', !cid);
+            if (cid && centerSummaryNameEl) centerSummaryNameEl.textContent = selectedCenter ? selectedCenter.textContent.trim() : '';
+            if (cid && centerSummaryCountEl) centerSummaryCountEl.textContent = '…';
         }
         if (!cid) return;
 
@@ -137,6 +211,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })).then(function (json) {
             if (requestId !== centerCountRequest || !btnPrintCenter) return;
             const total = Number((json.data && json.data.total) || 0);
+            if (centerSummaryCountEl) centerSummaryCountEl.textContent = total.toLocaleString('en-US');
             const pages = Math.ceil(total / 2);
             const count = btnPrintCenter.querySelector('[data-page-count]');
             if (count) count.textContent = pages + (pages === 1 ? ' page' : ' pages');
@@ -148,6 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const count = btnPrintCenter.querySelector('[data-page-count]');
             if (count) count.textContent = 'count unavailable';
             btnPrintCenter.disabled = true;
+            if (centerSummaryCountEl) centerSummaryCountEl.textContent = 'unavailable';
         });
     }
 
@@ -228,7 +304,11 @@ document.addEventListener('DOMContentLoaded', function () {
     centerEl.addEventListener('change', function () {
         instituteEl.innerHTML = '<option value="">All Institutes</option>';
         const cid = centerEl.value;
-        if (!cid) return;
+        syncInstituteRecordCount(0);
+        if (!cid) {
+            syncInstituteRecordCount();
+            return;
+        }
         BK.get('/api/instituteListByCenter?center_id=' + encodeURIComponent(cid))
             .then(function (res) {
                 (res.data.instituteList || []).forEach(function (i) {
@@ -237,6 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     o.textContent = i.name || '';
                     instituteEl.appendChild(o);
                 });
+                syncInstituteRecordCount(instituteEl.options.length - 1);
             })
             .catch(() => BK.toast('Could not load institutes', 'error'));
     });
@@ -299,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Filter change triggers reload
-    [sessionEl, centerEl, instituteEl, classEl].forEach(el => el.addEventListener('change', () => { pageNum = 1; reload(); syncPrintBtn(); syncInstitutePrintBtns(); }));
+    [sessionEl, centerEl, instituteEl, classEl].forEach(el => el.addEventListener('change', () => { pageNum = 1; reload(); syncPrintBtn(); syncInstitutePrintBtns(); syncInstituteSummary(); }));
 
     // Search with debounce
     searchEl.addEventListener('input', function () {
@@ -310,5 +391,7 @@ document.addEventListener('DOMContentLoaded', function () {
     reload();
     syncPrintBtn();
     syncInstitutePrintBtns();
+    syncInstituteRecordCount();
+    syncInstituteSummary();
 });
 </script>

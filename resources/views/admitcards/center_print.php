@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="icon" type="image/png" href="/assets/img/result/logo.png?v=<?= (int) @filemtime(BASE_PATH . '/public/assets/img/result/logo.png') ?>">
+<link rel="icon" href="<?= e(brand_asset('favicon_path', '/assets/img/result/logo.png')) ?>">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title><?= e($title ?? 'Admit Cards') ?></title>
 
@@ -92,11 +92,14 @@ $row = static function (string $label, $value): string {
         . '<span class="rc-val">' . e((string)($value ?? '')) . '</span></div>';
 };
 
+$brandPhone = brand('phone');
+$brandEmail = brand('email');
+$brandWebsite = brand('website');
 $qrContent = implode("\n", [
-    'BANGLADESH KINDERGARTEN ASSOCIATION',
-    'Govt. Reg. No.: S-1028/98',
-    '59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009',
-    'Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd',
+    brand('authority_name'),
+    brand('registration_label') . ': ' . brand('registration_no'),
+    brand('address') . ($brandPhone !== '' ? ', Mobile: ' . $brandPhone : ''),
+    ($brandEmail !== '' ? 'Email: ' . $brandEmail : '') . ($brandWebsite !== '' ? ', Web: ' . $brandWebsite : ''),
 ]);
 $qrContentEscaped = e($qrContent);
 $printDate     = date('d-m-Y');
@@ -117,10 +120,10 @@ $content = file_get_contents($cssFile);
 if (preg_match('/<style>(.*?)<\/style>/s', $content, $m)) {
     $css = str_replace(
         [
-            "<?= asset_v('/assets/img/result/pattern.png') ?>",
-            "<?= asset_v('/assets/img/result/for-registration.png') ?>",
+            "<?= brand_asset('pattern_path', '/assets/img/result/pattern.png') ?>",
+            "<?= brand_asset('watermark_path', '/assets/img/result/for-registration.png') ?>",
         ],
-        ['/assets/img/result/pattern.png', '/assets/img/result/for-registration.png'],
+        [brand_asset('pattern_path', '/assets/img/result/pattern.png'), brand_asset('watermark_path', '/assets/img/result/for-registration.png')],
         $m[1]
     );
     // The source view's only PHP inside <style> controls its optional layout.
@@ -429,14 +432,17 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
         <div class="rc-page">
         <div class="reg-card border-2 border-black bg-white">
             <div class="rc-inner border-2 border-black">
+            <?php if (brand('header_image_path') !== ''): ?>
+                <img class="rc-brand-art rc-brand-art-header" src="<?= e(brand_asset('header_image_path', '')) ?>" alt="">
+            <?php endif; ?>
             <div class="rc-banner">
-                <span class="rc-logo"><img src="<?= e(asset_v('/assets/img/result/logo.png')) ?>" alt="BKABD" onerror="this.style.display='none'"></span>
+                <span class="rc-logo"><img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>" onerror="this.style.display='none'"></span>
                 <div>
-                    <h1>BANGLADESH KINDERGARTEN ASSOCIATION</h1>
-                    <p class="rc-reg">Govt. Reg. No.: S-1028/98</p>
+                    <h1><?= e(brand('authority_name')) ?></h1>
+                    <p class="rc-reg"><?= e(brand('registration_label')) ?>: <?= e(brand('registration_no')) ?></p>
                     <p class="rc-gov">
-                        59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh, Mobile: +88-02-224458009<br>
-                        Email: infobkabd@gmail.com, info@bkabd.com, Web: www.bkabd.com, www.bka.com.bd, www.bka.org.bd
+                        <?= e(brand('address')) ?><?= $brandPhone !== '' ? ', Mobile: ' . e($brandPhone) : '' ?><br>
+                        <?= $brandEmail !== '' ? 'Email: ' . e($brandEmail) : '' ?><?= $brandWebsite !== '' ? ', Web: ' . e($brandWebsite) : '' ?>
                     </p>
                 </div>
                 <div class="rc-qr">
@@ -444,7 +450,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                 </div>
             </div>
 
-            <p class="rc-exam-head">Scholarship Examination - <?= e($s['session'] ?? $session) ?></p>
+            <p class="rc-exam-head"><?= e(brand('exam_name')) ?> - <?= e($s['session'] ?? $session) ?></p>
 
             <div class="rc-top">
                 <div class="rc-tags">
@@ -508,10 +514,10 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
             <table class="sig-tbl mt-4 w-full text-[10px] sm:text-xs">
                 <tr>
                     <?php foreach ([
-                        ['chairman',            'MONOWARA BHUIYAN',   'Chairman'],
-                        ['general_secretary',   'MD. MIZANUR RAHMAN', 'General Secretary'],
-                        ['controller',          'MD. FARUK HOSSEN',   'Controller of Exam'],
-                        ['education_secretary', 'MD. ABDUL ALIM',     'Education Secretary'],
+                        ['chairman',            brand('chairman_name'), brand('chairman_title')],
+                        ['general_secretary',   brand('general_secretary_name'), brand('general_secretary_title')],
+                        ['controller',          brand('controller_name'), brand('controller_title')],
+                        ['education_secretary', brand('education_secretary_name'), brand('education_secretary_title')],
                     ] as [$signKey, $signName, $signRole]): ?>
                     <td>
                         <div class="sig-img"><img src="<?= e(result_signature($signKey)) ?>" alt=""></div>
@@ -527,9 +533,10 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 
             <p class="rc-note">
                 <b>Note:</b> This admit card is valid upto this session. Examinee must bring this card in the examination hall.<br>
-                <span class="text-xs">&copy; Copyright 1984 - <?= e($copyrightYear) ?> Bangladesh Kindergarten Association. All Rights Reserved. Developed by Web Space IT</span>
+                <span class="text-xs">&copy; <?= e($copyrightYear) ?> <?= e(brand('authority_name')) ?>. <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?></span>
             </p>
 
+            <?php if (brand('footer_image_path') !== ''): ?><img class="rc-brand-art rc-brand-art-footer" src="<?= e(brand_asset('footer_image_path', '')) ?>" alt=""><?php endif; ?>
             <div class="rc-foot">
                 <div>Print Date: <?= e($printDate) ?></div>
             </div>
