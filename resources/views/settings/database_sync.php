@@ -6,8 +6,9 @@
         </div>
         <div class="card-body space-y-5">
             <p class="text-sm leading-6 text-slate-600">
-                This is a one-way workflow: <strong>exam.bkabd.com</strong> is only inspected for table structure, and reviewed changes are applied to
-                <strong>demo.bkabd.com</strong>. No student rows or other application records are copied. The app never sends a write query to the exam connection.
+                This page compares table structures and can show the latest student registrations from <strong>exam.bkabd.com</strong>.
+                Student rows are displayed read-only and are not copied to <strong>demo.bkabd.com</strong>. Reviewed schema changes are applied to demo;
+                the app never sends a write query to the exam connection.
             </p>
 
             <div id="db-sync-setup" class="hidden rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
@@ -21,7 +22,8 @@
             <div class="grid gap-4 md:grid-cols-2">
                 <section class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
                     <h2 class="font-semibold text-emerald-900">Exam: read-only reference</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Use the database server host provided by your hosting provider. <code>localhost</code> works only if the exam database is on the same PC as this app. The comparison reads table names, column definitions, and indexes from <code>information_schema</code> inside a read-only transaction; it does not read student records or submit any SQL changes to exam.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Use the database server host provided by your hosting provider. <code>localhost</code> works only if the exam database is on the same PC as this app. Schema comparison reads metadata only. The latest-entries panel reads a limited set of student fields in a read-only transaction; neither feature writes to exam.</p>
+                    <p class="mt-2 text-xs text-slate-500">The exam account needs read-only SELECT access to students, centers, and institutes to show the latest entries.</p>
                     <p id="db-sync-source" class="mt-2 text-xs text-slate-500"></p>
                 </section>
                 <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
@@ -30,6 +32,18 @@
                     <p id="db-sync-target" class="mt-2 text-xs text-slate-500"></p>
                 </section>
             </div>
+
+            <section class="rounded-xl border border-emerald-200 bg-white p-4">
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-semibold text-slate-800">Latest student registrations on exam</h2>
+                        <p class="mt-1 text-sm text-slate-500">Shows the newest 20 records from exam. This does not add them to demo.</p>
+                    </div>
+                    <button id="db-sync-refresh-students" type="button" class="btn btn-light" disabled>Refresh latest entries</button>
+                </div>
+                <div id="db-sync-students-status" class="text-sm text-slate-500">Waiting for connection setup…</div>
+                <div id="db-sync-students-table" class="mt-3 hidden overflow-x-auto"></div>
+            </section>
 
             <section class="rounded-xl border border-slate-200 bg-white p-4">
                 <h2 class="font-semibold text-slate-800">Process</h2>
@@ -60,6 +74,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const applyButton = document.getElementById('db-sync-apply');
     const feedback = document.getElementById('db-sync-feedback');
     const results = document.getElementById('db-sync-results');
+    const refreshStudents = document.getElementById('db-sync-refresh-students');
+    const studentsStatus = document.getElementById('db-sync-students-status');
+    const studentsTable = document.getElementById('db-sync-students-table');
     let state = null;
 
     function message(text, error) {
@@ -77,8 +94,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 badge.textContent = 'Connections configured';
                 badge.className = 'rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800';
                 compareButton.disabled = false;
+                refreshStudents.disabled = false;
                 applyButton.classList.toggle('hidden', !state.pending_migrations.length);
                 message('Ready. Comparing the exam connection reads schema metadata only.', false);
+                await loadLatestStudents();
             } else {
                 badge.textContent = 'Setup required';
                 badge.className = 'rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800';
@@ -95,6 +114,48 @@ document.addEventListener('DOMContentLoaded', function () {
             message(error.message || 'Could not read database sync setup.', true);
         }
     }
+
+    async function loadLatestStudents() {
+        refreshStudents.disabled = true;
+        studentsStatus.textContent = 'Loading latest registrations from exam…';
+        studentsTable.replaceChildren();
+        studentsTable.classList.add('hidden');
+        try {
+            const data = await BK.get('/api/database-sync/latest-students?limit=20');
+            if (data.error) { studentsStatus.textContent = data.error; return; }
+            const rows = data.students || [];
+            if (!rows.length) { studentsStatus.textContent = 'No student registrations were found on exam.'; return; }
+            const table = document.createElement('table');
+            table.className = 'table w-full';
+            table.innerHTML = '<thead><tr><th>Submitted</th><th>Registration</th><th>Student</th><th>Class</th><th>Session</th><th>Center</th><th>Institute</th><th>Status</th></tr></thead>';
+            const tbody = document.createElement('tbody');
+            rows.forEach(function (row) {
+                const tr = document.createElement('tr');
+                const submitted = row.created_at ? new Date(String(row.created_at).replace(' ', 'T')) : null;
+                const values = [
+                    submitted && !Number.isNaN(submitted.getTime()) ? submitted.toLocaleString() : (row.created_at || '—'),
+                    row.registration || '—', row.name || '—', row.class || '—', row.session || '—',
+                    row.center_name || '—', row.institute_name || '—', Number(row.active) === 1 ? 'Active' : 'Pending'
+                ];
+                values.forEach(function (value) {
+                    const td = document.createElement('td');
+                    td.textContent = String(value);
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            studentsTable.appendChild(table);
+            studentsTable.classList.remove('hidden');
+            studentsStatus.textContent = 'Showing the newest ' + rows.length + ' student registration(s) currently stored on exam. They have not been copied to demo.';
+        } catch (error) {
+            studentsStatus.textContent = error.message || 'Could not load latest exam registrations.';
+        } finally {
+            refreshStudents.disabled = false;
+        }
+    }
+
+    refreshStudents.addEventListener('click', loadLatestStudents);
 
     compareButton.addEventListener('click', async function () {
         compareButton.disabled = true;

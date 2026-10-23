@@ -107,6 +107,27 @@ final class DatabaseSyncService
         ];
     }
 
+    /** Return a small, read-only view of recent exam registrations; never copy rows to demo. */
+    public function latestStudents(int $limit = 20): array
+    {
+        $this->assertReady();
+        $limit = max(1, min(50, $limit));
+        $source = $this->connectSource();
+        try {
+            $sql = 'SELECT s.`registration`, s.`name`, s.`class`, s.`session`, s.`created_at`, s.`active`, '
+                . 'c.`name` AS `center_name`, i.`name` AS `institute_name` '
+                . 'FROM `students` s '
+                . 'LEFT JOIN `centers` c ON c.`id` = s.`center_id` '
+                . 'LEFT JOIN `institutes` i ON i.`id` = s.`institute_id` '
+                . 'ORDER BY s.`created_at` DESC, s.`id` DESC LIMIT ' . $limit;
+            return $source->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        } finally {
+            if ($source->inTransaction()) {
+                $source->rollBack();
+            }
+        }
+    }
+
     /** Known intentional differences that should not be proposed for syncing. */
     private function isIgnoredDifference(array $difference): bool
     {

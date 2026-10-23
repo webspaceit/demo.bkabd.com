@@ -31,6 +31,19 @@ final class DatabaseSyncController extends Controller
         }
     }
 
+    public function latestStudents(Request $request): array
+    {
+        $limit = (int) $request->query('limit', 20);
+        try {
+            return ['students' => (new DatabaseSyncService())->latestStudents($limit)];
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] latest students failed: ' . $e->getCode());
+            return ['error' => 'Could not load recent exam registrations. The exam account needs read-only SELECT access to students, centers, and institutes.'];
+        }
+    }
+
     public function apply(Request $request): array
     {
         $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));

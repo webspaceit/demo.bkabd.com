@@ -27,6 +27,7 @@ Router::get('/database-sync', function () {
     ], 'layouts.dashboard');
 }, 'auth|permission:settings');
 Router::get('/api/database-sync/status', [DatabaseSyncController::class, 'status'], 'auth|permission:settings');
+Router::get('/api/database-sync/latest-students', [DatabaseSyncController::class, 'latestStudents'], 'auth|permission:settings');
 Router::post('/api/database-sync/compare', [DatabaseSyncController::class, 'compare'], 'auth|permission:settings');
 Router::post('/api/database-sync/apply', [DatabaseSyncController::class, 'apply'], 'auth|permission:settings');
 
