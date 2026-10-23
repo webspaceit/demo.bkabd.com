@@ -115,7 +115,17 @@ final class StudentController extends Controller
         // Free-text search: matches name, registration, roll, class words
         // (kg/one/two/...), center-user name and institute name — ported from
         // the original index(); class words matched case-insensitively.
-        $this->applyStudentSearch($q, $request->input('search'));
+        $search = $request->input('search');
+        $this->applyStudentSearch($q, $search);
+
+        // Most list and numeric searches only filter students columns. Count
+        // those rows without the seven display joins; the joins are needed
+        // only for the returned page (or for text search against related names).
+        $searchTerm = trim((string) $search);
+        $classTerms = ['kg', 'one', 'two', 'three', 'four', 'five'];
+        $countQuery = ($searchTerm === '' || ctype_digit($searchTerm) || in_array(strtolower($searchTerm), $classTerms, true))
+            ? $q->withoutJoins()
+            : null;
 
         // Show the most recently registered students first. Use id as a stable
         // tie-breaker when several registrations share the same timestamp.
@@ -124,7 +134,7 @@ final class StudentController extends Controller
 
         // Pagination matching Laravel shape for frontend 1:1
         return $this->sendResponse(
-            $q->paginate((int) ($request->input('per_page', 20)), null, '/api/students'),
+            $q->paginate((int) ($request->input('per_page', 20)), null, '/api/students', $countQuery),
             'Student list retrieved.'
         );
     }

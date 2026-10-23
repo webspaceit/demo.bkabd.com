@@ -312,6 +312,14 @@ final class Query
         return (int) ($row['c'] ?? 0);
     }
 
+    /** Return a copy without relation joins, useful when a count only filters base-table columns. */
+    public function withoutJoins(): self
+    {
+        $query = clone $this;
+        $query->joins = [];
+        return $query;
+    }
+
     public function exists(): bool
     {
         return $this->count() > 0;
@@ -374,13 +382,13 @@ final class Query
      * current_page, data, first_page_url, from, last_page, last_page_url,
      * links, next_page_url, path, per_page, prev_page_url, to, total
      */
-    public function paginate(int $perPage = 20, ?int $page = null, string $path = ''): array
+    public function paginate(int $perPage = 20, ?int $page = null, string $path = '', ?self $countQuery = null): array
     {
         $req = Request::capture();
         $page = max(1, $page ?? (int) $req->query('page', 1));
         $perPage = max(1, min(200, $perPage));
 
-        $total = (clone $this)->count();
+        $total = ($countQuery ?? clone $this)->count();
 
         $lastPage = max(1, (int) ceil($total / $perPage));
         $page = min($page, $lastPage);
