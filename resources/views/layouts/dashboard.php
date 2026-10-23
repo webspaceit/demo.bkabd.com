@@ -51,6 +51,7 @@ $nav = [
     ]],
     ['group:Administration', '#', null, 'arrow', [
         ['All User Access', '/user', 'user-list', 'user-check'],
+        ['Login History', '/login-history', 'user-list', 'clock'],
         ['Routine', '/routines', 'routine-list', 'calendar'],
         ['Session', '/sessions', 'session-list', 'calendar-clock'],
         ['Manage User', '/userrole', 'role-list', 'shield'],

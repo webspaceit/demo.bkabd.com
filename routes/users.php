@@ -1,6 +1,7 @@
 <?php
 
 use App\Controllers\UserController;
+use App\Controllers\LoginHistoryController;
 use App\Core\Router;
 use App\Core\View;
 
@@ -43,6 +44,11 @@ Router::get('/user', fn(): string => View::render('users.index', [
     'title'       => 'All User Access',
     'pageScripts' => ['/assets/js/users.js'],
 ], 'layouts.dashboard'), 'auth|permission:user-list');
+
+Router::get('/login-history', fn(): string => View::render('users.login_history', [
+    'title' => 'Login History',
+], 'layouts.dashboard'), 'auth|permission:user-list');
+Router::get('/api/login-history', [LoginHistoryController::class, 'index'], 'auth|permission:user-list');
 
 // User create / edit pages (behaviour in /assets/js/users.js)
 Router::get('/create-user', [UserController::class, 'pageCreate'], 'auth|permission:user-create');

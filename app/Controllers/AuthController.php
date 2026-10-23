@@ -75,6 +75,7 @@ class AuthController extends Controller
         RateLimiter::clear('login', $request->ip());
         RateLimiter::clear('login:' . strtolower($email));
         Auth::completeLogin($user);
+        \App\Services\LoginHistoryService::recordSuccessfulLogin($user, $request);
         $user = Auth::user();
         return $this->sendResponse([
             'token' => Session::get('access_token'),
@@ -124,6 +125,7 @@ class AuthController extends Controller
         Session::forget('mfa_pending_token');
         Session::forget('mfa_pending_expires');
         Auth::completeLogin($user);
+        \App\Services\LoginHistoryService::recordSuccessfulLogin($user, $request);
         return $this->sendResponse([
             'token' => Session::get('access_token'),
             'name' => $user['name'] ?? '',
