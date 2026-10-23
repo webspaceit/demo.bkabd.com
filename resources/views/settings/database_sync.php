@@ -6,29 +6,28 @@
         </div>
         <div class="card-body space-y-5">
             <p class="text-sm leading-6 text-slate-600">
-                This page compares table structures and can show the latest student registrations from <strong>exam.bkabd.com</strong>.
-                Student rows are displayed read-only and are not copied to <strong>demo.bkabd.com</strong>. Reviewed schema changes are applied to demo;
-                the app never sends a write query to the exam connection.
+                This page compares table structures and can import missing student registrations from <strong>exam.bkabd.com</strong> into <strong>demo.bkabd.com</strong>.
+                The exam connection is read-only. Imports add rows only to demo; existing demo records are not changed.
             </p>
 
             <div id="db-sync-setup" class="hidden rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
                 <strong>Server setup is required before this can connect.</strong>
                 <p class="mt-1">Add the settings below to the private <code>.env</code> file used by the app you are running (your local PC, in this case). Do not paste passwords here or commit them to Git.</p>
                 <ul id="db-sync-missing" class="mt-2 list-disc pl-5"></ul>
-                <p class="mt-2">The sync uses separate database connections, so your local app can keep its current <code>DB_*</code> settings. Set the <code>SYNC_SOURCE_*</code> connection to exam with a read-only user. Set <code>SYNC_TARGET_*</code> to demo with a user that can change demo's table structure and has no access to exam.</p>
+                <p class="mt-2">The sync uses separate database connections, so your local app can keep its current <code>DB_*</code> settings. Set the <code>SYNC_SOURCE_*</code> connection to exam with a read-only user. Set <code>SYNC_TARGET_*</code> to demo with a user that can read demo and add student rows, and has no access to exam.</p>
                 <p class="mt-2">Set <code>DB_SYNC_ENABLED=true</code> and <code>DB_SYNC_ALLOW_LOCAL=true</code> in your local private configuration only after checking the target database name. Your host must allow remote MySQL connections from your PC to both databases.</p>
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
                 <section class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
                     <h2 class="font-semibold text-emerald-900">Exam: read-only reference</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Use the database server host provided by your hosting provider. <code>localhost</code> works only if the exam database is on the same PC as this app. Schema comparison reads metadata only. The latest-entries panel reads a limited set of student fields in a read-only transaction; neither feature writes to exam.</p>
-                    <p class="mt-2 text-xs text-slate-500">The exam account needs read-only SELECT access to students, centers, and institutes to show the latest entries.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Use the database server host provided by your hosting provider. <code>localhost</code> works only if the exam database is on the same PC as this app. Schema comparison reads metadata; student preview and import read source rows through a read-only transaction.</p>
+                    <p class="mt-2 text-xs text-slate-500">Exam needs read-only SELECT access to students, centers, institutes, divisions, districts, upozilas, and unions, plus schema metadata. This app never inserts, updates, or deletes exam data.</p>
                     <p id="db-sync-source" class="mt-2 text-xs text-slate-500"></p>
                 </section>
                 <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
                     <h2 class="font-semibold text-sky-900">Demo: migration destination</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Only reviewed files in <code>database/sync_migrations/</code> can run on the separate demo connection. The runner accepts additive table, column, or index changes; it rejects data edits and destructive schema commands.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables and INSERT on <code>students</code> (and <code>student_duplicate_keys</code> when present). It does not need access to exam. Schema migrations remain separate.</p>
                     <p id="db-sync-target" class="mt-2 text-xs text-slate-500"></p>
                 </section>
             </div>
@@ -37,12 +36,27 @@
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 class="font-semibold text-slate-800">Latest student registrations on exam</h2>
-                        <p class="mt-1 text-sm text-slate-500">Shows the newest 20 records from exam. This does not add them to demo.</p>
+                        <p class="mt-1 text-sm text-slate-500">Shows the newest 20 records currently stored on exam. Use the import section below to add missing registrations to demo.</p>
                     </div>
                     <button id="db-sync-refresh-students" type="button" class="btn btn-light" disabled>Refresh latest entries</button>
                 </div>
                 <div id="db-sync-students-status" class="text-sm text-slate-500">Waiting for connection setup…</div>
                 <div id="db-sync-students-table" class="mt-3 hidden overflow-x-auto"></div>
+            </section>
+
+            <section class="rounded-xl border border-amber-300 bg-amber-50/60 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-semibold text-amber-950">Import missing exam students into demo</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Preview first. The import adds registrations missing from demo, skips duplicate registrations and unsafe center/institute/location or roll conflicts, and leaves existing demo rows untouched. Photos, user accounts, and marks are not copied.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="db-sync-preview-import" type="button" class="btn btn-light" disabled>Preview import</button>
+                        <button id="db-sync-start-import" type="button" class="btn btn-primary hidden" disabled>Import missing students</button>
+                    </div>
+                </div>
+                <div id="db-sync-import-preview" class="mt-3 hidden rounded-lg border border-amber-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
+                <div id="db-sync-import-progress" class="mt-2 hidden text-sm text-slate-600" aria-live="polite"></div>
             </section>
 
             <section class="rounded-xl border border-slate-200 bg-white p-4">
@@ -75,6 +89,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const feedback = document.getElementById('db-sync-feedback');
     const results = document.getElementById('db-sync-results');
     const refreshStudents = document.getElementById('db-sync-refresh-students');
+    const previewImportButton = document.getElementById('db-sync-preview-import');
+    const startImportButton = document.getElementById('db-sync-start-import');
+    const importPreview = document.getElementById('db-sync-import-preview');
+    const importProgress = document.getElementById('db-sync-import-progress');
     const studentsStatus = document.getElementById('db-sync-students-status');
     const studentsTable = document.getElementById('db-sync-students-table');
     let state = null;
@@ -95,6 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 badge.className = 'rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800';
                 compareButton.disabled = false;
                 refreshStudents.disabled = false;
+                previewImportButton.disabled = false;
                 applyButton.classList.toggle('hidden', !state.pending_migrations.length);
                 message('Ready. Comparing the exam connection reads schema metadata only.', false);
                 await loadLatestStudents();
@@ -147,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
             table.appendChild(tbody);
             studentsTable.appendChild(table);
             studentsTable.classList.remove('hidden');
-            studentsStatus.textContent = 'Showing the newest ' + rows.length + ' student registration(s) currently stored on exam. They have not been copied to demo.';
+            studentsStatus.textContent = 'Showing the newest ' + rows.length + ' student registration(s) currently stored on exam. This preview does not change either database.';
         } catch (error) {
             studentsStatus.textContent = error.message || 'Could not load latest exam registrations.';
         } finally {
@@ -156,6 +175,59 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     refreshStudents.addEventListener('click', loadLatestStudents);
+
+    previewImportButton.addEventListener('click', async function () {
+        previewImportButton.disabled = true;
+        startImportButton.classList.add('hidden');
+        importPreview.classList.remove('hidden');
+        importPreview.textContent = 'Counting registrations on both databases…';
+        importProgress.classList.add('hidden');
+        try {
+            const data = await BK.get('/api/database-sync/student-import-preview');
+            if (data.error) { importPreview.textContent = data.error; return; }
+            importPreview.textContent = 'Exam has ' + data.source_total + ' student record(s). ' + data.missing_in_demo + ' registration(s) are not in demo; ' + data.already_in_demo + ' are already present. ' + data.missing_registration + ' source record(s) have no registration number and will be skipped. ' + (data.note || '');
+            startImportButton.classList.toggle('hidden', Number(data.missing_in_demo) < 1);
+            startImportButton.disabled = Number(data.missing_in_demo) < 1;
+        } catch (error) {
+            importPreview.textContent = error.message || 'Could not preview the import.';
+        } finally {
+            previewImportButton.disabled = false;
+        }
+    });
+
+    startImportButton.addEventListener('click', async function () {
+        if (!window.confirm('Add missing student registrations to the configured demo database now? Existing demo rows will be left unchanged. Exam remains read-only. Photos, user accounts, and marks will not be copied.')) return;
+        startImportButton.disabled = true;
+        previewImportButton.disabled = true;
+        importProgress.classList.remove('hidden');
+        let afterId = 0;
+        let totalImported = 0;
+        let totalExisting = 0;
+        let totalSkipped = 0;
+        let processed = 0;
+        try {
+            while (true) {
+                const data = await BK.post('/api/database-sync/import-students', { after_id: afterId });
+                if (data.error) throw new Error(data.error);
+                totalImported += Number(data.imported || 0);
+                totalExisting += Number(data.already_present || 0);
+                totalSkipped += Number(data.skipped || 0);
+                processed += Number(data.processed || 0);
+                afterId = Number(data.next_after_id || afterId);
+                importProgress.textContent = 'Processed ' + processed + ' source record(s)… Added ' + totalImported + ', already present ' + totalExisting + ', skipped ' + totalSkipped + '.';
+                if (data.done) break;
+            }
+            importPreview.textContent = 'Import finished. Added ' + totalImported + ' student(s) to demo; ' + totalExisting + ' already existed; ' + totalSkipped + ' were skipped because registration or reference data did not match safely. Reload the Students page on demo to see its updated count.';
+            message('Import complete. Only the demo database received new student rows; exam was read-only.', false);
+            startImportButton.classList.add('hidden');
+            await loadLatestStudents();
+        } catch (error) {
+            importProgress.textContent = 'Import stopped after processing ' + processed + ' source record(s). ' + error.message + ' You can preview again; already imported rows will be skipped on retry.';
+        } finally {
+            startImportButton.disabled = false;
+            previewImportButton.disabled = false;
+        }
+    });
 
     compareButton.addEventListener('click', async function () {
         compareButton.disabled = true;

@@ -44,6 +44,38 @@ final class DatabaseSyncController extends Controller
         }
     }
 
+    public function previewStudentImport(): array
+    {
+        try {
+            return (new DatabaseSyncService())->previewStudentImport();
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] student import preview failed: ' . $e->getCode());
+            return ['error' => 'Could not compare exam and demo registrations. Check read access on exam and read access on demo.'];
+        }
+    }
+
+    public function importStudents(Request $request): array
+    {
+        $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));
+        $localHosts = ['localhost', '127.0.0.1', '[::1]'];
+        $isAllowedLocal = in_array($host, $localHosts, true)
+            && \App\Core\Config::getBool('DB_SYNC_ALLOW_LOCAL', false);
+        if ($host !== 'demo.bkabd.com' && !$isAllowedLocal) {
+            return ['error' => 'Student imports can run only from demo.bkabd.com or an explicitly allowed local dashboard.'];
+        }
+        $afterId = max(0, (int) $request->input('after_id', 0));
+        try {
+            return (new DatabaseSyncService())->importStudentBatch($afterId, 100);
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] student import failed: ' . $e->getCode());
+            return ['error' => 'The import stopped safely. Check the demo database permissions and table structure, then review the server error log.'];
+        }
+    }
+
     public function apply(Request $request): array
     {
         $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));

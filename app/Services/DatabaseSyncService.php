@@ -115,7 +115,7 @@ final class DatabaseSyncService
         $source = $this->connectSource();
         try {
             $sql = 'SELECT s.`registration`, s.`name`, s.`class`, s.`session`, s.`created_at`, s.`active`, '
-                . 'c.`name` AS `center_name`, i.`name` AS `institute_name` '
+                . 'c.`institute_name` AS `center_name`, i.`name` AS `institute_name` '
                 . 'FROM `students` s '
                 . 'LEFT JOIN `centers` c ON c.`id` = s.`center_id` '
                 . 'LEFT JOIN `institutes` i ON i.`id` = s.`institute_id` '
@@ -126,6 +126,285 @@ final class DatabaseSyncService
                 $source->rollBack();
             }
         }
+    }
+
+    /** Count missing registration numbers without transferring any records. */
+    public function previewStudentImport(): array
+    {
+        $this->assertReady();
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $total = (int) $source->query('SELECT COUNT(*) FROM `students`')->fetchColumn();
+            $sourceRegistrations = $source->query("SELECT `registration` FROM `students` WHERE `registration` IS NOT NULL AND TRIM(`registration`) <> ''")->fetchAll(PDO::FETCH_COLUMN);
+            $targetRegistrations = $target->query("SELECT `registration` FROM `students` WHERE `registration` IS NOT NULL AND TRIM(`registration`) <> ''")->fetchAll(PDO::FETCH_COLUMN);
+            $targetSet = [];
+            foreach ($targetRegistrations as $registration) {
+                $targetSet[mb_strtolower(trim((string) $registration), 'UTF-8')] = true;
+            }
+            $seen = [];
+            $existing = 0;
+            $missing = 0;
+            foreach ($sourceRegistrations as $registration) {
+                $key = mb_strtolower(trim((string) $registration), 'UTF-8');
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                if (isset($targetSet[$key])) { $existing++; } else { $missing++; }
+            }
+            return [
+                'source_total' => $total,
+                'already_in_demo' => $existing,
+                'missing_in_demo' => $missing,
+                'missing_registration' => $total - count($sourceRegistrations),
+                'note' => 'Preview checks registration numbers only. During import, records with conflicting rolls or unmatched center/institute references are skipped safely.',
+            ];
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
+    /** Import one small idempotent batch; only the demo connection is written. */
+    public function importStudentBatch(int $afterId = 0, int $batchSize = 100): array
+    {
+        $this->assertReady();
+        $batchSize = max(1, min(250, $batchSize));
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $sourceStmt = $source->prepare('SELECT * FROM `students` WHERE `id` > ? ORDER BY `id` ASC LIMIT ' . $batchSize);
+            $sourceStmt->execute([max(0, $afterId)]);
+            $rows = $sourceStmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($rows === []) {
+                return ['done' => true, 'next_after_id' => $afterId, 'processed' => 0, 'imported' => 0, 'already_present' => 0, 'skipped' => 0];
+            }
+
+            $this->assertStudentColumnsCompatible($source, $target);
+            $referenceMaps = $this->studentReferenceMaps($source, $target, $rows);
+            $registrations = [];
+            $fingerprints = [];
+            $rollConditions = [];
+            foreach ($rows as $row) {
+                if (trim((string) ($row['registration'] ?? '')) !== '') { $registrations[] = trim((string) $row['registration']); }
+                $fingerprints[] = \App\Services\StudentService::duplicateFingerprint($row);
+                if (($row['roll'] ?? null) !== null && ($row['session'] ?? null) !== null && ($row['class'] ?? null) !== null) {
+                    $rollConditions[] = [(int) $row['session'], (int) $row['roll'], (int) $row['class']];
+                }
+            }
+            $presentRegistrations = $this->existingValues($target, 'students', 'registration', $registrations);
+            $duplicateKeysAvailable = $this->tableExists($target, (string) $this->targetSettings()['database'], 'student_duplicate_keys');
+            $presentFingerprints = $duplicateKeysAvailable
+                ? $this->existingValues($target, 'student_duplicate_keys', 'fingerprint', $fingerprints)
+                : [];
+            foreach ($this->existingStudentFingerprints($target, $rows) as $fingerprint => $_present) {
+                $presentFingerprints[$fingerprint] = true;
+            }
+            $presentRolls = $this->existingRolls($target, $rollConditions);
+            $columns = $this->importStudentColumns($rows[0]);
+            $quotedColumns = implode(',', array_map(static fn(string $column): string => '`' . $column . '`', $columns));
+            $insert = $target->prepare('INSERT INTO `students` (' . $quotedColumns . ') VALUES (' . implode(',', array_fill(0, count($columns), '?')) . ')');
+            $keyInsert = $duplicateKeysAvailable ? $target->prepare('INSERT IGNORE INTO `student_duplicate_keys` (`fingerprint`) VALUES (?)') : null;
+            $counts = ['imported' => 0, 'already_present' => 0, 'skipped' => 0];
+            $target->beginTransaction();
+            try {
+                foreach ($rows as $row) {
+                    $registration = trim((string) ($row['registration'] ?? ''));
+                    if ($registration === '') { $counts['skipped']++; continue; }
+                    $regKey = mb_strtolower($registration, 'UTF-8');
+                    if (isset($presentRegistrations[$regKey])) { $counts['already_present']++; continue; }
+                    $fingerprint = \App\Services\StudentService::duplicateFingerprint($row);
+                    if (isset($presentFingerprints[$fingerprint])) { $counts['already_present']++; continue; }
+                    if (!$this->studentReferencesMatch($row, $referenceMaps)) { $counts['skipped']++; continue; }
+                    $rollKey = $this->rollKey($row);
+                    if ($rollKey !== null && isset($presentRolls[$rollKey])) { $counts['skipped']++; continue; }
+                    $values = [];
+                    foreach ($columns as $column) { $values[] = $row[$column] ?? null; }
+                    try {
+                        $insert->execute($values);
+                    } catch (\PDOException $e) {
+                        if (($e->errorInfo[1] ?? 0) === 1062) { $counts['skipped']++; continue; }
+                        throw $e;
+                    }
+                    if ($keyInsert !== null) { $keyInsert->execute([$fingerprint]); }
+                    $presentRegistrations[$regKey] = true;
+                    $presentFingerprints[$fingerprint] = true;
+                    if ($rollKey !== null) { $presentRolls[$rollKey] = true; }
+                    $counts['imported']++;
+                }
+                $target->commit();
+            } catch (\Throwable $e) {
+                if ($target->inTransaction()) { $target->rollBack(); }
+                throw $e;
+            }
+            $lastId = (int) $rows[array_key_last($rows)]['id'];
+            return ['done' => count($rows) < $batchSize, 'next_after_id' => $lastId, 'processed' => count($rows)] + $counts;
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
+    private function assertStudentColumnsCompatible(PDO $source, PDO $target): void
+    {
+        $sourceColumns = $this->columnDefinitions($source, (string) $this->sourceSettings()['database']);
+        $targetColumns = $this->columnDefinitions($target, (string) $this->targetSettings()['database']);
+        foreach ($sourceColumns['students'] ?? [] as $column => $definition) {
+            if ($column === 'id') { continue; }
+            if (!isset($targetColumns['students'][$column]) || $targetColumns['students'][$column] !== $definition) {
+                throw new RuntimeException("Student import is paused: the `students.{$column}` column differs between exam and demo.");
+            }
+        }
+    }
+
+    private function columnDefinitions(PDO $pdo, string $schema): array
+    {
+        $stmt = $pdo->prepare('SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, COLLATION_NAME, CHARACTER_SET_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ?');
+        $stmt->execute([$schema]);
+        $out = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $out[$row['TABLE_NAME']][$row['COLUMN_NAME']] = implode('|', [
+                $row['COLUMN_TYPE'], $row['IS_NULLABLE'], $row['COLUMN_DEFAULT'] === null ? '<NULL>' : (string) $row['COLUMN_DEFAULT'],
+                $row['EXTRA'], $row['CHARACTER_SET_NAME'] ?? '', $row['COLLATION_NAME'] ?? '',
+            ]);
+        }
+        return $out;
+    }
+
+    private function importStudentColumns(array $row): array
+    {
+        $excluded = ['id', 'user_id', 'photo', 'bangla', 'english', 'math', 'total', 'percentage', 'grade', 'ml', 'place_id', 'marker_id'];
+        return array_values(array_diff(array_keys($row), $excluded));
+    }
+
+    private function studentReferenceMaps(PDO $source, PDO $target, array $rows): array
+    {
+        $ids = ['centers' => [], 'institutes' => [], 'divisions' => [], 'districts' => [], 'upozilas' => [], 'unions' => []];
+        foreach ($rows as $row) {
+            foreach (['center_id' => 'centers', 'institute_id' => 'institutes', 'division_id' => 'divisions', 'district_id' => 'districts', 'upazila_id' => 'upozilas', 'union_id' => 'unions'] as $field => $table) {
+                if (!empty($row[$field])) { $ids[$table][] = (int) $row[$field]; }
+            }
+        }
+        foreach ($ids as $table => $values) { $ids[$table] = array_values(array_unique($values)); }
+        $sourceMaps = [
+            'centers' => $this->lookupIds($source, 'centers', ['institute_name', 'code'], $ids['centers']),
+            'institutes' => $this->lookupIds($source, 'institutes', ['name', 'center_id'], $ids['institutes']),
+            'divisions' => $this->lookupIds($source, 'divisions', ['name'], $ids['divisions']),
+            'districts' => $this->lookupIds($source, 'districts', ['name', 'division_id'], $ids['districts']),
+            'upozilas' => $this->lookupIds($source, 'upozilas', ['name', 'district_id'], $ids['upozilas']),
+            'unions' => $this->lookupIds($source, 'unions', ['name', 'upozila_id'], $ids['unions']),
+        ];
+        $targetMaps = [
+            'centers' => $this->lookupIds($target, 'centers', ['institute_name', 'code'], $ids['centers']),
+            'institutes' => $this->lookupIds($target, 'institutes', ['name', 'center_id'], $ids['institutes']),
+            'divisions' => $this->lookupIds($target, 'divisions', ['name'], $ids['divisions']),
+            'districts' => $this->lookupIds($target, 'districts', ['name', 'division_id'], $ids['districts']),
+            'upozilas' => $this->lookupIds($target, 'upozilas', ['name', 'district_id'], $ids['upozilas']),
+            'unions' => $this->lookupIds($target, 'unions', ['name', 'upozila_id'], $ids['unions']),
+        ];
+        return ['source' => $sourceMaps, 'target' => $targetMaps];
+    }
+
+    private function lookupIds(PDO $pdo, string $table, array $columns, array $ids): array
+    {
+        if ($ids === []) { return []; }
+        $select = implode(',', array_map(static fn(string $column): string => '`' . $column . '`', array_merge(['id'], $columns)));
+        $sql = 'SELECT ' . $select . ' FROM `' . $table . '` WHERE `id` IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($ids);
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) { $out[(int) $row['id']] = $row; }
+        return $out;
+    }
+
+    private function studentReferencesMatch(array $row, array $maps): bool
+    {
+        $relations = [
+            'center_id' => ['centers', ['institute_name', 'code']],
+            'institute_id' => ['institutes', ['name', 'center_id']],
+            'division_id' => ['divisions', ['name']],
+            'district_id' => ['districts', ['name', 'division_id']],
+            'upazila_id' => ['upozilas', ['name', 'district_id']],
+            'union_id' => ['unions', ['name', 'upozila_id']],
+        ];
+        foreach ($relations as $field => [$table, $columns]) {
+            $id = (int) ($row[$field] ?? 0);
+            if ($id === 0 && $field === 'union_id') { continue; }
+            $source = $maps['source'][$table][$id] ?? null;
+            $target = $maps['target'][$table][$id] ?? null;
+            if ($source === null || $target === null) { return false; }
+            foreach ($columns as $column) {
+                if ((string) ($source[$column] ?? '') !== (string) ($target[$column] ?? '')) { return false; }
+            }
+        }
+        $centerId = (int) ($row['center_id'] ?? 0);
+        $instituteId = (int) ($row['institute_id'] ?? 0);
+        return (int) ($maps['source']['institutes'][$instituteId]['center_id'] ?? 0) === $centerId
+            && (int) ($maps['target']['institutes'][$instituteId]['center_id'] ?? 0) === $centerId;
+    }
+
+    private function existingValues(PDO $pdo, string $table, string $column, array $values): array
+    {
+        $values = array_values(array_unique(array_filter($values, static fn($value) => $value !== '')));
+        if ($values === []) { return []; }
+        $stmt = $pdo->prepare('SELECT `' . $column . '` FROM `' . $table . '` WHERE `' . $column . '` IN (' . implode(',', array_fill(0, count($values), '?')) . ')');
+        $stmt->execute($values);
+        $set = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $value) {
+            $set[$column === 'registration' ? mb_strtolower(trim((string) $value), 'UTF-8') : (string) $value] = true;
+        }
+        return $set;
+    }
+
+    private function existingRolls(PDO $pdo, array $conditions): array
+    {
+        if ($conditions === []) { return []; }
+        $where = [];
+        $params = [];
+        foreach ($conditions as [$session, $roll, $class]) {
+            $where[] = '(`session` = ? AND `roll` = ? AND `class` = ?)';
+            array_push($params, $session, $roll, $class);
+        }
+        $stmt = $pdo->prepare('SELECT `session`, `roll`, `class` FROM `students` WHERE ' . implode(' OR ', $where));
+        $stmt->execute($params);
+        $set = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) { $set[$this->rollKey($row)] = true; }
+        return $set;
+    }
+
+    private function existingStudentFingerprints(PDO $pdo, array $sourceRows): array
+    {
+        $fields = ['phone', 'father_name', 'mother_name', 'name', 'session', 'class', 'center_id', 'institute_id'];
+        $where = [];
+        $params = [];
+        foreach ($sourceRows as $sourceRow) {
+            $terms = [];
+            foreach ($fields as $field) {
+                $terms[] = '`' . $field . '` <=> ?';
+                $params[] = $sourceRow[$field] ?? null;
+            }
+            $where[] = '(' . implode(' AND ', $terms) . ')';
+        }
+        if ($where === []) { return []; }
+        $stmt = $pdo->prepare('SELECT `phone`, `father_name`, `mother_name`, `name`, `session`, `class`, `center_id`, `institute_id` FROM `students` WHERE ' . implode(' OR ', $where));
+        $stmt->execute($params);
+        $set = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $set[StudentService::duplicateFingerprint($row)] = true;
+        }
+        return $set;
+    }
+
+    private function rollKey(array $row): ?string
+    {
+        if (($row['roll'] ?? null) === null || ($row['session'] ?? null) === null || ($row['class'] ?? null) === null) { return null; }
+        return (int) $row['session'] . ':' . (int) $row['roll'] . ':' . (int) $row['class'];
+    }
+
+    private function tableExists(PDO $pdo, string $schema, string $table): bool
+    {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?');
+        $stmt->execute([$schema, $table]);
+        return (int) $stmt->fetchColumn() > 0;
     }
 
     /** Known intentional differences that should not be proposed for syncing. */
