@@ -14,11 +14,11 @@
 $classes = $classes ?? [1, 2, 3, 4, 5, 6];
 $filters = $filters ?? [];
 $canApprovePending = can('student-approve');
-// Default the session dropdown to the active session (query string wins).
-$activeSession = (string) ($activeSession ?? '');
+// Show pending registrations from every session by default so the queue matches
+// the global sidebar notification count. A session can still be selected.
 $selectedSession = array_key_exists('session', $filters) && $filters['session'] !== null
     ? (string) $filters['session']
-    : $activeSession;
+    : '';
 ?>
 <style>
 /* Skeleton shimmer while rows load (animate-pulse is not in the prebuilt CSS). */
