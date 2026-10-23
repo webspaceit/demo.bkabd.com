@@ -15,7 +15,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
     $dobDisplay = $dobD . '-' . $dobM . '-' . $dobY;
 }
 ?>
-<div class="max-w-4xl mx-auto">
+<div class="w-full">
 
     <!-- Header band -->
     <div class="bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 rounded-2xl shadow-lg shadow-emerald-900/10 ring-1 ring-emerald-900/10 mb-6 overflow-hidden">

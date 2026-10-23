@@ -24,7 +24,7 @@
                 <p class="text-sm text-slate-500">Type the phone number(s) below manually (comma separated for multiple).</p>
             </div>
 
-            <div class="tab-panel hidden space-y-4" data-panel="center">
+            <div class="tab-panel hidden space-y-6" data-panel="center">
                 <div class="max-w-md fl">
                     <select class="input" id="sms-center" data-field="center_id">
                         <option value="">Select Center</option>
@@ -35,7 +35,7 @@
                 </div>
             </div>
 
-            <div class="tab-panel hidden space-y-4" data-panel="institute">
+            <div class="tab-panel hidden space-y-6" data-panel="institute">
                 <div class="max-w-md fl">
                     <select class="input" id="sms-ins-center" data-field="center_id">
                         <option value="">Select Center</option>

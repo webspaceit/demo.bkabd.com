@@ -26,7 +26,7 @@ $canEdit = can('setting-edit');
             <div class="card-header">Instructions</div>
             <div class="card-body">
                 <form id="settings-form" novalidate>
-                    <div class="space-y-4">
+                    <div class="space-y-6">
                         <div class="fl">
                             <input class="input" type="text" id="settings-title" name="title" data-field="title"
                                    placeholder="Title" autocomplete="off">

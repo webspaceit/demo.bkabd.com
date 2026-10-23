@@ -115,7 +115,7 @@ $canSee = function (?string $perm) use ($myPerms): bool {
 $isActive = function (string $path) use ($current): bool {
     return $path === '/'
         ? $current === '/'
-        : ($current === $path || str_starts_with($current, $path . '/'));
+        : ($current === $path || ($path !== '/settings' && str_starts_with($current, $path . '/')));
 };
 
 // Sidebar count badges (path => pending registrations). Rendered only when > 0;
@@ -131,7 +131,7 @@ $navBadge = function (string $path) use ($navBadges): string {
     if ($count < 1) {
         return '';
     }
-    return '<span data-nav-badge="' . e($path) . '" class="ml-auto shrink-0 badge bg-amber-50 text-amber-800 font-semibold"'
+    return '<span data-nav-badge="' . e($path) . '" class="ml-auto shrink-0 nav-notification-bubble"'
         . ' title="Pending registrations">' . number_format($count) . '</span>';
 };
 
@@ -374,7 +374,7 @@ window.updatePendingBadges = function (total) {
         if (item) {
             var span = document.createElement('span');
             span.setAttribute('data-nav-badge', '/pending-students');
-            span.className = 'ml-auto shrink-0 badge bg-amber-50 text-amber-800 font-semibold';
+            span.className = 'ml-auto shrink-0 nav-notification-bubble';
             span.title = 'Pending registrations';
             item.appendChild(span);
         }
@@ -391,11 +391,11 @@ window.updatePendingBadges = function (total) {
 (function () {
     var url = '/api/pending-students?per_page=1';
     function refresh() {
-        BK.get(url).then(function (json) {
+        BK.get(url, {cache: 'no-store'}).then(function (json) {
             window.updatePendingBadges((json && json.data && json.data.total) || 0);
         }).catch(function () { /* transient failure keeps the last count */ });
     }
-    setInterval(refresh, 30000);
+    setInterval(refresh, 1000);
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden) { refresh(); }
     });

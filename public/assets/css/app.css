@@ -705,17 +705,15 @@ input[type=radio]:focus {
     white-space: nowrap;
     border-bottom-width: 2px;
     --tw-border-opacity: 1;
-    border-color: rgb(226 232 240/var(--tw-border-opacity, 1));
-    --tw-bg-opacity: 1;
-    background-color: rgb(248 250 252/var(--tw-bg-opacity, 1));
+    border-color: #047253;
+    background-color: #047253;
     padding: .75rem 1rem;
     text-align: left;
     font-size: .75rem;
     line-height: 1rem;
     font-weight: 600;
     letter-spacing: .025em;
-    --tw-text-opacity: 1;
-    color: rgb(100 116 139/var(--tw-text-opacity, 1))
+    color: #fff
 }
 
 .table tbody td {
@@ -2475,9 +2473,12 @@ input[type=radio]:focus {
 
 .fl label {
     position: absolute;
-    top: -.65rem;
+    top: -0.99rem;
     left: .75rem;
-    padding: 0 .25rem;
+    padding: 2px .25rem 0;
+    border: 1px solid #047253;
+    border-bottom: 0;
+    border-radius: .25rem .25rem 0 0;
     background: #fff;
     font-size: .875rem;
     font-weight: 500;
@@ -2486,6 +2487,27 @@ input[type=radio]:focus {
     pointer-events: none;
     white-space: nowrap;
     z-index: 1
+}
+
+.fl label.f-center-search,
+.fl label.f-institute {
+    top: -1.25rem
+}
+
+.nav-notification-bubble {
+    display:inline-flex;
+    min-width:1.25rem;
+    height:1.25rem;
+    padding:0 .3rem;
+    align-items:center;
+    justify-content:center;
+    border-radius:9999px;
+    background:#ef4444;
+    color:#fff;
+    font-size:.6875rem;
+    font-weight:700;
+    line-height:1;
+    box-shadow:0 0 0 2px #064e3b;
 }
 
 .fl .input,
@@ -2558,6 +2580,41 @@ input[type=radio]:focus {
 /* Hide the horizontal scrollbar the notch bleed causes on the sidebar,
 /* The notch bleeds right causing horizontal overflow — allow it visually
    but hide the scrollbar completely using height:0 on the webkit track. */
+.students-filter-bar {
+    align-items: flex-end
+}
+
+.students-filter-bar>.fl {
+    flex: 1 1 140px
+}
+
+.students-filter-bar>.fl:nth-child(4),
+.students-filter-bar>.fl:nth-child(5) {
+    flex: .65 1 100px
+}
+
+.students-filter-bar>.fl:nth-child(1) {
+    flex: .75 1 110px
+}
+
+.students-filter-bar>.fl:nth-child(3) {
+    flex: 1.35 1 190px
+}
+
+.students-filter-bar>.fl:nth-child(6) {
+    flex: 1.7 1 220px
+}
+
+@media (min-width:1280px) {
+    .students-filter-bar {
+        flex-wrap: nowrap
+    }
+
+    .students-filter-bar>.fl {
+        min-width: 0
+    }
+}
+
 #sidebar {
     scrollbar-width: none;
     /* Firefox: hide scrollbar entirely */
@@ -2583,11 +2640,11 @@ input[type=radio]:focus {
 }
 
 #app-main .table thead th {
-    background: linear-gradient(110deg, #047857 0%, #065f46 100%);
+    background: #047253;
     color: #fff;
-    border-color: #047857;
+    border-color: #047253;
     border-right: 1px solid rgba(167, 243, 208, .42);
-    border-bottom: 2px solid #064e3b;
+    border-bottom: 2px solid #047253;
     text-transform: uppercase;
     letter-spacing: .06em;
 }
@@ -3158,5 +3215,35 @@ input[type=radio]:focus {
     #sidebar-overlay {
         -webkit-backdrop-filter: blur(2px);
         backdrop-filter: blur(2px)
+    }
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+    border: 1px solid #047253;
+    border-color: #047253
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+    border-color: #047253;
+    --tw-ring-color: #047253
+}
+
+#student-register-form .fl {
+    margin-top: .75rem
+}
+
+/* Give floated labels room between stacked geography form fields. */
+#geo-page #geo-form>.mb-4.fl {
+    margin-bottom:1.75rem;
+}
+
+/* On phones, floated labels need extra separation from the field above. */
+@media (max-width:639px) {
+    #student-register-form .grid {
+        row-gap: 2.25rem;
     }
 }

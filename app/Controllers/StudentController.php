@@ -116,10 +116,10 @@ final class StudentController extends Controller
         // the original index(); class words matched case-insensitively.
         $this->applyStudentSearch($q, $request->input('search'));
 
-        // Order: center_id → institute name → registration (original)
-        $q->orderBy('center_id', 'asc')
-          ->orderBy('institute_id', 'asc')
-          ->orderBy('registration', 'asc');
+        // Show the most recently registered students first. Use id as a stable
+        // tie-breaker when several registrations share the same timestamp.
+        $q->orderBy('students.created_at', 'desc')
+          ->orderBy('students.id', 'desc');
 
         // Pagination matching Laravel shape for frontend 1:1
         return $this->sendResponse(

@@ -23,7 +23,7 @@ $flag = fn(string $p): string => !empty($perms[$p]) ? '1' : '0';
         <div class="card-body space-y-4">
             <div class="fl">
                 <input type="search" id="center-search" class="max-w-md" placeholder="Search Here...">
-                <label for="center-search">Search</label>
+                <label for="center-search" class="f-center-search">Search</label>
             </div>
 
             <div class="overflow-x-auto">

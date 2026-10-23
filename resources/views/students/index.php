@@ -49,7 +49,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                 </div>
             </div>
 
-            <div class="filter-bar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 2xl:grid-cols-6 gap-3">
+            <div class="filter-bar students-filter-bar">
                 <div class="fl">
                     <select id="f-session" class="w-full">
                         <option value="">All Sessions</option>
@@ -70,7 +70,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-center">Center <span class="filter-record-count" id="center-record-count" title="Available centers"><?= count((array) $centers) ?></span></label>
+                    <label for="f-center" class="f-center-search">Center <span class="filter-record-count" id="center-record-count" title="Available centers"><?= count((array) $centers) ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-institute" class="w-full">
@@ -81,7 +81,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-institute">Institute <span class="filter-record-count" id="institute-record-count" data-total-count="<?= count((array) $institutes) ?>" title="Available institutes"><?= count((array) $institutes) ?></span></label>
+                    <label for="f-institute" class="f-institute">Institute <span class="filter-record-count" id="institute-record-count" data-total-count="<?= count((array) $institutes) ?>" title="Available institutes"><?= count((array) $institutes) ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-class" class="w-full">
@@ -102,9 +102,10 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                     </select>
                     <label for="f-status">Status</label>
                 </div>
-                <div class="fl">
-                    <input type="search" id="f-search" class="w-full" placeholder="Name, reg. no, roll..." value="<?= e($filters['search'] ?? '') ?>">
+                <div class="fl" style="display:flex;align-items:center;gap:.5rem">
+                    <input type="search" id="f-search" class="w-full min-w-0" style="flex:1" placeholder="Name, reg. no, roll..." value="<?= e($filters['search'] ?? '') ?>">
                     <label for="f-search">Search</label>
+                    <button type="button" id="btn-reset-filters" class="btn btn-light shrink-0">Reset</button>
                 </div>
             </div>
 
@@ -153,6 +154,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const centerEl = document.getElementById('f-center');
     const instituteEl = document.getElementById('f-institute');
     const searchEl = document.getElementById('f-search');
+    const resetFiltersBtn = document.getElementById('btn-reset-filters');
     const modalEl = document.getElementById('student-modal');
     const centerSummaryEl = document.getElementById('selected-center-summary');
     const centerSummaryNameEl = document.getElementById('selected-center-name');
@@ -165,6 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const can = function (name) { return listBox.getAttribute('data-perm-' + name) === '1'; };
     const val = function (el) { return el ? el.value : ''; };
+    const initialSession = val(sessionEl);
 
     const CLASS_NAMES = { 6: 'KG', 1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE' };
     const GENDERS = { 1: 'Male', 2: 'Female', 3: 'Others' };
@@ -332,6 +335,21 @@ document.addEventListener('DOMContentLoaded', function () {
             reloadFromFilters();
         });
         syncInstitutes();
+    }
+
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', function () {
+            clearTimeout(searchTimer);
+            sessionEl.value = initialSession;
+            centerEl.value = '';
+            instituteEl.value = '';
+            classEl.value = '';
+            statusEl.value = '';
+            searchEl.value = '';
+            syncInstitutes();
+            pageNum = 1;
+            reloadFromFilters();
+        });
     }
 
     if (searchEl) {

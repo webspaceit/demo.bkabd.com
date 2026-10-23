@@ -67,13 +67,13 @@ $instituteCount = count((array) ($institutes ?? []));
                             <option value="<?= (int) $c['id'] ?>"><?= e($c['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-center">Center <span class="filter-record-count" id="center-record-count" title="Available centers"><?= $centerCount ?></span></label>
+                    <label for="f-center" class="f-center-search">Center <span class="filter-record-count" id="center-record-count" title="Available centers"><?= $centerCount ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-institute" class="w-full">
                         <option value="">All Institutes</option>
                     </select>
-                    <label for="f-institute">Institute <span class="filter-record-count" id="institute-record-count" data-total-count="<?= $instituteCount ?>" title="Available institutes"><?= $instituteCount ?></span></label>
+                    <label for="f-institute" class="f-institute">Institute <span class="filter-record-count" id="institute-record-count" data-total-count="<?= $instituteCount ?>" title="Available institutes"><?= $instituteCount ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-class" class="w-full">
@@ -84,9 +84,10 @@ $instituteCount = count((array) ($institutes ?? []));
                     </select>
                     <label for="f-class">Class</label>
                 </div>
-                <div class="fl">
-                    <input type="search" id="f-search" class="w-full" placeholder="Name, reg. no, roll...">
+                <div class="fl" style="display:flex;align-items:center;gap:.5rem">
+                    <input type="search" id="f-search" class="w-full min-w-0" style="flex:1" placeholder="Name, reg. no, roll...">
                     <label for="f-search">Search</label>
+                    <button type="button" id="btn-reset-filters" class="btn btn-light shrink-0">Reset</button>
                 </div>
             </div>
 
@@ -125,6 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const instituteEl = document.getElementById('f-institute');
     const classEl     = document.getElementById('f-class');
     const searchEl    = document.getElementById('f-search');
+    const resetFiltersBtn = document.getElementById('btn-reset-filters');
     const rowsEl      = document.getElementById('admit-rows');
     const pagerEl     = document.getElementById('admit-pagination');
     const btnPrintCenter = document.getElementById('btn-print-center');
@@ -144,6 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let searchTimer = null;
     let centerCountRequest = 0;
     const val = el => el ? el.value : '';
+    const initialSession = val(sessionEl);
 
     function syncInstituteRecordCount(count) {
         if (!instituteCountEl) return;
@@ -381,6 +384,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Filter change triggers reload
     [sessionEl, centerEl, instituteEl, classEl].forEach(el => el.addEventListener('change', () => { pageNum = 1; reload(); syncPrintBtn(); syncInstitutePrintBtns(); syncInstituteSummary(); }));
+
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', function () {
+            clearTimeout(searchTimer);
+            sessionEl.value = initialSession;
+            centerEl.value = '';
+            instituteEl.innerHTML = '<option value="">All Institutes</option>';
+            classEl.value = '';
+            searchEl.value = '';
+            pageNum = 1;
+            reload();
+            syncPrintBtn();
+            syncInstitutePrintBtns();
+            syncInstituteRecordCount();
+            syncInstituteSummary();
+        });
+    }
 
     // Search with debounce
     searchEl.addEventListener('input', function () {

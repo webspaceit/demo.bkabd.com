@@ -30,7 +30,8 @@ window.BK = (function () {
             method: method,
             headers: headers,
             body: body,
-            credentials: 'same-origin'
+            credentials: 'same-origin',
+            cache: opts.cache || 'default'
         });
 
         const ct = res.headers.get('content-type') || '';
@@ -49,7 +50,7 @@ window.BK = (function () {
         return data;
     }
 
-    const get = (url) => request(url);
+    const get = (url, opts) => request(url, opts || {});
     const post = (url, body) => request(url, { method: 'POST', body: body });
     const put = (url, body) => request(url, { method: 'PUT', body: body });
     const del = (url, body) => request(url, { method: 'DELETE', body: body });

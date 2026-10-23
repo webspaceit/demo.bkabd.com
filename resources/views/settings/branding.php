@@ -5,6 +5,8 @@ $textFields = [
     'short_name' => 'Short name',
     'app_name' => 'System name',
     'exam_name' => 'Examination name',
+    'admit_card_rules_title' => 'Admit card instructions heading',
+    'admit_card_rules' => 'Admit card special instructions (one instruction per line)',
     'registration_label' => 'Registration label',
     'registration_no' => 'Registration number',
     'address' => 'Address',
@@ -31,9 +33,9 @@ $textFields = [
             <form id="branding-form" class="space-y-4">
                 <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <?php foreach ($textFields as $field => $label): ?>
-                        <div class="fl <?= in_array($field, ['address', 'website'], true) ? 'md:col-span-2' : '' ?>">
-                            <?php if ($field === 'address' || $field === 'website'): ?>
-                                <textarea class="input" id="brand-<?= e($field) ?>" name="<?= e($field) ?>" rows="2" placeholder="<?= e($label) ?>" <?= $canEdit ? '' : 'disabled' ?>><?= e($branding[$field] ?? '') ?></textarea>
+                        <div class="fl <?= in_array($field, ['address', 'website', 'admit_card_rules'], true) ? 'md:col-span-2' : '' ?>">
+                            <?php if (in_array($field, ['address', 'website', 'admit_card_rules'], true)): ?>
+                                <textarea class="input" id="brand-<?= e($field) ?>" name="<?= e($field) ?>" rows="<?= $field === 'admit_card_rules' ? '6' : '2' ?>" placeholder="<?= e($label) ?>" <?= $canEdit ? '' : 'disabled' ?>><?= e($branding[$field] ?? '') ?></textarea>
                             <?php else: ?>
                                 <input class="input" id="brand-<?= e($field) ?>" name="<?= e($field) ?>" value="<?= e($branding[$field] ?? '') ?>" placeholder="<?= e($label) ?>" <?= $canEdit ? '' : 'disabled' ?>>
                             <?php endif; ?>

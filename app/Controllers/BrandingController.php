@@ -16,6 +16,8 @@ final class BrandingController extends Controller
         'short_name' => 100,
         'app_name' => 160,
         'exam_name' => 160,
+        'admit_card_rules_title' => 255,
+        'admit_card_rules' => 5000,
         'registration_label' => 100,
         'registration_no' => 160,
         'address' => 500,

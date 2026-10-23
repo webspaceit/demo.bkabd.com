@@ -12,6 +12,9 @@
 $cardMode    = ($cardMode ?? 'registration') === 'admit' ? 'admit' : 'registration';
 $twoPerPage  = !empty($twoPerPage);
 $isAdmitCard = $cardMode === 'admit';
+$admitCardRulesTitle = brand('admit_card_rules_title');
+$admitCardRules = preg_split('/\\R/u', brand('admit_card_rules'), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+$admitCardRules = array_values(array_filter(array_map('trim', $admitCardRules), static fn(string $line): bool => $line !== ''));
 $cardStudents = $students ?? (isset($student) ? [$student] : []);
 $cardCount = count($cardStudents);
 $resolve = static function (string $file): ?string {
@@ -703,11 +706,8 @@ $qrContentEscaped = e($qrContent);
 
         <?php if ($isAdmitCard): ?>
         <div class="rc-rules ml-4 my-3 text-[11px] sm:text-xs leading-relaxed">
-            <p class="font-bold mb-1 text-slate-800">বিশেষ নির্দেশাবলিঃ</p>
-            <p>১. প্রবেশপত্র (অ্যাডমিট কার্ড) ছাড়া কোনো পরীক্ষার্থীকে পরীক্ষা কক্ষে প্রবেশ করতে দেওয়া হবে না।</p>
-            <p>২. প্রবেশপত্র ছাড়া কোনো পরীক্ষার্থী লিখিত পরীক্ষার কাগজ বা বই সঙ্গে রাখতে পারবে না।</p>
-            <p>৩. পরীক্ষা শুরুর দুই ঘণ্টার আগে কোনো পরীক্ষার্থী পরীক্ষা কক্ষ থেকে বাইরে যেতে পারবেন না।</p>
-            <p>৪. প্রত্যেক পরীক্ষার্থীকে অ্যাসোসিয়েশনের সকল নিয়ম মেনে চলতে হবে। অন্যথায়, তাকে পরীক্ষায় অংশগ্রহণের অনুমতি দেওয়া হবে না।</p>
+            <?php if (trim($admitCardRulesTitle) !== ''): ?><p class="font-bold mb-1 text-slate-800"><?= e($admitCardRulesTitle) ?></p><?php endif; ?>
+            <?php foreach ($admitCardRules as $instruction): ?><p><?= e($instruction) ?></p><?php endforeach; ?>
         </div>
         <?php endif; ?>
 

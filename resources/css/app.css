@@ -70,6 +70,9 @@
 
     .table thead th {
         @apply bg-slate-50 text-left font-semibold text-xs tracking-wide text-slate-500 px-4 py-3 border-b-2 border-slate-200 whitespace-nowrap;
+        background-color: #047253;
+        color: #fff;
+        border-color: #047253;
     }
 
     .table tbody td {
@@ -169,9 +172,12 @@
 
 .fl label {
     position: absolute;
-    top: -0.6rem;
+    top: -0.99rem;
     left: 0.75rem;
-    padding: 0 0.25rem;
+    padding: 2px 0.25rem 0;
+    border: 1px solid #047253;
+    border-bottom: 0;
+    border-radius: 0.25rem 0.25rem 0 0;
     background: #fff;
     font-size: 0.875rem;
     font-weight: 500;
@@ -180,6 +186,27 @@
     pointer-events: none;
     white-space: nowrap;
     z-index: 1;
+}
+
+.fl label.f-center-search,
+.fl label.f-institute {
+    top: -1.25rem;
+}
+
+.nav-notification-bubble {
+    display: inline-flex;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 0 0 2px #064e3b;
 }
 
 .fl .input,
@@ -297,6 +324,41 @@
  * reads as a rounded drawer with a soft edge; at lg it stays flush
  * against the dark backdrop exactly as before.
  * ------------------------------------------------------------------ */
+.students-filter-bar {
+    align-items: flex-end;
+}
+
+.students-filter-bar > .fl {
+    flex: 1 1 140px;
+}
+
+.students-filter-bar > .fl:nth-child(4),
+.students-filter-bar > .fl:nth-child(5) {
+    flex: 0.65 1 100px;
+}
+
+.students-filter-bar > .fl:nth-child(1) {
+    flex: 0.75 1 110px;
+}
+
+.students-filter-bar > .fl:nth-child(3) {
+    flex: 1.35 1 190px;
+}
+
+.students-filter-bar > .fl:nth-child(6) {
+    flex: 1.7 1 220px;
+}
+
+@media (min-width: 1280px) {
+    .students-filter-bar {
+        flex-wrap: nowrap;
+    }
+
+    .students-filter-bar > .fl {
+        min-width: 0;
+    }
+}
+
 #sidebar {
     background-color: #064e3b;
 }
@@ -313,5 +375,35 @@
     #sidebar-overlay {
         backdrop-filter: blur(2px);
         -webkit-backdrop-filter: blur(2px);
+    }
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+    border: 1px solid #047253;
+    border-color: #047253;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+    border-color: #047253;
+    --tw-ring-color: #047253;
+}
+
+#student-register-form .fl {
+    margin-top: 0.75rem;
+}
+
+/* Give floated labels room between stacked geography form fields. */
+#geo-page #geo-form > .mb-4.fl {
+    margin-bottom: 1.75rem;
+}
+
+/* On phones, floated labels need extra separation from the field above. */
+@media (max-width: 639px) {
+    #student-register-form .grid {
+        row-gap: 2.25rem;
     }
 }

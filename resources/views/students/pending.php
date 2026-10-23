@@ -76,7 +76,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-center">Center</label>
+                    <label for="f-center" class="f-center-search">Center</label>
                 </div>
                 <div class="fl">
                     <select id="f-institute" class="w-full">
@@ -87,7 +87,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-institute">Institute</label>
+                    <label for="f-institute" class="f-institute">Institute</label>
                 </div>
                 <div class="fl">
                     <select id="f-class" class="w-full">
@@ -378,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function () {
             institute_id: val(instituteEl),
             search: val(searchEl)
         });
-        BK.get(url).then(function (json) {
+        BK.get(url, {cache: 'no-store'}).then(function (json) {
             const pager = (json && json.data) || {};
             const rows = pager.data || [];
             renderCountChip(pager.total || 0);
@@ -396,6 +396,29 @@ document.addEventListener('DOMContentLoaded', function () {
             BK.toast(err.message || 'Could not load the queue', 'error');
         });
     }
+
+    // Keep the visible pending-count chip current while this page stays open.
+    // The filtered total updates here; the sidebar badge tracks the global total.
+    function refreshVisibleCount() {
+        const url = BK.qs('/api/pending-students', {
+            page: 1,
+            per_page: 1,
+            session: val(sessionEl),
+            class: val(classEl),
+            center_id: val(centerEl),
+            institute_id: val(instituteEl),
+            search: val(searchEl)
+        });
+        BK.get(url).then(function (json) {
+            const pager = (json && json.data) || {};
+            renderCountChip(pager.total || 0);
+        }).catch(function () { /* retain the last displayed total */ });
+    }
+
+    setInterval(refreshVisibleCount, 1000);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) { refreshVisibleCount(); }
+    });
 
     // Keep the badges (sidebar + top bar) in sync after an approve/reject
     // without a full page reload (unfiltered total = the badge count).
