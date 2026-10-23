@@ -391,6 +391,21 @@ final class StudentController extends Controller
             $q->where('students.class', $classWord);
             return;
         }
+
+        // Registration numbers are numeric and indexed. Avoid the broad
+        // multi-column contains search (which scans the whole session) for
+        // numeric input; prefix matching keeps partial registration searches
+        // useful while allowing MySQL to use the registration index. Short
+        // numeric values can also be searched as an exact roll number.
+        $numericSearch = trim($search);
+        if ($numericSearch !== '' && ctype_digit($numericSearch)) {
+            $q->whereRaw(
+                '(`students`.`registration` LIKE ? OR `students`.`roll` = ?)',
+                [$numericSearch . '%', $numericSearch]
+            );
+            return;
+        }
+
         $like = '%' . $search . '%';
         // Search group; dotted columns quoted explicitly (see index()).
         $q->whereRaw(
