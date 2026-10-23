@@ -261,6 +261,34 @@ final class StudentController extends Controller
         );
     }
 
+    /** Move an active student back to the pending approval queue. */
+    public function pend(Request $request): array
+    {
+        if (!Auth::check()) {
+            Response::json(['status' => 'errors'], 401);
+        }
+
+        $id = (int) ($request->params['id'] ?? 0);
+        $student = Student::find($id);
+        if ($student === null) {
+            throw new \App\Core\HttpException(404, 'Student not found');
+        }
+
+        // Restrict center users to their own students; admins may pend any student.
+        Auth::assertStudentAccess($id);
+
+        if ((int) ($student['active'] ?? 0) !== 1) {
+            throw new \App\Core\HttpException(422, 'Only active students can be moved to pending.');
+        }
+
+        Student::updateRow($id, ['active' => 0, 'updated_at' => date('Y-m-d H:i:s')]);
+
+        return $this->sendResponse(
+            ['id' => $id, 'registration' => $student['registration'], 'active' => 0],
+            'Student moved to pending approval.'
+        );
+    }
+
     /** Approve multiple pending registrations in one request. */
     public function bulkApprove(Request $request): array
     {

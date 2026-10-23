@@ -33,6 +33,17 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
     from { background-position: 100% 0; }
     to { background-position: -100% 0; }
 }
+#pending-pagination-footer {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+}
+#pending-pagination-footer #pending-per-page-control {
+    margin-left: auto;
+}
 </style>
 <div class="space-y-4">
     <div class="card" id="pending-list" data-perm-approve="<?= $canApprovePending ? '1' : '0' ?>">
@@ -136,7 +147,18 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                 </table>
             </div>
 
-            <div id="pending-pagination"></div>
+            <div id="pending-pagination-footer" class="mt-4">
+                <div id="pending-pagination" class="flex flex-wrap items-center gap-2"></div>
+                <label id="pending-per-page-control" for="pending-per-page" class="flex items-center gap-2 text-sm text-slate-500">
+                    Rows per page
+                    <select id="pending-per-page" class="input" style="width:auto;min-width:5rem">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </label>
+            </div>
         </div>
     </div>
 </div>
@@ -159,8 +181,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const centerEl = document.getElementById('f-center');
     const instituteEl = document.getElementById('f-institute');
     const searchEl = document.getElementById('f-search');
+    const perPageEl = document.getElementById('pending-per-page');
     const modalEl = document.getElementById('student-modal');
-    const PER_PAGE = 20;
+    let perPage = 20;
+    if (perPageEl) { perPageEl.value = '20'; }
     const BADGE_SEL = '[data-nav-badge="/pending-students"]';
 
     const canApprove = listBox.getAttribute('data-perm-approve') === '1';
@@ -332,7 +356,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return '<tr>'
             + (canApprove ? '<td><input type="checkbox" class="pending-select-row" value="' + id + '" aria-label="Select ' + BK.esc(rec.name || 'student') + '"></td>' : '')
-            + '<td class="text-slate-400">' + ((pageNum - 1) * PER_PAGE + i + 1) + '</td>'
+            + '<td class="text-slate-400">' + ((pageNum - 1) * perPage + i + 1) + '</td>'
             + '<td><div class="min-w-0"><div class="font-medium text-slate-800">' + BK.esc(rec.name) + '</div></div></td>'
             + '<td><div class="font-semibold text-slate-800">' + BK.esc(rec.registration) + '</div></td>'
             + '<td>' + dash(rec.roll) + '</td>'
@@ -349,7 +373,7 @@ document.addEventListener('DOMContentLoaded', function () {
         rowsEl.innerHTML = skeletonRows(5);
         const url = BK.qs('/api/pending-students', {
             page: pageNum,
-            per_page: PER_PAGE,
+            per_page: perPage,
             session: val(sessionEl),
             class: val(classEl),
             center_id: val(centerEl),
@@ -366,7 +390,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (pager.current_page) { pageNum = pager.current_page; }
             if (pagerEl) {
                 pagerEl.innerHTML = '';
-                BK.renderPagination(pagerEl, pager);
+                if (pager.last_page > 1) {
+                    BK.renderPagination(pagerEl, pager);
+                } else {
+                    const from = pager.from || 0;
+                    const to = pager.to || 0;
+                    pagerEl.innerHTML = '<span class="text-sm text-slate-500">Showing '
+                        + from + '–' + to + ' of ' + (pager.total || 0) + '</span>';
+                }
             }
         }).catch(function (err) {
             renderCountChip(0);
@@ -469,6 +500,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const reloadFromFilters = function () { pageNum = 1; reload(); };
+
+    if (perPageEl) {
+        perPageEl.addEventListener('change', function () {
+            perPage = Math.max(1, parseInt(perPageEl.value, 10) || 20);
+            pageNum = 1;
+            reload();
+        });
+    }
 
     [sessionEl, classEl, centerEl, instituteEl].forEach(function (el) {
         if (el) { el.addEventListener('change', reloadFromFilters); }

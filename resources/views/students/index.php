@@ -20,7 +20,8 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
 <div class="space-y-4">
     <div class="card" id="students-list"
          data-perm-edit="<?= can('student-edit') ? '1' : '0' ?>"
-         data-perm-delete="<?= can('student-delete') ? '1' : '0' ?>">
+         data-perm-delete="<?= can('student-delete') ? '1' : '0' ?>"
+         data-perm-pend="<?= can('student-approve') ? '1' : '0' ?>">
         <div class="card-header">
             <h1 class="text-base font-semibold text-slate-800">List of All Student's With Details Info (<span id="student-total">0</span>)</h1>
             <?php if (can('student-registration')): ?>
@@ -249,6 +250,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (can('edit')) {
             actions += '<a class="btn btn-sm btn-light" href="/edit-student/' + id + '" title="Edit">&#9998;</a>';
         }
+        if (String(rec.active) === '1' && can('pend')) {
+            actions += '<button type="button" class="btn btn-return-pending" data-act="pend" data-id="' + id + '" title="Return to pending" aria-label="Return to pending">'
+                + '<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/><path d="M12 8v4l-2 2"/></svg>'
+                + '</button>';
+        }
         if (can('delete')) {
             actions += '<button type="button" class="btn btn-sm btn-danger" data-act="delete" data-id="' + id + '" title="Delete">&#10005;</button>';
         }
@@ -425,6 +431,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (act === 'view') {
             openModal(id);
+            return;
+        }
+        if (act === 'pend') {
+            const studentName = btn.closest('tr').children[3].textContent.trim();
+            BK.confirm('Move ' + studentName + ' back to Pending? The student will be excluded from active exam documents until approved again.').then(function (confirmed) {
+                if (!confirmed) { return; }
+                BK.post('/api/students/' + encodeURIComponent(id) + '/pend', {}).then(function () {
+                    BK.toast('Student moved to pending approval.', 'success');
+                    reload();
+                    BK.get('/api/pending-students?per_page=1', {cache: 'no-store'}).then(function (json) {
+                        if (window.updatePendingBadges) {
+                            window.updatePendingBadges((json && json.data && json.data.total) || 0);
+                        }
+                    }).catch(function () {});
+                }).catch(function (err) {
+                    BK.toast(err.message || 'Could not move the student to Pending.', 'error');
+                });
+            });
             return;
         }
         if (act === 'delete') {

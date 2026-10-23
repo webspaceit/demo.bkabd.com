@@ -76,7 +76,8 @@
     }
 
     .table tbody td {
-        @apply px-4 py-3 border-b border-slate-100 align-middle;
+        @apply border-b border-slate-100 align-middle;
+        padding: 0.4rem;
     }
 
     .table tbody tr {
@@ -90,6 +91,12 @@
     .table tbody tr:last-child td {
         @apply border-b-0;
     }
+
+/* Keep active and pending student rows visually consistent as actions appear. */
+#students-list #student-rows > tr > td,
+#pending-list #pending-rows > tr > td {
+    height: 38px;
+}
 
     .badge {
         @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium;
@@ -240,12 +247,6 @@
     height: 0;
 }
 
-/* Hover: extend background to the right edge, matching the active notch */
-#sidebar [data-nav-item]:not(.active-nav-notch):hover {
-    margin-right: -1.25rem;
-    padding-right: 1.5rem;
-}
-
 /* Slim scrollbars (shell-wide). */
 ::-webkit-scrollbar {
     width: 6px;
@@ -268,6 +269,46 @@
  * show the buttons (no hover there). Tapping the kebab adds `.pinned`
  * to keep the buttons visible (see app.js).
  * ------------------------------------------------------------------ */
+.table tbody tr .row-actions {
+    min-height: 25px;
+    white-space: nowrap;
+}
+
+.table tbody tr .row-actions > * {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.table tbody tr .row-actions > .btn,
+.table tbody tr .row-actions > a.btn {
+    height: 25px;
+    min-height: 25px;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.btn-return-pending {
+    width: 25px;
+    height: 25px;
+    min-height: 25px;
+    padding: 0;
+    border: 1px solid #fbbf24;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #fbbf24, #f97316);
+    color: #fff;
+    box-shadow: 0 1px 2px rgb(120 53 15 / 20%);
+}
+
+.btn-return-pending:hover {
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    box-shadow: 0 2px 5px rgb(120 53 15 / 30%);
+}
+
+.btn-return-pending svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
 @media (hover: hover) {
     .table tbody tr .row-actions {
         position: relative;

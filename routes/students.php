@@ -104,3 +104,4 @@ Router::get('/api/pending-students', [StudentController::class, 'pending'], ['au
 Router::post('/api/pending-students/approve-bulk', [StudentController::class, 'bulkApprove'], 'auth|permission:student-approve');
 Router::post('/api/pending-students/{id}/approve', [StudentController::class, 'approve'], 'auth|permission:student-approve');
 Router::post('/api/pending-students/{id}/reject', [StudentController::class, 'reject'], 'auth|permission:student-approve');
+Router::post('/api/students/{id}/pend', [StudentController::class, 'pend'], 'auth|permission:student-approve');
