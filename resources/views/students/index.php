@@ -28,7 +28,28 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
             <?php endif; ?>
         </div>
         <div class="card-body space-y-4">
-            <div class="filter-bar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div id="selected-center-summary" class="hidden flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3" role="status" aria-live="polite">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Selected Center</p>
+                        <p id="selected-center-name" class="mt-0.5 truncate text-sm font-semibold text-emerald-950"></p>
+                    </div>
+                    <div class="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">
+                        <span id="selected-center-student-count">…</span> matching students
+                    </div>
+                </div>
+                <div id="selected-institute-summary" class="hidden flex flex-wrap items-center justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3" role="status" aria-live="polite">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">Selected Institute</p>
+                        <p id="selected-institute-name" class="mt-0.5 truncate text-sm font-semibold text-teal-950"></p>
+                    </div>
+                    <div class="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-teal-800 ring-1 ring-teal-200">
+                        <span id="selected-institute-student-count">…</span> matching students
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-bar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 2xl:grid-cols-6 gap-3">
                 <div class="fl">
                     <select id="f-session" class="w-full">
                         <option value="">All Sessions</option>
@@ -49,7 +70,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-center">Center</label>
+                    <label for="f-center">Center <span class="filter-record-count" id="center-record-count" title="Available centers"><?= count((array) $centers) ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-institute" class="w-full">
@@ -60,7 +81,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-institute">Institute</label>
+                    <label for="f-institute">Institute <span class="filter-record-count" id="institute-record-count" data-total-count="<?= count((array) $institutes) ?>" title="Available institutes"><?= count((array) $institutes) ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-class" class="w-full">
@@ -82,7 +103,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                     <label for="f-status">Status</label>
                 </div>
                 <div class="fl">
-                    <input type="search" id="f-search" class="w-full" placeholder="Name, reg. no, roll, institute..." value="<?= e($filters['search'] ?? '') ?>">
+                    <input type="search" id="f-search" class="w-full" placeholder="Name, reg. no, roll..." value="<?= e($filters['search'] ?? '') ?>">
                     <label for="f-search">Search</label>
                 </div>
             </div>
@@ -133,6 +154,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const instituteEl = document.getElementById('f-institute');
     const searchEl = document.getElementById('f-search');
     const modalEl = document.getElementById('student-modal');
+    const centerSummaryEl = document.getElementById('selected-center-summary');
+    const centerSummaryNameEl = document.getElementById('selected-center-name');
+    const centerSummaryCountEl = document.getElementById('selected-center-student-count');
+    const instituteSummaryEl = document.getElementById('selected-institute-summary');
+    const instituteSummaryNameEl = document.getElementById('selected-institute-name');
+    const instituteSummaryCountEl = document.getElementById('selected-institute-student-count');
+    const instituteCountEl = document.getElementById('institute-record-count');
     const PER_PAGE = 20;
 
     const can = function (name) { return listBox.getAttribute('data-perm-' + name) === '1'; };
@@ -145,6 +173,64 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let pageNum = 1;
     let searchTimer = null;
+    let centerSummaryRequest = 0;
+    let instituteSummaryRequest = 0;
+
+    function syncInstituteRecordCount() {
+        if (!instituteCountEl || !instituteEl) return;
+        const visibleCount = Array.from(instituteEl.options).filter(function (option) {
+            return option.value !== '' && !option.hidden;
+        }).length;
+        const totalCount = Number(instituteCountEl.dataset.totalCount || 0);
+        const count = val(centerEl) ? visibleCount : totalCount;
+        instituteCountEl.textContent = count.toLocaleString('en-US');
+        instituteCountEl.title = count + ' available institute(s)';
+    }
+
+    function syncSelectionSummaries() {
+        const centerId = val(centerEl);
+        const instituteId = val(instituteEl);
+        const centerRequest = ++centerSummaryRequest;
+        const instituteRequest = ++instituteSummaryRequest;
+        const centerOption = centerEl.options[centerEl.selectedIndex];
+        const instituteOption = instituteEl.options[instituteEl.selectedIndex];
+
+        if (centerSummaryEl) centerSummaryEl.classList.toggle('hidden', !centerId);
+        if (instituteSummaryEl) instituteSummaryEl.classList.toggle('hidden', !instituteId);
+        if (centerId && centerSummaryNameEl) centerSummaryNameEl.textContent = centerOption ? centerOption.textContent.trim() : '';
+        if (instituteId && instituteSummaryNameEl) instituteSummaryNameEl.textContent = instituteOption ? instituteOption.textContent.trim() : '';
+        if (centerId && centerSummaryCountEl) centerSummaryCountEl.textContent = '…';
+        if (instituteId && instituteSummaryCountEl) instituteSummaryCountEl.textContent = '…';
+
+        const base = {
+            session: val(sessionEl),
+            class: val(classEl),
+            status: val(statusEl),
+            search: val(searchEl),
+            per_page: 1,
+            page: 1
+        };
+        if (centerId) {
+            BK.get(BK.qs('/api/students', Object.assign({}, base, {center_id: centerId})))
+                .then(function (json) {
+                    if (centerRequest !== centerSummaryRequest) return;
+                    const total = Number((json.data && json.data.total) || 0);
+                    if (centerSummaryCountEl) centerSummaryCountEl.textContent = total.toLocaleString('en-US');
+                }).catch(function () {
+                    if (centerRequest === centerSummaryRequest && centerSummaryCountEl) centerSummaryCountEl.textContent = 'unavailable';
+                });
+        }
+        if (instituteId) {
+            BK.get(BK.qs('/api/students', Object.assign({}, base, {center_id: centerId, institute_id: instituteId})))
+                .then(function (json) {
+                    if (instituteRequest !== instituteSummaryRequest) return;
+                    const total = Number((json.data && json.data.total) || 0);
+                    if (instituteSummaryCountEl) instituteSummaryCountEl.textContent = total.toLocaleString('en-US');
+                }).catch(function () {
+                    if (instituteRequest === instituteSummaryRequest && instituteSummaryCountEl) instituteSummaryCountEl.textContent = 'unavailable';
+                });
+        }
+    }
 
     function rowHtml(rec, i) {
         const id = BK.esc(String(rec.id));
@@ -222,9 +308,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const reloadFromFilters = function () { pageNum = 1; reload(); };
+    const reloadFromFilters = function () { pageNum = 1; reload(); syncSelectionSummaries(); };
 
-    [sessionEl, classEl, statusEl, centerEl, instituteEl].forEach(function (el) {
+    [sessionEl, classEl, statusEl, instituteEl].forEach(function (el) {
         if (el) { el.addEventListener('change', reloadFromFilters); }
     });
 
@@ -238,9 +324,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (opt.selected && !visible) { cleared = true; }
         });
         if (cleared) { instituteEl.value = ''; }
+        syncInstituteRecordCount();
     }
     if (centerEl && instituteEl) {
-        centerEl.addEventListener('change', syncInstitutes);
+        centerEl.addEventListener('change', function () {
+            syncInstitutes();
+            reloadFromFilters();
+        });
         syncInstitutes();
     }
 
@@ -249,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function () {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(function () {
                 pageNum = 1;
-                reload();
+                reloadFromFilters();
             }, 300);
         });
     }
@@ -345,5 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     reload();
+    syncInstituteRecordCount();
+    syncSelectionSummaries();
 });
 </script>
