@@ -12,21 +12,21 @@
 
             <div id="db-sync-setup" class="hidden rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
                 <strong>Server setup is required before this can connect.</strong>
-                <p class="mt-1">A server administrator must add the settings below to the private <code>.env</code> file on the demo server. Do not paste passwords here or commit them to Git.</p>
+                <p class="mt-1">Add the settings below to the private <code>.env</code> file used by the app you are running (your local PC, in this case). Do not paste passwords here or commit them to Git.</p>
                 <ul id="db-sync-missing" class="mt-2 list-disc pl-5"></ul>
-                <p class="mt-2">The demo app's existing <code>DB_HOST</code> and <code>DB_DATABASE</code> must match the explicit <code>SYNC_TARGET_*</code> values. Use a database user restricted to demo. The exam account must be read-only.</p>
-                <p class="mt-2">Set <code>DB_SYNC_ENABLED=true</code> only in demo's private configuration after checking these values. The source connection needs permission to inspect schema metadata; this app uses it only for metadata queries.</p>
+                <p class="mt-2">The sync uses separate database connections, so your local app can keep its current <code>DB_*</code> settings. Set the <code>SYNC_SOURCE_*</code> connection to exam with a read-only user. Set <code>SYNC_TARGET_*</code> to demo with a user that can change demo's table structure and has no access to exam.</p>
+                <p class="mt-2">Set <code>DB_SYNC_ENABLED=true</code> and <code>DB_SYNC_ALLOW_LOCAL=true</code> in your local private configuration only after checking the target database name. Your host must allow remote MySQL connections from your PC to both databases.</p>
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
                 <section class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
                     <h2 class="font-semibold text-emerald-900">Exam: read-only reference</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">The comparison reads table names, column definitions, and indexes from <code>information_schema</code>. It does not read student records or submit any SQL changes to exam.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Use the database server host provided by your hosting provider. <code>localhost</code> works only if the exam database is on the same PC as this app. The comparison reads table names, column definitions, and indexes from <code>information_schema</code> inside a read-only transaction; it does not read student records or submit any SQL changes to exam.</p>
                     <p id="db-sync-source" class="mt-2 text-xs text-slate-500"></p>
                 </section>
                 <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
                     <h2 class="font-semibold text-sky-900">Demo: migration destination</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Only reviewed files in <code>database/sync_migrations/</code> can run here. The runner accepts additive table, column, or index changes; it rejects data edits and destructive schema commands.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Only reviewed files in <code>database/sync_migrations/</code> can run on the separate demo connection. The runner accepts additive table, column, or index changes; it rejects data edits and destructive schema commands.</p>
                     <p id="db-sync-target" class="mt-2 text-xs text-slate-500"></p>
                 </section>
             </div>
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             state = await BK.get('/api/database-sync/status');
             document.getElementById('db-sync-source').textContent = state.source.host ? state.source.host + ' / ' + state.source.database + ' · read-only' : 'Source connection not configured';
-            document.getElementById('db-sync-target').textContent = state.target.host ? state.target.host + ' / ' + state.target.database + ' · current app database' : 'Demo target is not explicitly confirmed';
+            document.getElementById('db-sync-target').textContent = state.target.host ? state.target.host + ' / ' + state.target.database + ' · dedicated demo connection' : 'Demo target is not explicitly confirmed';
             if (state.ready) {
                 badge.textContent = 'Connections configured';
                 badge.className = 'rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800';
@@ -104,10 +104,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.error) { message(data.error, true); return; }
             const rows = data.differences || [];
             results.replaceChildren();
+            const ignored = data.ignored || [];
+            if (ignored.length) {
+                const skipped = document.createElement('p');
+                skipped.className = 'mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600';
+                skipped.textContent = 'Skipped ' + ignored.length + ' configured difference(s): ' + ignored.map(function (row) {
+                    return row.table + ' — ' + row.detail;
+                }).join('; ');
+                results.appendChild(skipped);
+            }
             if (!rows.length) {
                 const p = document.createElement('p');
                 p.className = 'rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900';
-                p.textContent = 'No exam-side table, column, or index differences found in demo.';
+                p.textContent = ignored.length ? 'No other exam-side table, column, or index differences found in demo.' : 'No exam-side table, column, or index differences found in demo.';
                 results.appendChild(p);
             } else {
                 const table = document.createElement('table');

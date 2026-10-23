@@ -11,7 +11,12 @@ final class DatabaseSyncController extends Controller
 {
     public function status(): array
     {
-        return (new DatabaseSyncService())->readiness();
+        try {
+            return (new DatabaseSyncService())->readiness();
+        } catch (PDOException $e) {
+            error_log('[database-sync] status failed: ' . $e->getCode());
+            return ['ready' => false, 'missing' => ['Could not connect to the configured demo database; check host, database, and target account.'], 'source' => [], 'target' => [], 'pending_migrations' => []];
+        }
     }
 
     public function compare(): array
@@ -29,8 +34,11 @@ final class DatabaseSyncController extends Controller
     public function apply(Request $request): array
     {
         $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));
-        if ($host !== 'demo.bkabd.com') {
-            return ['error' => 'Migrations can only be applied from the demo.bkabd.com dashboard.'];
+        $localHosts = ['localhost', '127.0.0.1', '[::1]'];
+        $isAllowedLocal = in_array($host, $localHosts, true)
+            && \App\Core\Config::getBool('DB_SYNC_ALLOW_LOCAL', false);
+        if ($host !== 'demo.bkabd.com' && !$isAllowedLocal) {
+            return ['error' => 'Run migrations from demo.bkabd.com, or explicitly allow the local dashboard in its private .env file.'];
         }
         try {
             return (new DatabaseSyncService())->applyPending();

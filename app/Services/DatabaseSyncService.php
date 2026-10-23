@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Core\Config;
-use App\Core\Database;
 use PDO;
 use RuntimeException;
 
@@ -14,12 +13,11 @@ final class DatabaseSyncService
     public function readiness(): array
     {
         $source = $this->sourceSettings();
-        $targetHost = trim((string) Config::get('SYNC_TARGET_HOST', ''));
-        $targetDatabase = trim((string) Config::get('SYNC_TARGET_DATABASE', ''));
-        $appHost = trim((string) Config::get('DB_HOST', 'localhost'));
-        $appDatabase = trim((string) Config::get('DB_DATABASE', 'oop_exam'));
+        $target = $this->targetSettings();
+        $targetHost = $target['host'];
+        $targetDatabase = $target['database'];
         $missing = [];
-        foreach (['SYNC_SOURCE_HOST', 'SYNC_SOURCE_DATABASE', 'SYNC_SOURCE_USERNAME', 'SYNC_SOURCE_PASSWORD', 'SYNC_TARGET_HOST', 'SYNC_TARGET_DATABASE'] as $key) {
+        foreach (['SYNC_SOURCE_HOST', 'SYNC_SOURCE_DATABASE', 'SYNC_SOURCE_USERNAME', 'SYNC_SOURCE_PASSWORD', 'SYNC_TARGET_HOST', 'SYNC_TARGET_DATABASE', 'SYNC_TARGET_USERNAME', 'SYNC_TARGET_PASSWORD'] as $key) {
             if (trim((string) Config::get($key, '')) === '') {
                 $missing[] = $key;
             }
@@ -27,22 +25,16 @@ final class DatabaseSyncService
         if (!Config::getBool('DB_SYNC_ENABLED', false)) {
             $missing[] = 'DB_SYNC_ENABLED must be explicitly enabled on the demo server';
         }
-        if ($targetHost !== '' && strcasecmp($targetHost, $appHost) !== 0) {
-            $missing[] = 'DB_HOST must match SYNC_TARGET_HOST';
-        }
-        if ($targetDatabase !== '' && strcasecmp($targetDatabase, $appDatabase) !== 0) {
-            $missing[] = 'DB_DATABASE must match SYNC_TARGET_DATABASE';
-        }
         if ($source['database'] !== '' && strcasecmp($source['database'], $targetDatabase) === 0
             && strcasecmp($source['host'], $targetHost) === 0
-            && $source['port'] === Config::getInt('DB_PORT', 3306)) {
+            && $source['port'] === $target['port']) {
             $missing[] = 'exam source and demo target point to the same database';
         }
 
         $migrationNames = $this->migrationNames();
         $pendingMigrations = $migrationNames;
         if ($missing === [] && $migrationNames !== []) {
-            $pdo = Database::pdo();
+            $pdo = $this->connectTarget();
             $check = $pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = \'codex_schema_migrations\'');
             $check->execute([$targetDatabase]);
             if ((int) $check->fetchColumn() > 0) {
@@ -55,7 +47,7 @@ final class DatabaseSyncService
             'ready' => $missing === [],
             'missing' => array_values(array_unique($missing)),
             'source' => ['label' => 'Exam reference', 'host' => $source['host'], 'database' => $source['database'], 'access' => 'Read-only connection'],
-            'target' => ['label' => 'Demo destination', 'host' => $targetHost, 'database' => $targetDatabase, 'access' => 'Current app connection'],
+            'target' => ['label' => 'Demo destination', 'host' => $targetHost, 'database' => $targetDatabase, 'access' => 'Dedicated demo connection'],
             'pending_migrations' => $pendingMigrations,
         ];
     }
@@ -65,7 +57,7 @@ final class DatabaseSyncService
     {
         $this->assertReady();
         $source = $this->connectSource();
-        $target = Database::pdo();
+        $target = $this->connectTarget();
         $sourceSchema = (string) Config::get('SYNC_SOURCE_DATABASE');
         $targetSchema = (string) Config::get('SYNC_TARGET_DATABASE');
         try {
@@ -97,12 +89,38 @@ final class DatabaseSyncService
                 }
             }
         }
+        $ignored = [];
+        $differences = array_values(array_filter($differences, function (array $difference) use (&$ignored): bool {
+            if ($this->isIgnoredDifference($difference)) {
+                $ignored[] = $difference;
+                return false;
+            }
+            return true;
+        }));
+
         return [
             'source' => $sourceSchema,
             'target' => $targetSchema,
             'differences' => $differences,
+            'ignored' => $ignored,
             'note' => 'Comparison is read-only and reports exam-side additions or differences. It does not create SQL or change either database.',
         ];
+    }
+
+    /** Known intentional differences that should not be proposed for syncing. */
+    private function isIgnoredDifference(array $difference): bool
+    {
+        if (($difference['kind'] ?? '') === 'missing_table' && ($difference['table'] ?? '') === 'login_logs') {
+            return true;
+        }
+        if (($difference['table'] ?? '') === 'unions'
+            && ($difference['kind'] ?? '') === 'column_mismatch'
+            && ($difference['detail'] ?? '') === 'Column `id` has a different definition') {
+            return true;
+        }
+        return ($difference['table'] ?? '') === 'unions'
+            && ($difference['kind'] ?? '') === 'missing_index'
+            && ($difference['detail'] ?? '') === 'Index `unions_name_unique` exists in exam but not demo';
     }
 
     /** Apply only explicitly reviewed files from database/sync_migrations to current app DB. */
@@ -113,7 +131,7 @@ final class DatabaseSyncService
         if ($files === []) {
             return ['applied' => [], 'message' => 'There are no reviewed demo schema migration files to apply.'];
         }
-        $pdo = Database::pdo();
+        $pdo = $this->connectTarget();
         $lock = (int) $pdo->query("SELECT GET_LOCK('codex_demo_schema_sync', 10)")->fetchColumn();
         if ($lock !== 1) {
             throw new RuntimeException('Another database sync is running. Wait a moment and retry.');
@@ -167,17 +185,26 @@ final class DatabaseSyncService
 
     private function connectSource(): PDO
     {
-        $s = $this->sourceSettings();
+        $pdo = $this->connect($this->sourceSettings());
+        $pdo->exec('SET SESSION TRANSACTION READ ONLY');
+        $pdo->beginTransaction();
+        return $pdo;
+    }
+
+    private function connectTarget(): PDO
+    {
+        return $this->connect($this->targetSettings());
+    }
+
+    private function connect(array $s): PDO
+    {
         $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $s['host'], $s['port'], $s['database'], $s['charset']);
-        $pdo = new PDO($dsn, $s['username'], $s['password'], [
+        return new PDO($dsn, $s['username'], $s['password'], [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
             PDO::ATTR_TIMEOUT => 5,
         ]);
-        $pdo->exec('SET SESSION TRANSACTION READ ONLY');
-        $pdo->beginTransaction();
-        return $pdo;
     }
 
     private function sourceSettings(): array
@@ -188,6 +215,18 @@ final class DatabaseSyncService
             'database' => trim((string) Config::get('SYNC_SOURCE_DATABASE', '')),
             'username' => (string) Config::get('SYNC_SOURCE_USERNAME', ''),
             'password' => (string) Config::get('SYNC_SOURCE_PASSWORD', ''),
+            'charset' => (string) Config::get('DB_CHARSET', 'utf8mb4'),
+        ];
+    }
+
+    private function targetSettings(): array
+    {
+        return [
+            'host' => trim((string) Config::get('SYNC_TARGET_HOST', '')),
+            'port' => Config::getInt('SYNC_TARGET_PORT', 3306),
+            'database' => trim((string) Config::get('SYNC_TARGET_DATABASE', '')),
+            'username' => (string) Config::get('SYNC_TARGET_USERNAME', ''),
+            'password' => (string) Config::get('SYNC_TARGET_PASSWORD', ''),
             'charset' => (string) Config::get('DB_CHARSET', 'utf8mb4'),
         ];
     }
