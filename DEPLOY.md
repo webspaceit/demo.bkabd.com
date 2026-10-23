@@ -31,6 +31,10 @@ Keeping app code outside `public_html` means visitors can never download source,
 2. `database/seed_data.sql` — permissions, roles, geo, settings, sessions
 3. `database/demo_seed.sql` — *(optional)* demo users/admin + sample students.
    Skip for a clean production install, then create your own admin.
+4. `database/migrations/2026_10_23_student_duplicate_guard.sql` — required
+   duplicate-registration guard; run this after the student data is imported.
+5. `database/migrations/2026_10_23_student_duplicate_guard_mother_name.sql` —
+   refreshes the guard to include mother's name; also run this after student data is imported.
 
 ### 3. Upload files (FTP)
 - Show hidden/dot files in your FTP client (`.env`, `.htaccess` are dotfiles!).

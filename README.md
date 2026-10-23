@@ -96,6 +96,8 @@ npx tailwindcss@3.4.17 -c tailwind.config.js -i resources/css/app.css -o public/
 - A fresh install instead of the sample data uses
   `database/schema.sql` → `seed_data.sql` → `demo_seed.sql`. The demo seed ships
   **no usable password** — set one with `php tools/set_password.php admin@bkabd.com`.
+  After importing student data, run `database/migrations/2026_10_23_student_duplicate_guard.sql`.
+  Then run `database/migrations/2026_10_23_student_duplicate_guard_mother_name.sql` to include mother's name in duplicate checks.
 
 ## Security fixes over the original
 

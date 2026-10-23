@@ -21,6 +21,7 @@ use App\Models\Union;
 use App\Models\ExamSession;
 use App\Models\User;
 use App\Core\View;
+use App\Services\StudentService;
 
 /**
  * Student CRUD controller — ported from original StudentController (562 lines).
@@ -450,6 +451,35 @@ final class StudentController extends Controller
         return $q->orderBy('users.name', 'asc')->get();
     }
 
+    /** Check for an existing registration identity before form submission. */
+    public function duplicateCheck(Request $request): array
+    {
+        $data = [
+            'name' => trim((string) $request->query('name', '')),
+            'father_name' => trim((string) $request->query('father_name', '')),
+            'mother_name' => trim((string) $request->query('mother_name', '')),
+            'phone' => trim((string) $request->query('phone', '')),
+            'session' => (int) $request->query('session', 0),
+            'class' => (int) $request->query('class', 0),
+            'center_id' => (int) $request->query('center_id', 0),
+            'institute_id' => (int) $request->query('institute_id', 0),
+        ];
+
+        $ready = $data['name'] !== '' && $data['father_name'] !== '' && $data['phone'] !== ''
+            && $data['session'] > 0 && $data['class'] > 0 && $data['center_id'] > 0 && $data['institute_id'] > 0;
+        if (!$ready) {
+            return $this->sendResponse(['ready' => false, 'duplicate' => false], 'Complete the identity fields to check for duplicates.');
+        }
+
+        Auth::assertCenterAccess($data['center_id']);
+        Auth::assertInstituteAccess($data['institute_id']);
+
+        return $this->sendResponse(
+            ['ready' => true, 'duplicate' => StudentService::isDuplicate($data)],
+            'Duplicate registration check completed.'
+        );
+    }
+
     /** Register student. POST /api/students */
     public function store(Request $request): array
     {
@@ -497,17 +527,10 @@ final class StudentController extends Controller
         Auth::assertInstituteAccess((int) $data['institute_id']);
 
         // --- Duplicate check (phone+father_name+name+session+class+center+institute) ---
-        $dup = Database::selectOne(
-            "SELECT id, registration FROM `students`
-               WHERE `phone` = ? AND `father_name` = ? AND `name` = ?
-                 AND `session` = ? AND `class` = ? AND `center_id` = ? AND `institute_id` = ?",
-            [$data['phone'], $data['father_name'], $data['name'],
-             (int) $data['session'], (int) $data['class'], (int) $data['center_id'], (int) $data['institute_id']]
-        );
-
-        if ($dup) {
+        if (StudentService::isDuplicate($data)) {
             // Original duplicate-response shape — keep key names identical
-            return ['status' => 'errors', 'message' => 'A student with the same name, father name, phone, session, class, center, and institute already exists.'];
+            $message = 'A student with the same name, father name, mother name, phone, session, class, center, and institute already exists.';
+            Response::validationError(['name' => $message], $message);
         }
 
         // --- Registration number generation ---
@@ -549,7 +572,7 @@ final class StudentController extends Controller
         // Approval workflow: new registrations are created PENDING
         // (active = 0) and appear in the Pending Registration queue until an
         // admin approves them (POST /api/pending-students/{id}/approve).
-        $studentId = Student::create(array_filter([
+        $studentData = array_filter([
             'name'               => $data['name'],
             'father_name'        => $data['father_name'],
             'mother_name'        => $data['mother_name'] ?? '',
@@ -583,7 +606,27 @@ final class StudentController extends Controller
             'user_id'            => Auth::id(),
             'created_at'         => date('Y-m-d H:i:s'),
             'updated_at'         => date('Y-m-d H:i:s'),
-        ], static fn ($value): bool => $value !== null));
+        ], static fn ($value): bool => $value !== null);
+
+        // Claim the normalized identity key and insert the student in one
+        // transaction. The unique key table closes the race where two
+        // identical requests pass the SELECT duplicate check simultaneously.
+        $duplicateFingerprint = StudentService::duplicateFingerprint($studentData);
+        try {
+            $studentId = Database::transaction(function () use ($duplicateFingerprint, $studentData): int {
+                Database::insert('student_duplicate_keys', ['fingerprint' => $duplicateFingerprint]);
+                return Student::create($studentData);
+            });
+        } catch (\PDOException $e) {
+            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+                if ($photoPath !== null && is_file(BASE_PATH . '/public/' . $photoPath)) {
+                    @unlink(BASE_PATH . '/public/' . $photoPath);
+                }
+                $message = 'A student with the same name, father name, mother name, phone, session, class, center, and institute already exists.';
+                Response::validationError(['name' => $message], $message);
+            }
+            throw $e;
+        }
 
         // --- SMS notification (optional dry-run) ---
         if (Config::getBool('SMS_DRY_RUN', false) !== true) {
@@ -842,8 +885,33 @@ final class StudentController extends Controller
             }
         }
 
-        // --- Update student row ---
-        $updated = Student::updateRow($id, array_filter($merge));
+        // --- Update student row and keep the duplicate-key registry in sync ---
+        $oldDuplicateFingerprint = StudentService::duplicateFingerprint($student);
+        $newDuplicateFingerprint = StudentService::duplicateFingerprint($merge);
+        if ($newDuplicateFingerprint !== $oldDuplicateFingerprint && StudentService::isDuplicate($merge, $id)) {
+            $message = 'A student with the same name, father name, mother name, phone, session, class, center, and institute already exists.';
+            Response::validationError(['name' => $message], $message);
+        }
+
+        try {
+            $updated = Database::transaction(function () use ($id, $merge, $oldDuplicateFingerprint, $newDuplicateFingerprint, $student): int {
+                if ($newDuplicateFingerprint !== $oldDuplicateFingerprint) {
+                    Database::insert('student_duplicate_keys', ['fingerprint' => $newDuplicateFingerprint]);
+                }
+
+                $updated = Student::updateRow($id, array_filter($merge));
+                if ($newDuplicateFingerprint !== $oldDuplicateFingerprint && !StudentService::isDuplicate($student)) {
+                    Database::delete('student_duplicate_keys', '`fingerprint` = ?', [$oldDuplicateFingerprint]);
+                }
+                return $updated;
+            });
+        } catch (\PDOException $e) {
+            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+                $message = 'A student with the same name, father name, mother name, phone, session, class, center, and institute already exists.';
+                Response::validationError(['name' => $message], $message);
+            }
+            throw $e;
+        }
 
         // --- SMS on significant change ---
         if ($updated && isset($merge['registration']) && isset($merge['class']) && isset($merge['center_id']) && isset($merge['institute_id'])) {
@@ -887,7 +955,14 @@ final class StudentController extends Controller
         // Delete marks row if exists (marks live on students row in original, but there's also a marks table)
         // In original: marks config per session is separate; student marks are on the student row.
         // We'll just delete the student.
-        $deleted = Student::deleteRow($id);
+        $duplicateFingerprint = StudentService::duplicateFingerprint($student);
+        $deleted = Database::transaction(function () use ($id, $student, $duplicateFingerprint): int {
+            $deleted = Student::deleteRow($id);
+            if ($deleted > 0 && !StudentService::isDuplicate($student)) {
+                Database::delete('student_duplicate_keys', '`fingerprint` = ?', [$duplicateFingerprint]);
+            }
+            return $deleted;
+        });
 
         return $this->sendResponse(
             ['deleted' => $deleted],

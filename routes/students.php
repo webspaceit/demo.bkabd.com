@@ -14,6 +14,7 @@ use App\Models\ExamSession;
 // List students (filters: session, center_id, class, roll, registration, institute_id)
 // Original: GET /api/students  ->  index
 Router::get('/api/students', [StudentController::class, 'index'], 'auth|permission:student-list');
+Router::get('/api/students/duplicate-check', [StudentController::class, 'duplicateCheck'], 'auth|permission:student-registration');
 
 // Register form
 // Original: GET /student-registration  ->  create (page)

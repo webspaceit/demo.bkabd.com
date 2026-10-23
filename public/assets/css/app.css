@@ -716,6 +716,10 @@ input[type=radio]:focus {
     color: #fff
 }
 
+#app-main .table thead th.text-center {
+    text-align: center;
+}
+
 .table tbody td {
     border-bottom-width: 1px;
     --tw-border-opacity: 1;
@@ -2724,13 +2728,11 @@ input[type=radio]:focus {
     border: 1px solid #fbbf24;
     border-radius: 9999px;
     background: linear-gradient(135deg, #fbbf24, #f97316);
-    color: #fff;
-    box-shadow: 0 1px 2px rgb(120 53 15 / 20%)
+    color: #fff
 }
 
 .btn-return-pending:hover {
-    background: linear-gradient(135deg, #f59e0b, #ea580c);
-    box-shadow: 0 2px 5px rgb(120 53 15 / 30%)
+    background: linear-gradient(135deg, #f59e0b, #ea580c)
 }
 
 .btn-return-pending svg {
@@ -2739,40 +2741,78 @@ input[type=radio]:focus {
 }
 
 @media (hover:hover) {
-    .table tbody tr .row-actions {
+    .table tbody td:last-child {
         position: relative
     }
 
+    .table tbody tr .row-actions {
+        position: absolute;
+        top: 50%;
+        right: .4rem;
+        transform: translateY(-50%);
+        flex-wrap: nowrap;
+        width: 28px;
+        height: 26px;
+        min-height: 26px;
+        overflow: visible
+    }
+
     .table tbody tr .row-actions>* {
+        position: absolute;
+        top: 0;
+        left: 0;
         visibility: hidden;
         opacity: 0;
         transition: opacity .15s ease, visibility 0s linear .15s
     }
 
-    .table tbody tr:focus-within .row-actions>*,
-    .table tbody tr:hover .row-actions>* {
+    .table tbody tr .row-actions:hover,
+    .table tbody tr .row-actions:focus-within,
+    .table tbody tr .row-actions.pinned {
+        position: absolute;
+        z-index: 10;
+        width: max-content;
+        height: auto;
+        min-height: 0;
+        padding: .25rem
+    }
+
+    .table tbody tr .row-actions:hover>*,
+    .table tbody tr .row-actions:focus-within>*,
+    .table tbody tr .row-actions.pinned>* {
+        position: relative;
+        top: auto;
+        left: auto;
         visibility: visible;
         opacity: 1;
         transition: opacity .15s ease
     }
 
     .table tbody tr .row-actions:before {
-        content: "⋮";
+        content: "•••";
         display: inline-flex;
         align-items: center;
         justify-content: center;
         width: 28px;
         height: 26px;
-        border-radius: 6px;
-        color: #94a3b8;
-        background-color: transparent;
-        transition: color .15s ease, background-color .15s ease;
-        font-size: 18px;
+        border: 1px solid #a7f3d0;
+        border-radius: 7px;
+        color: #047253;
+        background-color: #ecfdf5;
+        transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+        font-size: 11px;
+        letter-spacing: 1px;
         line-height: 1
     }
 
-    .table tbody tr:focus-within .row-actions:before,
-    .table tbody tr:hover .row-actions:before {
+    .table tbody tr .row-actions:hover:before {
+        background-color: #d1fae5;
+        border-color: #6ee7b7
+    }
+
+    .table tbody tr .row-actions:hover:before,
+    .table tbody tr .row-actions:focus-within:before,
+    .table tbody tr .row-actions.pinned:before {
         display: none
     }
 

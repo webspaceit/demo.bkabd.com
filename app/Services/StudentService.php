@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Auth;
+use App\Core\Database;
 use App\Core\HttpException;
 use App\Core\Query;
 use App\Core\ValidationException;
@@ -110,19 +111,46 @@ class StudentService
 
     /**
      * Same uniqueness rule as the original: a student with the same phone,
-     * father name, name, session, class, center and institute is a duplicate.
+     * father name, mother name, name, session, class, center and institute is a duplicate.
      */
-    public function isDuplicate(array $data): bool
+    public static function isDuplicate(array $data, ?int $exceptId = null): bool
     {
-        return Student::query()
-            ->where('phone', (string) ($data['phone'] ?? ''))
-            ->where('father_name', (string) ($data['father_name'] ?? ''))
-            ->where('name', (string) ($data['name'] ?? ''))
-            ->where('session', (string) ($data['session'] ?? ''))
-            ->where('class', (string) (int) ($data['class'] ?? 0))
-            ->where('center_id', (string) (int) ($data['center_id'] ?? 0))
-            ->where('institute_id', (string) (int) ($data['institute_id'] ?? 0))
-            ->count() > 0;
+        $where = 'LOWER(TRIM(COALESCE(`phone`, \'\'))) = ?'
+            . ' AND LOWER(TRIM(COALESCE(`father_name`, \'\'))) = ?'
+            . ' AND LOWER(TRIM(COALESCE(`mother_name`, \'\'))) = ?'
+            . ' AND LOWER(TRIM(COALESCE(`name`, \'\'))) = ?'
+            . ' AND COALESCE(`session`, 0) = ? AND COALESCE(`class`, 0) = ?'
+            . ' AND `center_id` = ? AND `institute_id` = ?';
+        $params = self::duplicateValues($data);
+        if ($exceptId !== null) {
+            $where .= ' AND `id` <> ?';
+            $params[] = $exceptId;
+        }
+
+        return (int) Database::scalar("SELECT COUNT(*) FROM `students` WHERE {$where}", $params) > 0;
+    }
+
+    /** Stable key shared by the app and DB migration for the duplicate tuple. */
+    public static function duplicateFingerprint(array $data): string
+    {
+        return hash('sha256', implode("\x1F", self::duplicateValues($data)));
+    }
+
+    /** @return array<int,string|int> */
+    private static function duplicateValues(array $data): array
+    {
+        $lower = static fn ($value): string => mb_strtolower(trim((string) ($value ?? '')), 'UTF-8');
+
+        return [
+            $lower($data['phone'] ?? ''),
+            $lower($data['father_name'] ?? ''),
+            $lower($data['mother_name'] ?? ''),
+            $lower($data['name'] ?? ''),
+            (int) ($data['session'] ?? 0),
+            (int) ($data['class'] ?? 0),
+            (int) ($data['center_id'] ?? 0),
+            (int) ($data['institute_id'] ?? 0),
+        ];
     }
 
     /**

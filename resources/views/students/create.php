@@ -300,6 +300,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
 
             <!-- Submit -->
             <div class="px-6 py-5 sm:px-8 bg-slate-50/70 border-t border-slate-100">
+                <div id="student-duplicate-notice" class="hidden mb-4 rounded-lg border px-4 py-3 text-sm" role="status" aria-live="polite"></div>
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <p class="text-xs text-slate-400 flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
@@ -468,8 +469,85 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Submit
     var sessionEl = $('[name="session"]');
+    var duplicateNotice = document.getElementById('student-duplicate-notice');
+    var registerButton = form.querySelector('[type="submit"]');
+    var duplicateTimer = null;
+    var duplicateRequestId = 0;
+    var duplicateCheckPending = false;
+    var duplicateFound = false;
+    var registrationSubmitting = false;
+
+    function duplicateInputs() {
+        return {
+            name: $('[name="name"]').value.trim(),
+            father_name: $('[name="father_name"]').value.trim(),
+            mother_name: $('[name="mother_name"]').value.trim(),
+            phone: $('[name="phone"]').value.trim(),
+            session: sessionEl.value,
+            class: $('[name="class"]').value,
+            center_id: centerEl.value,
+            institute_id: instituteEl.value
+        };
+    }
+
+    function showDuplicateNotice(message, style) {
+        if (!duplicateNotice) { return; }
+        duplicateNotice.className = 'mb-4 rounded-lg border px-4 py-3 text-sm ' + style;
+        duplicateNotice.textContent = message;
+        duplicateNotice.hidden = false;
+    }
+
+    function scheduleDuplicateCheck() {
+        if (duplicateTimer) { clearTimeout(duplicateTimer); }
+        var requestId = ++duplicateRequestId;
+        var values = duplicateInputs();
+        duplicateFound = false;
+
+        var ready = values.name && values.father_name && values.phone
+            && values.session && values.class && values.center_id && values.institute_id;
+        if (!ready) {
+            duplicateCheckPending = false;
+            if (duplicateNotice) { duplicateNotice.hidden = true; }
+            if (registerButton) { registerButton.disabled = false; }
+            return;
+        }
+
+        duplicateCheckPending = true;
+        if (registerButton) { registerButton.disabled = true; }
+        showDuplicateNotice('Checking for an existing registration…', 'border-slate-200 bg-slate-50 text-slate-600');
+        duplicateTimer = setTimeout(async function () {
+            var params = new URLSearchParams(values);
+            try {
+                var response = await BK.get('/api/students/duplicate-check?' + params.toString(), { cache: 'no-store' });
+                if (requestId !== duplicateRequestId) { return; }
+                duplicateCheckPending = false;
+                duplicateFound = !!(response && response.data && response.data.duplicate);
+                if (duplicateFound) {
+                    showDuplicateNotice('A student with these details is already registered. Review the existing record before continuing.', 'border-red-200 bg-red-50 text-red-700');
+                } else {
+                    duplicateNotice.hidden = true;
+                }
+                if (registerButton) { registerButton.disabled = duplicateFound; }
+            } catch (error) {
+                if (requestId !== duplicateRequestId) { return; }
+                duplicateCheckPending = false;
+                duplicateFound = false;
+                showDuplicateNotice('Could not check right now. The server will check again when you register.', 'border-amber-200 bg-amber-50 text-amber-800');
+                if (registerButton) { registerButton.disabled = false; }
+            }
+        }, 350);
+    }
+
+    [ $('[name="name"]'), $('[name="father_name"]'), $('[name="mother_name"]'), $('[name="phone"]'), sessionEl,
+      $('[name="class"]'), centerEl, instituteEl ].forEach(function (field) {
+        field.addEventListener(field.tagName === 'SELECT' ? 'change' : 'input', scheduleDuplicateCheck);
+        if (field.tagName !== 'SELECT') { field.addEventListener('change', scheduleDuplicateCheck); }
+    });
+
     form.addEventListener('submit', function (e) {
         e.preventDefault();
+        if (registrationSubmitting || duplicateFound || duplicateCheckPending) { return; }
+        registrationSubmitting = true;
         BK.submit(form, async function () {
             var json = await BK.post('/api/students', new FormData(form));
             // The card endpoint resolves students by REGISTRATION number (the
@@ -486,6 +564,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (photoPreview) { photoPreview.src = ''; photoPreview.classList.add('hidden'); }
             if (photoName)    { photoName.textContent = 'Click to choose a photo'; }
             if (sessionEl)    { sessionEl.focus({ preventScroll: true }); }
+        }).finally(function () {
+            registrationSubmitting = false;
         });
     });
 });

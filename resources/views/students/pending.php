@@ -129,16 +129,16 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                     <thead>
                         <tr>
                             <?php if ($canApprovePending): ?><th style="width:36px"><input type="checkbox" id="pending-select-all" aria-label="Select all registrations on this page"></th><?php endif; ?>
-                            <th style="width:10px">#</th>
+                            <th class="text-center" style="width:10px">#</th>
                             <th>Student</th>
-                            <th>Reg. No</th>
-                            <th>Roll No</th>
-                            <th>Class</th>
+                            <th style="width:130px">Reg. No</th>
+                            <th class="text-center" style="width:80px">Roll No</th>
+                            <th class="text-center">Class</th>
                             <th>Center</th>
                             <th>Institute</th>
                             <th>Submitted</th>
-                            <th>Status</th>
-                            <th style="width:220px">Action</th>
+                            <th class="text-center">Status</th>
+                            <th style="width:90px">Action</th>
                         </tr>
                     </thead>
                     <tbody id="pending-rows">
@@ -356,15 +356,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return '<tr>'
             + (canApprove ? '<td><input type="checkbox" class="pending-select-row" value="' + id + '" aria-label="Select ' + BK.esc(rec.name || 'student') + '"></td>' : '')
-            + '<td class="text-slate-400">' + ((pageNum - 1) * perPage + i + 1) + '</td>'
+            + '<td class="text-center text-slate-400">' + ((pageNum - 1) * perPage + i + 1) + '</td>'
             + '<td><div class="min-w-0"><div class="font-medium text-slate-800">' + BK.esc(rec.name) + '</div></div></td>'
             + '<td><div class="font-semibold text-slate-800">' + BK.esc(rec.registration) + '</div></td>'
-            + '<td>' + dash(rec.roll) + '</td>'
-            + '<td><span class="badge badge-gray">' + BK.esc(className) + '</span></td>'
+            + '<td class="text-center">' + dash(rec.roll) + '</td>'
+            + '<td class="text-center"><span class="badge badge-gray">' + BK.esc(className) + '</span></td>'
             + '<td>' + BK.esc(rec.center_name) + '</td>'
             + '<td>' + BK.esc(rec.institute_name) + '</td>'
             + '<td><div class="text-slate-700">' + fmtDate(rec.created_at) + '</div>' + waitingLine(rec.created_at) + '</td>'
-            + '<td>' + statusBadge + '</td>'
+            + '<td class="text-center">' + statusBadge + '</td>'
             + '<td>' + actions + '</td></tr>';
     }
 

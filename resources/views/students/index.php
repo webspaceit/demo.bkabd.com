@@ -114,15 +114,15 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                 <table class="table">
                     <thead>
                         <tr>
-                            <th style="width:10px">Sl.</th>
-                            <th>Reg. No</th>
-                            <th>Roll No</th>
+                            <th class="text-center" style="width:10px">Sl.</th>
+                            <th style="width:130px">Reg. No</th>
+                            <th class="text-center" style="width:80px">Roll No</th>
                             <th>Name</th>
-                            <th>Class</th>
+                            <th class="text-center">Class</th>
                             <th>Center</th>
                             <th>Institute</th>
-                            <th>Status</th>
-                            <th style="width:240px">Action</th>
+                            <th class="text-center">Status</th>
+                            <th style="width:90px">Action</th>
                         </tr>
                     </thead>
                     <tbody id="student-rows">
@@ -266,14 +266,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         actions += '</div>';
 
-        return '<tr><td>' + ((pageNum - 1) * PER_PAGE + i + 1) + '</td>' +
+        return '<tr><td class="text-center">' + ((pageNum - 1) * PER_PAGE + i + 1) + '</td>' +
             '<td>' + BK.esc(rec.registration) + '</td>' +
-            '<td>' + BK.esc(rec.roll) + '</td>' +
+            '<td class="text-center">' + BK.esc(rec.roll) + '</td>' +
             '<td>' + BK.esc(rec.name) + '</td>' +
-            '<td>' + BK.esc(className) + '</td>' +
+            '<td class="text-center">' + BK.esc(className) + '</td>' +
             '<td>' + BK.esc(rec.center_name) + '</td>' +
             '<td>' + BK.esc(rec.institute_name) + '</td>' +
-            '<td>' + badge + '</td>' +
+            '<td class="text-center">' + badge + '</td>' +
             '<td>' + actions + '</td></tr>';
     }
 
