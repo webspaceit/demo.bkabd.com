@@ -125,6 +125,7 @@ final class InstituteController extends Controller
         $row['created_at'] = date('Y-m-d H:i:s');
         $row['updated_at'] = date('Y-m-d H:i:s');
         Database::insert('institutes', $row);
+        Cache::forget('filter:active_institutes');
 
         return ['status' => 'success'];
     }
@@ -142,6 +143,7 @@ final class InstituteController extends Controller
         $row = $this->pick($data);
         $row['updated_at'] = date('Y-m-d H:i:s');
         (new Query('institutes'))->where('id', $id)->update($row);
+        Cache::forget('filter:active_institutes');
 
         return ['status' => 'success'];
     }
@@ -153,6 +155,7 @@ final class InstituteController extends Controller
         Auth::assertInstituteAccess($id); // RLS/BOLA
         $this->findOrFail($id);
         (new Query('institutes'))->where('id', $id)->delete();
+        Cache::forget('filter:active_institutes');
 
         return ['status' => 'success'];
     }
@@ -165,6 +168,7 @@ final class InstituteController extends Controller
         Auth::assertInstituteAccess($id); // RLS/BOLA
         $this->findOrFail($id);
         (new Query('institutes'))->where('id', $id)->update(['active' => $sta === 1 ? 1 : 0]);
+        Cache::forget('filter:active_institutes');
 
         return ['status' => 'success'];
     }

@@ -4,7 +4,7 @@
  */
 $classes = [1, 2, 3, 4, 5, 6];
 $centerCount = count((array) ($centers ?? []));
-$instituteCount = count((array) ($institutes ?? []));
+$instituteCount = (int) ($instituteCount ?? 0);
 ?>
 <div class="space-y-4">
     <div class="card" id="admitcard-list">
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Search with debounce
     searchEl.addEventListener('input', function () {
         clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => { pageNum = 1; reload(); }, 300);
+        searchTimer = setTimeout(() => { pageNum = 1; reload(); }, 200);
     });
 
     reload();

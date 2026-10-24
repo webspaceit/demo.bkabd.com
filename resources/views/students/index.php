@@ -5,8 +5,9 @@
  * Class, Center, Institute, Status, Action (view/edit/delete).
  * Behaviour is a page-scoped inline script (BK library) — no separate JS file.
  *
- * $sessions / $centers / $institutes are rendered server-side so the filter bar
- * works without extra API calls; $filters carries the current query-string state.
+ * Sessions and centers are rendered server-side. Institute filters load in a
+ * small API request so thousands of options do not delay the page response.
+ * $filters carries the current query-string state.
  */
 $classes = $classes ?? [1, 2, 3, 4, 5, 6];
 $filters = $filters ?? [];
@@ -76,13 +77,9 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                 <div class="fl">
                     <select id="f-institute" class="w-full">
                         <option value="">All Institutes</option>
-                        <?php foreach ((array) $institutes as $i): ?>
-                            <option value="<?= (int) $i['id'] ?>" data-center="<?= (int) $i['center_id'] ?>" <?= (string) ($filters['institute_id'] ?? '') === (string) $i['id'] ? 'selected' : '' ?>>
-                                <?= e($i['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
+                        <option value="" disabled>Loading institutes…</option>
                     </select>
-                    <label for="f-institute" class="f-institute">Institute <span class="filter-record-count" id="institute-record-count" data-total-count="<?= count((array) $institutes) ?>" title="Available institutes"><?= count((array) $institutes) ?></span></label>
+                    <label for="f-institute" class="f-institute">Institute <span class="filter-record-count" id="institute-record-count" data-total-count="<?= (int) $instituteCount ?>" title="Available institutes"><?= (int) $instituteCount ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-class" class="w-full">
@@ -164,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const instituteSummaryNameEl = document.getElementById('selected-institute-name');
     const instituteSummaryCountEl = document.getElementById('selected-institute-student-count');
     const instituteCountEl = document.getElementById('institute-record-count');
+    const initialInstituteId = <?= json_encode((string) ($filters['institute_id'] ?? '')) ?>;
     const PER_PAGE = 20;
 
     const can = function (name) { return listBox.getAttribute('data-perm-' + name) === '1'; };
@@ -177,6 +175,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let pageNum = 1;
     let searchTimer = null;
+    let instituteOptionsLoaded = false;
     let centerSummaryRequest = 0;
     let instituteSummaryRequest = 0;
 
@@ -285,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
             class: val(classEl),
             status: val(statusEl),
             center_id: val(centerEl),
-            institute_id: val(instituteEl),
+            institute_id: val(instituteEl) || (instituteOptionsLoaded ? '' : initialInstituteId),
             search: val(searchEl)
         });
         BK.get(url).then(function (json) {
@@ -335,6 +334,30 @@ document.addEventListener('DOMContentLoaded', function () {
         if (cleared) { instituteEl.value = ''; }
         syncInstituteRecordCount();
     }
+
+    function loadInstituteOptions() {
+        return BK.get('/api/student-filter-institutes').then(function (json) {
+            const institutes = (json && json.data && json.data.institutes) || [];
+            const fragment = document.createDocumentFragment();
+            institutes.forEach(function (institute) {
+                const option = document.createElement('option');
+                option.value = String(institute.id);
+                option.setAttribute('data-center', String(institute.center_id || ''));
+                option.textContent = institute.name || '';
+                if (String(institute.id) === initialInstituteId) { option.selected = true; }
+                fragment.appendChild(option);
+            });
+            instituteEl.appendChild(fragment);
+            const loadingOption = instituteEl.querySelector('option[disabled]');
+            if (loadingOption) { loadingOption.remove(); }
+            instituteOptionsLoaded = true;
+            syncInstitutes();
+            if (initialInstituteId) { reload(); }
+        }).catch(function () {
+            const loadingOption = instituteEl.querySelector('option[disabled]');
+            if (loadingOption) { loadingOption.textContent = 'Institutes unavailable'; }
+        });
+    }
     if (centerEl && instituteEl) {
         centerEl.addEventListener('change', function () {
             syncInstitutes();
@@ -364,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function () {
             searchTimer = setTimeout(function () {
                 pageNum = 1;
                 reloadFromFilters();
-            }, 300);
+            }, 200);
         });
     }
 
@@ -483,6 +506,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    loadInstituteOptions();
     reload();
     syncInstituteRecordCount();
     syncSelectionSummaries();

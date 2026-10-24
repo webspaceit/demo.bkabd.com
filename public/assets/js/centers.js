@@ -100,7 +100,7 @@
                     searchTerm = searchEl.value.trim();
                     pageNum = 1;
                     reload();
-                }, 300);
+                }, 200);
             });
         }
 

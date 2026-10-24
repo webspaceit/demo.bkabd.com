@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
         clearTimeout(timer);
         timer = setTimeout(function () {
             load(BK.qs('/api/institutes', { page: 1, search: searchEl.value.trim(), center_id: centerId }));
-        }, 300);
+        }, 200);
     });
 
     load(BK.qs('/api/institutes', { page: 1, center_id: centerId }));

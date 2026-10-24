@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\Cache;
 use App\Core\Config;
 use App\Core\Request;
 use App\Core\Response;
@@ -116,16 +117,28 @@ final class StudentController extends Controller
         // (kg/one/two/...), center-user name and institute name — ported from
         // the original index(); class words matched case-insensitively.
         $search = $request->input('search');
+        $searchTerm = trim((string) $search);
+        $countBase = clone $q;
         $this->applyStudentSearch($q, $search);
 
         // Most list and numeric searches only filter students columns. Count
         // those rows without the seven display joins; the joins are needed
-        // only for the returned page (or for text search against related names).
-        $searchTerm = trim((string) $search);
+        // for displayed rows. Text-search totals use indexed ID lookups for
+        // center and institute names instead of repeating all display joins.
         $classTerms = ['kg', 'one', 'two', 'three', 'four', 'five'];
-        $countQuery = ($searchTerm === '' || ctype_digit($searchTerm) || in_array(strtolower($searchTerm), $classTerms, true))
-            ? $q->withoutJoins()
-            : null;
+        $countQuery = null;
+        if ($searchTerm === '' || ctype_digit($searchTerm) || in_array(strtolower($searchTerm), $classTerms, true)) {
+            $countQuery = $q->withoutJoins();
+        } elseif ($search !== null) {
+            $countQuery = $countBase->withoutJoins();
+            $like = '%' . $searchTerm . '%';
+            $countQuery->whereRaw(
+                '(`students`.`name` LIKE ? OR `students`.`registration` LIKE ? OR `students`.`roll` LIKE ?'
+                . ' OR `students`.`center_id` IN (SELECT c.`id` FROM `centers` c JOIN `users` u ON u.`id` = c.`user_id` WHERE u.`name` LIKE ?)'
+                . ' OR `students`.`institute_id` IN (SELECT i.`id` FROM `institutes` i WHERE i.`name` LIKE ?))',
+                [$like, $like, $like, $like, $like]
+            );
+        }
 
         // Show the most recently registered students first. Use id as a stable
         // tie-breaker when several registrations share the same timestamp.
@@ -137,6 +150,16 @@ final class StudentController extends Controller
             $q->paginate((int) ($request->input('per_page', 20)), null, '/api/students', $countQuery),
             'Student list retrieved.'
         );
+    }
+
+    /** Small, lazy-loaded institute options for student-list filters. */
+    public function filterInstitutes(Request $request): array
+    {
+        $institutes = Cache::remember('filter:active_institutes', 120, static fn(): array => Database::select(
+            'SELECT `id`, `name`, `center_id` FROM `institutes` WHERE `active` = 1 ORDER BY `name`'
+        ));
+
+        return $this->sendResponse(['institutes' => $institutes], 'Institute filter options retrieved.');
     }
 
     // ---------------------------------------------------------------

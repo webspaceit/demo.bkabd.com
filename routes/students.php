@@ -2,8 +2,8 @@
 
 use App\Controllers\StudentController;
 use App\Core\Auth;
+use App\Core\Cache;
 use App\Core\Database;
-use App\Core\Query;
 use App\Core\Request;
 use App\Core\Router;
 use App\Core\View;
@@ -14,6 +14,7 @@ use App\Models\ExamSession;
 // List students (filters: session, center_id, class, roll, registration, institute_id)
 // Original: GET /api/students  ->  index
 Router::get('/api/students', [StudentController::class, 'index'], 'auth|permission:student-list');
+Router::get('/api/student-filter-institutes', [StudentController::class, 'filterInstitutes'], 'auth|permission:student-list');
 Router::get('/api/students/duplicate-check', [StudentController::class, 'duplicateCheck'], 'auth|permission:student-registration');
 
 // Register form
@@ -62,7 +63,7 @@ Router::post('/api/students/{id}/delete-photo', [StudentController::class, 'dele
 // auth + one of the student write permissions; rate-limited in the controller.
 Router::post('/api/uploadFile', [StudentController::class, 'uploadFile'], ['auth', 'permission:student-registration|student-edit']);
 
-// Students list page (server-side pagination + filters; inline page script in the view)
+// Students list page (server-side pagination + lazily loaded institute filters)
 // Original: GET /students -> students/index.vue
 Router::get('/students', function (Request $request) {
     return View::render('students.index', [
@@ -71,13 +72,13 @@ Router::get('/students', function (Request $request) {
         'classes'      => [1, 2, 3, 4, 5, 6],
         // Center dropdown shows the center USER's name (centers table has no
         // `name` column) — same shape as ReportService::centersCache().
-        'centers'      => Database::select(
+        'centers'      => Cache::remember('filter:active_centers', 120, static fn(): array => Database::select(
             'SELECT c.`id`, u.`name` FROM `centers` c
                JOIN `users` u ON u.`id` = c.`user_id`
               WHERE c.`active` = 1
               ORDER BY u.`name`'
-        ),
-        'institutes'   => (new Query('institutes'))->where('active', 1)->orderBy('name', 'asc')->get(),
+        )),
+        'instituteCount' => (int) Database::scalar('SELECT COUNT(*) FROM `institutes` WHERE `active` = 1'),
         'activeSession' => Auth::activeSession(),
         'filters'      => [
             'session'      => $request->query('session'),

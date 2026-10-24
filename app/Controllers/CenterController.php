@@ -60,6 +60,8 @@ class CenterController extends Controller
             ->orderByRaw('`users`.`id` DESC');
 
         $term = trim((string) $request->input('search', ''));
+        $countQuery = null;
+        $status = null;
         if ($term !== '') {
             $status = match (strtolower($term)) {
                 'approved' => 1,
@@ -80,7 +82,19 @@ class CenterController extends Controller
             }
         }
 
-        return $query->paginate(max(1, (int) $request->input('per_page', 20)));
+        // The default and status-only totals need roles and centers to retain
+        // row semantics, but do not need the three geographic display joins.
+        if ($term === '' || $status !== null) {
+            $countQuery = (new Query('users'))
+                ->leftJoin('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
+                ->leftJoin('centers', 'users.id', '=', 'centers.user_id')
+                ->whereRaw('`model_has_roles`.`role_id` = ?', [4]);
+            if ($status !== null) {
+                $countQuery->whereRaw('`centers`.`active` = ?', [$status]);
+            }
+        }
+
+        return $query->paginate(max(1, (int) $request->input('per_page', 20)), null, '/api/centers', $countQuery);
     }
 
     /**
@@ -214,6 +228,8 @@ class CenterController extends Controller
             throw $e;
         }
 
+        Cache::forget('filter:active_centers');
+
         $msg = 'Dear ' . $data['authority_person'] . ', Congratulations from BKABD. From now on you will fulfill all the duties of this center with devotion, for any consultation regarding BKABD please contact this number 01711168094. Thanks';
         send_sms((string) $data['phone'], $msg);
 
@@ -304,6 +320,8 @@ class CenterController extends Controller
             $this->dropUpload('authority_signature', $center['authority_signature']);
         }
 
+        Cache::forget('filter:active_centers');
+
         return ['status' => 'success'];
     }
 
@@ -337,6 +355,7 @@ class CenterController extends Controller
 
         $this->dropUpload('authority_photo', $center['authority_photo'] ?? null);
         $this->dropUpload('authority_signature', $center['authority_signature'] ?? null);
+        Cache::forget('filter:active_centers');
 
         return ['status' => 'success'];
     }
@@ -361,6 +380,7 @@ class CenterController extends Controller
             throw new HttpException(404, 'Record not found');
         }
         Center::updateRow($id, ['active' => (int) $sta]);
+        Cache::forget('filter:active_centers');
         Cache::forgetPrefix('center_id'); // Auth::centerId() memo may be stale
 
         return ['status' => 'success'];

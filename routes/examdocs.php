@@ -5,6 +5,7 @@ use App\Controllers\SeatPlanController;
 use App\Core\Request;
 use App\Core\Router;
 use App\Core\View;
+use App\Core\Cache;
 
 /** Exam documents module routes - Admit Cards and Seat Plan */
 
@@ -14,13 +15,13 @@ Router::get('/admitcards', function (Request $request) {
         'title'        => 'Admit Cards',
         'sessions'     => \App\Models\ExamSession::query()->orderBy('id', 'desc')->get(),
         'classes'      => [1, 2, 3, 4, 5, 6],
-        'centers'      => \App\Core\Database::select(
+        'centers'      => Cache::remember('filter:active_centers', 120, static fn(): array => \App\Core\Database::select(
             'SELECT c.`id`, u.`name` FROM `centers` c
                JOIN `users` u ON u.`id` = c.`user_id`
               WHERE c.`active` = 1
               ORDER BY u.`name`'
-        ),
-        'institutes'   => (new \App\Core\Query('institutes'))->where('active', 1)->orderBy('name', 'asc')->get(),
+        )),
+        'instituteCount' => (int) \App\Core\Database::scalar('SELECT COUNT(*) FROM `institutes` WHERE `active` = 1'),
         'activeSession' => \App\Core\Auth::activeSession(),
         'filters'      => [
             'session'      => $request->query('session'),
