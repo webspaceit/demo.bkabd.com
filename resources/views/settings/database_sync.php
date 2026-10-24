@@ -22,12 +22,12 @@
                 <section class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
                     <h2 class="font-semibold text-emerald-900">Exam: read-only reference</h2>
                     <p class="mt-2 text-sm leading-6 text-slate-600">Use the database server host provided by your hosting provider. <code>localhost</code> works only if the exam database is on the same PC as this app. Schema comparison reads metadata; student preview and import read source rows through a read-only transaction.</p>
-                    <p class="mt-2 text-xs text-slate-500">Exam needs read-only SELECT access to students, centers, institutes, users, divisions, districts, upozilas, and unions, plus schema metadata. This app never inserts, updates, or deletes exam data.</p>
+                    <p class="mt-2 text-xs text-slate-500">Exam needs read-only SELECT access to students, centers, institutes, users, divisions, districts, upozilas, and unions, plus schema metadata. Student photo files must also be publicly reachable over HTTPS from the demo server. This app never inserts, updates, or deletes exam data.</p>
                     <p id="db-sync-source" class="mt-2 text-xs text-slate-500"></p>
                 </section>
                 <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
                     <h2 class="font-semibold text-sky-900">Demo: migration destination</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables, INSERT on <code>students</code> (and <code>student_duplicate_keys</code> when present), and ALTER/UPDATE permission on <code>centers</code> to apply and use the center-name field. It does not need access to exam. Schema migrations remain separate.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables, INSERT and UPDATE on <code>students</code> for imports and photo paths, INSERT on <code>student_duplicate_keys</code> when present, and ALTER/UPDATE on <code>centers</code> for center-name sync. The app also needs write access to <code>public/uploads/students</code>. It does not need write access to exam.</p>
                     <p id="db-sync-target" class="mt-2 text-xs text-slate-500"></p>
                 </section>
             </div>
@@ -48,7 +48,7 @@
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 class="font-semibold text-amber-950">Import missing exam students into demo</h2>
-                        <p class="mt-1 text-sm leading-6 text-slate-700">Preview first. The import adds registrations missing from demo, skips duplicate registrations and unsafe center/institute/location or roll conflicts, and leaves existing demo rows untouched. Photos, user accounts, and marks are not copied.</p>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Preview first. The import adds registrations missing from demo, skips duplicate registrations and unsafe center/institute/location or roll conflicts, and leaves existing demo rows untouched. Student photos can be synced separately below; user accounts and marks are not copied.</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button id="db-sync-preview-import" type="button" class="btn btn-light" disabled>Preview import</button>
@@ -57,6 +57,17 @@
                 </div>
                 <div id="db-sync-import-preview" class="mt-3 hidden rounded-lg border border-amber-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
                 <div id="db-sync-import-progress" class="mt-2 hidden text-sm text-slate-600" aria-live="polite"></div>
+            </section>
+
+            <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-semibold text-sky-950">Sync student photos from exam</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Matches by registration number and syncs photos for students already in demo, including newly imported students. An available exam photo replaces the demo photo; missing or unsafe source photos leave the demo photo unchanged. Exam stays read-only.</p>
+                    </div>
+                    <button id="db-sync-start-photos" type="button" class="btn btn-primary" disabled>Sync student photos</button>
+                </div>
+                <div id="db-sync-photo-progress" class="mt-3 hidden text-sm text-slate-600" aria-live="polite"></div>
             </section>
 
             <section class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
@@ -87,10 +98,21 @@
             <dialog id="db-sync-import-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
                 <form method="dialog" class="p-6">
                     <h2 class="text-lg font-semibold text-slate-900">Import missing students?</h2>
-                    <p class="mt-3 text-sm leading-6 text-slate-600">Add missing student registrations to the configured demo database? Existing demo rows will be left unchanged. Exam remains read-only. Photos, user accounts, and marks will not be copied.</p>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">Add missing student registrations to the configured demo database? Existing demo rows will be left unchanged. Exam remains read-only. Photos sync separately; user accounts and marks are not copied.</p>
                     <div class="mt-6 flex justify-end gap-2">
                         <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
                         <button type="submit" value="confirm" class="btn btn-primary">Continue import</button>
+                    </div>
+                </form>
+            </dialog>
+
+            <dialog id="db-sync-photos-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
+                <form method="dialog" class="p-6">
+                    <h2 class="text-lg font-semibold text-slate-900">Sync student photos?</h2>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">Copy available exam photos into demo for matching registration numbers, replacing their current demo photo. Students without a usable exam photo will be left unchanged. Exam remains read-only.</p>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
+                        <button type="submit" value="confirm" class="btn btn-primary">Continue photo sync</button>
                     </div>
                 </form>
             </dialog>
@@ -130,6 +152,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const importPreview = document.getElementById('db-sync-import-preview');
     const importProgress = document.getElementById('db-sync-import-progress');
     const importConfirmDialog = document.getElementById('db-sync-import-confirm');
+    const syncPhotosButton = document.getElementById('db-sync-start-photos');
+    const photoProgress = document.getElementById('db-sync-photo-progress');
+    const photosConfirmDialog = document.getElementById('db-sync-photos-confirm');
     const previewCentersButton = document.getElementById('db-sync-preview-centers');
     const syncCentersButton = document.getElementById('db-sync-start-centers');
     const centersPreview = document.getElementById('db-sync-centers-preview');
@@ -166,6 +191,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 refreshStudents.disabled = false;
                 previewImportButton.disabled = false;
                 previewCentersButton.disabled = false;
+                syncPhotosButton.disabled = false;
                 applyButton.classList.toggle('hidden', !state.pending_migrations.length);
                 message('Ready. Comparing the exam connection reads schema metadata only.', false);
                 await loadLatestStudents();
@@ -227,6 +253,49 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     refreshStudents.addEventListener('click', loadLatestStudents);
+
+    function confirmPhotoSync() {
+        return new Promise(function (resolve) {
+            photosConfirmDialog.returnValue = '';
+            photosConfirmDialog.addEventListener('close', function () {
+                resolve(photosConfirmDialog.returnValue === 'confirm');
+            }, { once: true });
+            photosConfirmDialog.showModal();
+        });
+    }
+
+    syncPhotosButton.addEventListener('click', async function () {
+        if (!(await confirmPhotoSync())) return;
+        syncPhotosButton.disabled = true;
+        photoProgress.classList.remove('hidden');
+        let afterId = 0;
+        let checked = 0;
+        let updated = 0;
+        let missingDemo = 0;
+        let unavailable = 0;
+        try {
+            while (true) {
+                const data = await BK.post('/api/database-sync/sync-student-photos', { after_id: afterId });
+                if (data.error) throw new Error(data.error);
+                checked += Number(data.checked || 0);
+                updated += Number(data.updated || 0);
+                missingDemo += Number(data.missing_demo || 0);
+                unavailable += Number(data.unavailable || 0);
+                afterId = Number(data.next_after_id || afterId);
+                photoProgress.textContent = 'Checked ' + checked + ' exam student photo record(s)… copied ' + updated + ', no demo match ' + missingDemo + ', unavailable or invalid photo ' + unavailable + '.';
+                if (data.done) break;
+            }
+            photoProgress.textContent = 'Photo sync finished. Copied ' + updated + ' photo(s) to demo; no demo match ' + missingDemo + ', unavailable or invalid ' + unavailable + '. Exam was read-only.';
+            message('Student-photo sync complete. Updated ' + updated + ' demo student photo(s).', false);
+            BK.toast('Copied ' + updated + ' student photo(s) to demo.', 'success');
+        } catch (error) {
+            photoProgress.textContent = 'Photo sync stopped after checking ' + checked + ' source record(s). ' + error.message + ' You can safely retry; matching photos will be recopied.';
+            message(error.message || 'Could not sync student photos.', true);
+            BK.toast(error.message || 'Could not sync student photos.', 'error');
+        } finally {
+            syncPhotosButton.disabled = false;
+        }
+    });
 
     function confirmCenterSync() {
         return new Promise(function (resolve) {

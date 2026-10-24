@@ -83,6 +83,22 @@ final class DatabaseSyncController extends Controller
         }
     }
 
+    public function syncStudentPhotos(Request $request): array
+    {
+        if (!$this->isSyncHostAllowed($request)) {
+            return ['error' => 'Student-photo sync can run only from demo.bkabd.com or an explicitly allowed local dashboard.'];
+        }
+        $afterId = max(0, (int) $request->input('after_id', 0));
+        try {
+            return (new DatabaseSyncService())->syncStudentPhotoBatch($afterId, 25);
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] student-photo sync failed: ' . $e->getCode());
+            return ['error' => 'Student-photo sync stopped safely. Check database permissions and the server error log.'];
+        }
+    }
+
     private function isSyncHostAllowed(Request $request): bool
     {
         $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));
