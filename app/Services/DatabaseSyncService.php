@@ -128,6 +128,105 @@ final class DatabaseSyncService
         }
     }
 
+    /** Preview center display-name changes using a unique center code as identity. */
+    public function previewCenterNameSync(): array
+    {
+        $this->assertReady();
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $plan = $this->centerNameSyncPlan($source, $target);
+            return [
+                'matched' => $plan['matched'],
+                'changes' => count($plan['updates']),
+                'ambiguous' => $plan['ambiguous'],
+                'unmatched' => $plan['unmatched'],
+                'examples' => array_slice(array_map(static fn(array $row): array => [
+                    'code' => $row['code'], 'from' => $row['old_name'], 'to' => $row['new_name'],
+                ], $plan['updates']), 0, 100),
+                'note' => 'Matches centers only by a unique center code. Applying updates the linked center-user display name in demo; it does not copy accounts, passwords, or modify exam.',
+            ];
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
+    /** Apply center display names to matched demo center accounts only. */
+    public function syncCenterNames(): array
+    {
+        $this->assertReady();
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $plan = $this->centerNameSyncPlan($source, $target);
+            $target->beginTransaction();
+            try {
+                $update = $target->prepare('UPDATE `users` SET `name` = ?, `updated_at` = NOW() WHERE `id` = ? AND `type` = 4 AND `name` <=> ?');
+                $updated = 0;
+                foreach ($plan['updates'] as $row) {
+                    $update->execute([$row['new_name'], $row['user_id'], $row['old_name']]);
+                    $updated += $update->rowCount();
+                }
+                $target->commit();
+            } catch (\Throwable $e) {
+                if ($target->inTransaction()) { $target->rollBack(); }
+                throw $e;
+            }
+            return ['updated' => $updated, 'matched' => $plan['matched'], 'ambiguous' => $plan['ambiguous'], 'unmatched' => $plan['unmatched']];
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
+    /** @return array{updates:array<int,array<string,mixed>>,matched:int,ambiguous:int,unmatched:int} */
+    private function centerNameSyncPlan(PDO $source, PDO $target): array
+    {
+        $readCenters = static function (PDO $pdo): array {
+            return $pdo->query('SELECT c.`id`, c.`code`, c.`user_id`, u.`name`, u.`type` FROM `centers` c LEFT JOIN `users` u ON u.`id` = c.`user_id`')->fetchAll(PDO::FETCH_ASSOC);
+        };
+        $sourceRows = $readCenters($source);
+        $targetRows = $readCenters($target);
+        $byCode = static function (array $rows): array {
+            $grouped = [];
+            foreach ($rows as $row) {
+                $code = mb_strtolower(trim((string) ($row['code'] ?? '')), 'UTF-8');
+                if ($code !== '') { $grouped[$code][] = $row; }
+            }
+            return $grouped;
+        };
+        $sourceByCode = $byCode($sourceRows);
+        $targetByCode = $byCode($targetRows);
+        $updates = [];
+        $matched = 0;
+        $ambiguous = 0;
+        $unmatched = 0;
+        $targetUserUsage = [];
+        foreach ($sourceByCode as $code => $sourceMatches) {
+            if (count($sourceMatches) !== 1 || count($targetByCode[$code] ?? []) > 1) { $ambiguous++; continue; }
+            $targetMatches = $targetByCode[$code] ?? [];
+            $sourceName = trim((string) ($sourceMatches[0]['name'] ?? ''));
+            if (count($targetMatches) !== 1 || $sourceName === ''
+                || (int) ($sourceMatches[0]['type'] ?? -1) !== 4
+                || (int) ($targetMatches[0]['type'] ?? -1) !== 4) { $unmatched++; continue; }
+            $matched++;
+            $targetUserId = (int) $targetMatches[0]['user_id'];
+            $targetUserUsage[$targetUserId][] = ['code' => (string) $targetMatches[0]['code'], 'name' => $sourceName];
+            $oldName = (string) ($targetMatches[0]['name'] ?? '');
+            if (trim($oldName) !== $sourceName) {
+                $updates[$targetUserId] = ['user_id' => $targetUserId, 'code' => (string) $targetMatches[0]['code'], 'old_name' => $oldName, 'new_name' => $sourceName];
+            }
+        }
+        foreach ($targetUserUsage as $userId => $uses) {
+            $names = array_unique(array_map(static fn(array $use): string => mb_strtolower(trim($use['name']), 'UTF-8'), $uses));
+            if (count($uses) > 1 && count($names) > 1) {
+                unset($updates[$userId]);
+                $ambiguous += count($uses);
+                $matched -= count($uses);
+            }
+        }
+        return ['updates' => array_values($updates), 'matched' => $matched, 'ambiguous' => $ambiguous, 'unmatched' => $unmatched];
+    }
+
     /** Count missing registration numbers without transferring any records. */
     public function previewStudentImport(): array
     {

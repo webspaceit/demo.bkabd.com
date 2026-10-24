@@ -56,6 +56,41 @@ final class DatabaseSyncController extends Controller
         }
     }
 
+    public function previewCenterNameSync(): array
+    {
+        try {
+            return (new DatabaseSyncService())->previewCenterNameSync();
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] center-name preview failed: ' . $e->getCode());
+            return ['error' => 'Could not compare center names. Check read access to centers and users on both databases.'];
+        }
+    }
+
+    public function syncCenterNames(Request $request): array
+    {
+        if (!$this->isSyncHostAllowed($request)) {
+            return ['error' => 'Center-name sync can run only from demo.bkabd.com or an explicitly allowed local dashboard.'];
+        }
+        try {
+            return (new DatabaseSyncService())->syncCenterNames();
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] center-name sync failed: ' . $e->getCode());
+            return ['error' => 'Center-name sync failed safely. Check UPDATE permission for demo center-user names and review the server log.'];
+        }
+    }
+
+    private function isSyncHostAllowed(Request $request): bool
+    {
+        $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));
+        return $host === 'demo.bkabd.com'
+            || (in_array($host, ['localhost', '127.0.0.1', '[::1]'], true)
+                && \App\Core\Config::getBool('DB_SYNC_ALLOW_LOCAL', false));
+    }
+
     public function importStudents(Request $request): array
     {
         $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));

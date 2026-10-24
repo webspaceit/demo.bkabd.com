@@ -7,14 +7,14 @@
         <div class="card-body space-y-5">
             <p class="text-sm leading-6 text-slate-600">
                 This page compares table structures and can import missing student registrations from <strong>exam.bkabd.com</strong> into <strong>demo.bkabd.com</strong>.
-                The exam connection is read-only. Imports add rows only to demo; existing demo records are not changed.
+                The exam connection is read-only. Student imports add rows only; center-name sync updates linked display names on demo after preview and confirmation.
             </p>
 
             <div id="db-sync-setup" class="hidden rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
                 <strong>Server setup is required before this can connect.</strong>
                 <p class="mt-1">Add the settings below to the private <code>.env</code> file used by the app you are running (your local PC, in this case). Do not paste passwords here or commit them to Git.</p>
                 <ul id="db-sync-missing" class="mt-2 list-disc pl-5"></ul>
-                <p class="mt-2">The sync uses separate database connections, so your local app can keep its current <code>DB_*</code> settings. Set the <code>SYNC_SOURCE_*</code> connection to exam with a read-only user. Set <code>SYNC_TARGET_*</code> to demo with a user that can read demo and add student rows, and has no access to exam.</p>
+                <p class="mt-2">The sync uses separate database connections, so your local app can keep its current <code>DB_*</code> settings. Set the <code>SYNC_SOURCE_*</code> connection to exam with a read-only user. Set <code>SYNC_TARGET_*</code> to demo with a user that can read demo, add student rows, and update linked center-user display names, and has no access to exam.</p>
                 <p class="mt-2">Set <code>DB_SYNC_ENABLED=true</code> and <code>DB_SYNC_ALLOW_LOCAL=true</code> in your local private configuration only after checking the target database name. Your host must allow remote MySQL connections from your PC to both databases.</p>
             </div>
 
@@ -22,12 +22,12 @@
                 <section class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
                     <h2 class="font-semibold text-emerald-900">Exam: read-only reference</h2>
                     <p class="mt-2 text-sm leading-6 text-slate-600">Use the database server host provided by your hosting provider. <code>localhost</code> works only if the exam database is on the same PC as this app. Schema comparison reads metadata; student preview and import read source rows through a read-only transaction.</p>
-                    <p class="mt-2 text-xs text-slate-500">Exam needs read-only SELECT access to students, centers, institutes, divisions, districts, upozilas, and unions, plus schema metadata. This app never inserts, updates, or deletes exam data.</p>
+                    <p class="mt-2 text-xs text-slate-500">Exam needs read-only SELECT access to students, centers, institutes, users, divisions, districts, upozilas, and unions, plus schema metadata. This app never inserts, updates, or deletes exam data.</p>
                     <p id="db-sync-source" class="mt-2 text-xs text-slate-500"></p>
                 </section>
                 <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
                     <h2 class="font-semibold text-sky-900">Demo: migration destination</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables and INSERT on <code>students</code> (and <code>student_duplicate_keys</code> when present). It does not need access to exam. Schema migrations remain separate.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables, INSERT on <code>students</code> (and <code>student_duplicate_keys</code> when present), and UPDATE on <code>users.name</code> for center-name sync. It does not need access to exam. Schema migrations remain separate.</p>
                     <p id="db-sync-target" class="mt-2 text-xs text-slate-500"></p>
                 </section>
             </div>
@@ -58,6 +58,31 @@
                 <div id="db-sync-import-preview" class="mt-3 hidden rounded-lg border border-amber-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
                 <div id="db-sync-import-progress" class="mt-2 hidden text-sm text-slate-600" aria-live="polite"></div>
             </section>
+
+            <section class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-semibold text-indigo-950">Sync center display names from exam</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Matches centers only by a unique center code. Preview shows the exact name changes; applying updates only the linked center-user display name in demo. Accounts and passwords are not copied, and exam stays read-only.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="db-sync-preview-centers" type="button" class="btn btn-light" disabled>Preview center names</button>
+                        <button id="db-sync-start-centers" type="button" class="btn btn-primary hidden" disabled>Sync center names</button>
+                    </div>
+                </div>
+                <div id="db-sync-centers-preview" class="mt-3 hidden overflow-x-auto rounded-lg border border-indigo-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
+            </section>
+
+            <dialog id="db-sync-centers-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
+                <form method="dialog" class="p-6">
+                    <h2 class="text-lg font-semibold text-slate-900">Sync center names?</h2>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">Update the linked center-user display names in demo to match exam, for centers matched by a unique code? No accounts or passwords will be copied. Exam remains read-only.</p>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
+                        <button type="submit" value="confirm" class="btn btn-primary">Continue sync</button>
+                    </div>
+                </form>
+            </dialog>
 
             <dialog id="db-sync-import-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
                 <form method="dialog" class="p-6">
@@ -105,6 +130,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const importPreview = document.getElementById('db-sync-import-preview');
     const importProgress = document.getElementById('db-sync-import-progress');
     const importConfirmDialog = document.getElementById('db-sync-import-confirm');
+    const previewCentersButton = document.getElementById('db-sync-preview-centers');
+    const syncCentersButton = document.getElementById('db-sync-start-centers');
+    const centersPreview = document.getElementById('db-sync-centers-preview');
+    const centersConfirmDialog = document.getElementById('db-sync-centers-confirm');
     const studentsStatus = document.getElementById('db-sync-students-status');
     const studentsTable = document.getElementById('db-sync-students-table');
     let state = null;
@@ -136,6 +165,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 compareButton.disabled = false;
                 refreshStudents.disabled = false;
                 previewImportButton.disabled = false;
+                previewCentersButton.disabled = false;
                 applyButton.classList.toggle('hidden', !state.pending_migrations.length);
                 message('Ready. Comparing the exam connection reads schema metadata only.', false);
                 await loadLatestStudents();
@@ -197,6 +227,77 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     refreshStudents.addEventListener('click', loadLatestStudents);
+
+    function confirmCenterSync() {
+        return new Promise(function (resolve) {
+            centersConfirmDialog.returnValue = '';
+            centersConfirmDialog.addEventListener('close', function () {
+                resolve(centersConfirmDialog.returnValue === 'confirm');
+            }, { once: true });
+            centersConfirmDialog.showModal();
+        });
+    }
+
+    async function previewCenterNames() {
+        previewCentersButton.disabled = true;
+        syncCentersButton.classList.add('hidden');
+        centersPreview.classList.remove('hidden');
+        centersPreview.textContent = 'Comparing center codes and names…';
+        try {
+            const data = await BK.get('/api/database-sync/center-name-preview');
+            if (data.error) { centersPreview.textContent = data.error; return; }
+            centersPreview.replaceChildren();
+            const summary = document.createElement('p');
+            summary.className = 'mb-3';
+            summary.textContent = data.changes + ' center name(s) would change; ' + data.matched + ' unique code match(es), ' + data.ambiguous + ' ambiguous, ' + data.unmatched + ' unmatched. ' + (data.note || '');
+            centersPreview.appendChild(summary);
+            if ((data.examples || []).length) {
+                const table = document.createElement('table');
+                table.className = 'table w-full';
+                const thead = document.createElement('thead');
+                const header = document.createElement('tr');
+                ['Center code', 'Current demo name', 'Exam name'].forEach(function (label) {
+                    const th = document.createElement('th'); th.textContent = label; header.appendChild(th);
+                });
+                thead.appendChild(header); table.appendChild(thead);
+                const tbody = document.createElement('tbody');
+                data.examples.forEach(function (row) {
+                    const tr = document.createElement('tr');
+                    [row.code || '—', row.from || '—', row.to || '—'].forEach(function (value) {
+                        const td = document.createElement('td'); td.textContent = String(value); tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody); centersPreview.appendChild(table);
+            }
+            syncCentersButton.classList.toggle('hidden', Number(data.changes) < 1);
+            syncCentersButton.disabled = Number(data.changes) < 1;
+        } catch (error) {
+            centersPreview.textContent = error.message || 'Could not preview center-name sync.';
+        } finally {
+            previewCentersButton.disabled = false;
+        }
+    }
+
+    previewCentersButton.addEventListener('click', previewCenterNames);
+    syncCentersButton.addEventListener('click', async function () {
+        if (!(await confirmCenterSync())) return;
+        syncCentersButton.disabled = true;
+        previewCentersButton.disabled = true;
+        try {
+            const data = await BK.post('/api/database-sync/sync-center-names', {});
+            if (data.error) throw new Error(data.error);
+            message('Center-name sync complete. Updated ' + Number(data.updated || 0) + ' linked demo center name(s). Exam was read-only.', false);
+            BK.toast('Updated ' + Number(data.updated || 0) + ' center name(s).', 'success');
+            await previewCenterNames();
+        } catch (error) {
+            message(error.message || 'Could not sync center names.', true);
+            BK.toast(error.message || 'Could not sync center names.', 'error');
+        } finally {
+            syncCentersButton.disabled = false;
+            previewCentersButton.disabled = false;
+        }
+    });
 
     previewImportButton.addEventListener('click', async function () {
         previewImportButton.disabled = true;
