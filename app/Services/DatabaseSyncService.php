@@ -158,7 +158,7 @@ final class DatabaseSyncService
                 'already_in_demo' => $existing,
                 'missing_in_demo' => $missing,
                 'missing_registration' => $total - count($sourceRegistrations),
-                'note' => 'Preview checks registration numbers only. During import, records with conflicting rolls or unmatched center/institute references are skipped safely.',
+                'note' => 'Preview checks registration numbers only. During import, center and institute references are matched by unique stable identifiers (center code or name/venue; institute certificate number or name within the matched center). Ambiguous, unmatched, conflicting-roll, and unsafe references are skipped.',
             ];
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
@@ -184,12 +184,19 @@ final class DatabaseSyncService
 
             $this->assertStudentColumnsCompatible($source, $target);
             $referenceMaps = $this->studentReferenceMaps($source, $target, $rows);
+            $unmappedIds = [];
+            foreach ($rows as &$row) {
+                $mapped = $this->remapStudentReferences($row, $referenceMaps);
+                if ($mapped === null) { $unmappedIds[(int) $row['id']] = true; }
+                else { $row = $mapped; }
+            }
+            unset($row);
             $registrations = [];
             $fingerprints = [];
             $rollConditions = [];
             foreach ($rows as $row) {
                 if (trim((string) ($row['registration'] ?? '')) !== '') { $registrations[] = trim((string) $row['registration']); }
-                $fingerprints[] = \App\Services\StudentService::duplicateFingerprint($row);
+                if (!isset($unmappedIds[(int) $row['id']])) { $fingerprints[] = \App\Services\StudentService::duplicateFingerprint($row); }
                 if (($row['roll'] ?? null) !== null && ($row['session'] ?? null) !== null && ($row['class'] ?? null) !== null) {
                     $rollConditions[] = [(int) $row['session'], (int) $row['roll'], (int) $row['class']];
                 }
@@ -203,7 +210,8 @@ final class DatabaseSyncService
             // maintained by student writes. Avoid the much slower row-by-row
             // fallback query when that indexed source of truth is available.
             if (!$duplicateKeysAvailable) {
-                foreach ($this->existingStudentFingerprints($target, $rows) as $fingerprint => $_present) {
+                $mappedRows = array_values(array_filter($rows, static fn(array $row): bool => !isset($unmappedIds[(int) $row['id']])));
+                foreach ($this->existingStudentFingerprints($target, $mappedRows) as $fingerprint => $_present) {
                     $presentFingerprints[$fingerprint] = true;
                 }
             }
@@ -229,11 +237,11 @@ final class DatabaseSyncService
                 foreach ($rows as $row) {
                     $registration = trim((string) ($row['registration'] ?? ''));
                     if ($registration === '') { $counts['skipped']++; continue; }
+                    if (isset($unmappedIds[(int) $row['id']])) { $counts['skipped']++; continue; }
                     $regKey = mb_strtolower($registration, 'UTF-8');
                     if (isset($presentRegistrations[$regKey])) { $counts['already_present']++; continue; }
                     $fingerprint = \App\Services\StudentService::duplicateFingerprint($row);
                     if (isset($presentFingerprints[$fingerprint])) { $counts['already_present']++; continue; }
-                    if (!$this->studentReferencesMatch($row, $referenceMaps)) { $counts['skipped']++; continue; }
                     $rollKey = $this->rollKey($row);
                     if ($rollKey !== null && isset($presentRolls[$rollKey])) { $counts['skipped']++; continue; }
                     $values = [];
@@ -320,22 +328,103 @@ final class DatabaseSyncService
         }
         foreach ($ids as $table => $values) { $ids[$table] = array_values(array_unique($values)); }
         $sourceMaps = [
-            'centers' => $this->lookupIds($source, 'centers', ['institute_name', 'code'], $ids['centers']),
-            'institutes' => $this->lookupIds($source, 'institutes', ['name', 'center_id'], $ids['institutes']),
+            'centers' => $this->lookupCenterReferences($source, $ids['centers']),
+            'institutes' => $this->lookupIds($source, 'institutes', ['name', 'center_id', 'certificate_no'], $ids['institutes']),
             'divisions' => $this->lookupIds($source, 'divisions', ['name'], $ids['divisions']),
             'districts' => $this->lookupIds($source, 'districts', ['name', 'division_id'], $ids['districts']),
             'upozilas' => $this->lookupIds($source, 'upozilas', ['name', 'district_id'], $ids['upozilas']),
             'unions' => $this->lookupIds($source, 'unions', ['name', 'upozila_id'], $ids['unions']),
         ];
         $targetMaps = [
-            'centers' => $this->lookupIds($target, 'centers', ['institute_name', 'code'], $ids['centers']),
-            'institutes' => $this->lookupIds($target, 'institutes', ['name', 'center_id'], $ids['institutes']),
+            'centers' => $this->lookupCenterReferences($target, []),
+            'institutes' => $this->lookupAllIds($target, 'institutes', ['name', 'center_id', 'certificate_no']),
             'divisions' => $this->lookupIds($target, 'divisions', ['name'], $ids['divisions']),
             'districts' => $this->lookupIds($target, 'districts', ['name', 'division_id'], $ids['districts']),
             'upozilas' => $this->lookupIds($target, 'upozilas', ['name', 'district_id'], $ids['upozilas']),
             'unions' => $this->lookupIds($target, 'unions', ['name', 'upozila_id'], $ids['unions']),
         ];
-        return ['source' => $sourceMaps, 'target' => $targetMaps];
+        $centerMap = [];
+        foreach ($sourceMaps['centers'] as $sourceId => $sourceCenter) {
+            $byCode = $this->uniqueReferenceMatch($targetMaps['centers'], 'code', $sourceCenter['code'] ?? '');
+            $match = $byCode;
+            if ($match === null && trim((string) ($sourceCenter['display_name'] ?? '')) !== ''
+                && trim((string) ($sourceCenter['institute_name'] ?? '')) !== '') {
+                $candidates = array_filter($targetMaps['centers'], fn(array $candidate): bool =>
+                    $this->sameReference($candidate['display_name'] ?? '', $sourceCenter['display_name'])
+                    && $this->sameReference($candidate['institute_name'] ?? '', $sourceCenter['institute_name'] ?? '')
+                );
+                if (count($candidates) === 1) { $match = reset($candidates); }
+            }
+            if ($match !== null) { $centerMap[$sourceId] = (int) $match['id']; }
+        }
+        $instituteMap = [];
+        foreach ($sourceMaps['institutes'] as $sourceId => $sourceInstitute) {
+            $mappedCenter = $centerMap[(int) ($sourceInstitute['center_id'] ?? 0)] ?? null;
+            $match = $this->uniqueReferenceMatch($targetMaps['institutes'], 'certificate_no', $sourceInstitute['certificate_no'] ?? '');
+            if ($match === null && $mappedCenter !== null) {
+                $candidates = array_filter($targetMaps['institutes'], fn(array $candidate): bool =>
+                    (int) ($candidate['center_id'] ?? 0) === $mappedCenter
+                    && $this->sameReference($candidate['name'] ?? '', $sourceInstitute['name'] ?? '')
+                );
+                if (count($candidates) === 1) { $match = reset($candidates); }
+            }
+            if ($match !== null && ($mappedCenter === null || (int) ($match['center_id'] ?? 0) === $mappedCenter)) {
+                $instituteMap[$sourceId] = (int) $match['id'];
+            }
+        }
+        return ['source' => $sourceMaps, 'target' => $targetMaps, 'center_map' => $centerMap, 'institute_map' => $instituteMap];
+    }
+
+    /** Load center names from their linked users without copying user accounts. */
+    private function lookupCenterReferences(PDO $pdo, array $ids): array
+    {
+        $where = $ids === [] ? '' : ' WHERE c.`id` IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+        $stmt = $pdo->prepare('SELECT c.`id`, c.`institute_name`, c.`code`, c.`division_id`, c.`district_id`, c.`upazila_id`, c.`union_id`, u.`name` AS `display_name` FROM `centers` c LEFT JOIN `users` u ON u.`id` = c.`user_id`' . $where);
+        $stmt->execute($ids);
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) { $out[(int) $row['id']] = $row; }
+        return $out;
+    }
+
+    private function uniqueReferenceMatch(array $rows, string $column, mixed $value): ?array
+    {
+        if (trim((string) $value) === '') { return null; }
+        $matches = array_filter($rows, fn(array $row): bool => $this->sameReference($row[$column] ?? '', $value));
+        return count($matches) === 1 ? reset($matches) : null;
+    }
+
+    private function sameReference(mixed $left, mixed $right): bool
+    {
+        return mb_strtolower(trim((string) $left), 'UTF-8') === mb_strtolower(trim((string) $right), 'UTF-8');
+    }
+
+    private function remapStudentReferences(array $row, array $maps): ?array
+    {
+        $sourceCenterId = (int) ($row['center_id'] ?? 0);
+        $sourceInstituteId = (int) ($row['institute_id'] ?? 0);
+        $centerId = $maps['center_map'][$sourceCenterId] ?? null;
+        $instituteId = $maps['institute_map'][$sourceInstituteId] ?? null;
+        if ($centerId === null || $instituteId === null) { return null; }
+        $sourceInstitute = $maps['source']['institutes'][$sourceInstituteId] ?? null;
+        if ($sourceInstitute === null || (int) ($sourceInstitute['center_id'] ?? 0) !== $sourceCenterId) { return null; }
+        $targetInstitute = $maps['target']['institutes'][$instituteId] ?? null;
+        if ($targetInstitute === null || (int) ($targetInstitute['center_id'] ?? 0) !== $centerId) { return null; }
+        foreach (['division_id' => 'divisions', 'district_id' => 'districts', 'upazila_id' => 'upozilas', 'union_id' => 'unions'] as $field => $table) {
+            $id = (int) ($row[$field] ?? 0);
+            if ($id === 0 && $field === 'union_id') { continue; }
+            $source = $maps['source'][$table][$id] ?? null;
+            $target = $maps['target'][$table][$id] ?? null;
+            if ($source === null || $target === null || !$this->sameReference($source['name'] ?? '', $target['name'] ?? '')) { return null; }
+            foreach (['district_id' => 'districts', 'upazila_id' => 'upozilas'] as $parentField => $parentTable) {
+                if ($field === 'district_id' && $parentField === 'district_id' || $field === 'upazila_id' && $parentField === 'upazila_id' || $field === 'union_id' && $parentField === 'upazila_id') {
+                    $parentId = (int) ($source[$parentField] ?? 0);
+                    if ($parentId !== (int) ($target[$parentField] ?? 0)) { return null; }
+                }
+            }
+        }
+        $row['center_id'] = $centerId;
+        $row['institute_id'] = $instituteId;
+        return $row;
     }
 
     private function lookupIds(PDO $pdo, string $table, array $columns, array $ids): array
@@ -350,30 +439,14 @@ final class DatabaseSyncService
         return $out;
     }
 
-    private function studentReferencesMatch(array $row, array $maps): bool
+    private function lookupAllIds(PDO $pdo, string $table, array $columns): array
     {
-        $relations = [
-            'center_id' => ['centers', ['institute_name', 'code']],
-            'institute_id' => ['institutes', ['name', 'center_id']],
-            'division_id' => ['divisions', ['name']],
-            'district_id' => ['districts', ['name', 'division_id']],
-            'upazila_id' => ['upozilas', ['name', 'district_id']],
-            'union_id' => ['unions', ['name', 'upozila_id']],
-        ];
-        foreach ($relations as $field => [$table, $columns]) {
-            $id = (int) ($row[$field] ?? 0);
-            if ($id === 0 && $field === 'union_id') { continue; }
-            $source = $maps['source'][$table][$id] ?? null;
-            $target = $maps['target'][$table][$id] ?? null;
-            if ($source === null || $target === null) { return false; }
-            foreach ($columns as $column) {
-                if ((string) ($source[$column] ?? '') !== (string) ($target[$column] ?? '')) { return false; }
-            }
+        $select = implode(',', array_map(static fn(string $column): string => '`' . $column . '`', array_merge(['id'], $columns)));
+        $out = [];
+        foreach ($pdo->query('SELECT ' . $select . ' FROM `' . $table . '`')->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $out[(int) $row['id']] = $row;
         }
-        $centerId = (int) ($row['center_id'] ?? 0);
-        $instituteId = (int) ($row['institute_id'] ?? 0);
-        return (int) ($maps['source']['institutes'][$instituteId]['center_id'] ?? 0) === $centerId
-            && (int) ($maps['target']['institutes'][$instituteId]['center_id'] ?? 0) === $centerId;
+        return $out;
     }
 
     private function existingValues(PDO $pdo, string $table, string $column, array $values): array
