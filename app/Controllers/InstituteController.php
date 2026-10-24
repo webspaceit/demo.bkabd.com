@@ -78,7 +78,15 @@ final class InstituteController extends Controller
             );
         }
 
-        return $q->paginate(max(1, (int) $request->input('per_page', 20)), null, '/api/institutes');
+        // The filters above only reference institutes columns. Counting the
+        // total through the center and user display joins adds work without
+        // affecting the result, so keep those joins only for the page rows.
+        return $q->paginate(
+            max(1, (int) $request->input('per_page', 20)),
+            null,
+            '/api/institutes',
+            $q->withoutJoins()
+        );
     }
 
     /** GET /api/institutes/{id} — single institute (edit form / detail). */
