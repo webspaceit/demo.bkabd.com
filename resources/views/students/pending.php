@@ -554,6 +554,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function openModal(id) {
+        if (modalEl) { modalEl.classList.remove('hidden'); }
+        ['m-name', 'm-registration', 'm-roll', 'm-father_name', 'm-mother_name', 'm-center_name', 'm-institute_name', 'm-email', 'm-phone', 'm-religion', 'm-present_address', 'm-permanent_address', 'm-dob', 'm-gender', 'm-class', 'm-session', 'm-division_name', 'm-district_name', 'm-upazila_name', 'm-education_type', 'm-principal_name', 'm-note'].forEach(function (field) {
+            setText(field, '—');
+        });
+        setText('m-name', 'Loading student details…');
+        const photo = document.getElementById('modal-photo');
+        if (photo) { photo.classList.add('hidden'); photo.removeAttribute('src'); }
         BK.get('/api/students/' + encodeURIComponent(id)).then(function (json) {
             const s = (json && json.data) || {};
             setText('m-name', s.name);
@@ -588,8 +595,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     img.classList.add('hidden');
                 }
             }
-            if (modalEl) { modalEl.classList.remove('hidden'); }
         }).catch(function (err) {
+            setText('m-name', 'Student details could not be loaded.');
             BK.toast(err.message || 'Could not load student details', 'error');
         });
     }
