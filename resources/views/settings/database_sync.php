@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 totalSkipped += Number(data.skipped || 0);
                 processed += Number(data.processed || 0);
                 afterId = Number(data.next_after_id || afterId);
-                importProgress.textContent = 'Processed ' + processed + ' source record(s)… Added ' + totalImported + ', already present ' + totalExisting + ', skipped ' + totalSkipped + '.';
+                importProgress.textContent = 'Checked ' + processed + ' missing registration candidate(s)… Added ' + totalImported + ', already present ' + totalExisting + ', skipped ' + totalSkipped + '.';
                 if (data.done) break;
             }
             importPreview.textContent = 'Import finished. Added ' + totalImported + ' student(s) to demo; ' + totalExisting + ' already existed; ' + totalSkipped + ' were skipped because registration or reference data did not match safely. Reload the Students page on demo to see its updated count.';
@@ -346,8 +346,8 @@ document.addEventListener('DOMContentLoaded', function () {
             startImportButton.classList.add('hidden');
             await loadLatestStudents();
         } catch (error) {
-            importProgress.textContent = 'Import stopped after processing ' + processed + ' source record(s). ' + error.message + ' You can preview again; already imported rows will be skipped on retry.';
-            BK.toast('Import stopped after ' + processed + ' source record(s): ' + error.message, 'error');
+            importProgress.textContent = 'Import stopped after checking ' + processed + ' missing candidate(s). ' + error.message + ' You can preview again; already imported rows will be skipped on retry.';
+            BK.toast('Import stopped after checking ' + processed + ' missing candidate(s): ' + error.message, 'error');
         } finally {
             startImportButton.disabled = false;
             previewImportButton.disabled = false;

@@ -325,7 +325,7 @@ final class DatabaseSyncService
         }
     }
 
-    /** Import one small idempotent batch; only the demo connection is written. */
+    /** Import only missing registrations; only the demo connection is written. */
     public function importStudentBatch(int $afterId = 0, int $batchSize = 1000): array
     {
         $this->assertReady();
@@ -335,9 +335,37 @@ final class DatabaseSyncService
         $source = $this->connectSource();
         $target = $this->connectTarget();
         try {
-            $sourceStmt = $source->prepare('SELECT * FROM `students` WHERE `id` > ? ORDER BY `id` ASC LIMIT ' . $batchSize);
-            $sourceStmt->execute([max(0, $afterId)]);
-            $rows = $sourceStmt->fetchAll(PDO::FETCH_ASSOC);
+            // Determine missing registrations from the narrow indexed key
+            // column first. The old flow loaded every full student row in
+            // 1,000-row batches and made one browser request per batch, even
+            // when only a handful of registrations were missing.
+            $targetRegistrations = $target->query("SELECT `registration` FROM `students` WHERE `registration` IS NOT NULL AND TRIM(`registration`) <> ''")->fetchAll(PDO::FETCH_COLUMN);
+            $presentRegistrations = [];
+            foreach ($targetRegistrations as $registration) {
+                $presentRegistrations[mb_strtolower(trim((string) $registration), 'UTF-8')] = true;
+            }
+            $sourceRegistrations = $source->query("SELECT `id`, `registration` FROM `students` WHERE `registration` IS NOT NULL AND TRIM(`registration`) <> '' ORDER BY `id` ASC")->fetchAll(PDO::FETCH_ASSOC);
+            $missingIds = [];
+            $seenRegistrations = [];
+            foreach ($sourceRegistrations as $sourceRegistration) {
+                $key = mb_strtolower(trim((string) $sourceRegistration['registration']), 'UTF-8');
+                if ($key === '' || isset($seenRegistrations[$key])) { continue; }
+                $seenRegistrations[$key] = true;
+                $sourceId = (int) $sourceRegistration['id'];
+                if ($sourceId > max(0, $afterId) && !isset($presentRegistrations[$key])) {
+                    $missingIds[] = $sourceId;
+                    if (count($missingIds) > $batchSize) { break; }
+                }
+            }
+
+            $hasMoreMissing = count($missingIds) > $batchSize;
+            $missingIds = array_slice($missingIds, 0, $batchSize);
+            $rows = [];
+            foreach (array_chunk($missingIds, 500) as $idChunk) {
+                $sourceStmt = $source->prepare('SELECT * FROM `students` WHERE `id` IN (' . implode(',', array_fill(0, count($idChunk), '?')) . ') ORDER BY `id` ASC');
+                $sourceStmt->execute($idChunk);
+                array_push($rows, ...$sourceStmt->fetchAll(PDO::FETCH_ASSOC));
+            }
             if ($rows === []) {
                 return ['done' => true, 'next_after_id' => $afterId, 'processed' => 0, 'imported' => 0, 'already_present' => 0, 'skipped' => 0];
             }
@@ -433,7 +461,7 @@ final class DatabaseSyncService
                 \App\Core\Cache::forgetPrefix('pending_students');
             }
             $lastId = (int) $rows[array_key_last($rows)]['id'];
-            return ['done' => count($rows) < $batchSize, 'next_after_id' => $lastId, 'processed' => count($rows)] + $counts;
+            return ['done' => !$hasMoreMissing, 'next_after_id' => $lastId, 'processed' => count($rows)] + $counts;
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
         }
