@@ -45,7 +45,10 @@ final class InstituteController extends Controller
             ->leftJoin('centers', 'centers.id', '=', 'institutes.center_id')
             ->leftJoin('users', 'users.id', '=', 'centers.user_id')
             ->select('institutes.*')
-            ->selectRaw("COALESCE(NULLIF(users.name, ''), NULLIF(centers.institute_name, ''), NULLIF(centers.code, ''), CASE WHEN institutes.center_id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END) AS center_name")
+            // `centers.institute_name` is the physical venue, not the center's
+            // display name. Avoid presenting it as the center when the linked
+            // account name is missing; use an honest ID fallback instead.
+            ->selectRaw("COALESCE(NULLIF(users.name, ''), CASE WHEN institutes.center_id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END) AS center_name")
             ->orderBy('institutes.id', 'desc');
 
         $this->scopeToOwnCenter($q);
