@@ -17,10 +17,14 @@ final class DatabaseSyncService
         $targetHost = $target['host'];
         $targetDatabase = $target['database'];
         $missing = [];
-        foreach (['SYNC_SOURCE_HOST', 'SYNC_SOURCE_DATABASE', 'SYNC_SOURCE_USERNAME', 'SYNC_SOURCE_PASSWORD', 'SYNC_TARGET_HOST', 'SYNC_TARGET_DATABASE', 'SYNC_TARGET_USERNAME', 'SYNC_TARGET_PASSWORD'] as $key) {
+        foreach (['SYNC_SOURCE_HOST', 'SYNC_SOURCE_DATABASE', 'SYNC_SOURCE_USERNAME', 'SYNC_SOURCE_PASSWORD', 'SYNC_TARGET_HOST', 'SYNC_TARGET_DATABASE', 'SYNC_TARGET_USERNAME'] as $key) {
             if (trim((string) Config::get($key, '')) === '') {
                 $missing[] = $key;
             }
+        }
+        $targetIsLocal = in_array(strtolower(trim($targetHost)), ['localhost', '127.0.0.1', '::1', '[::1]'], true);
+        if (!$targetIsLocal && trim((string) Config::get('SYNC_TARGET_PASSWORD', '')) === '') {
+            $missing[] = 'SYNC_TARGET_PASSWORD';
         }
         if (!Config::getBool('DB_SYNC_ENABLED', false)) {
             $missing[] = 'DB_SYNC_ENABLED must be explicitly enabled on the demo server';
