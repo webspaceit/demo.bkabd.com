@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\Cache;
 use App\Core\Database;
 use App\Core\HttpException;
 use App\Core\Query;
@@ -41,14 +42,22 @@ final class InstituteController extends Controller
     /** GET /api/institutes — paginated list with the owning center's name. */
     public function index(Request $request): array
     {
+        $hasSyncedDisplayName = Cache::remember('schema:centers.display_name', 300, static function (): bool {
+            return (int) Database::scalar(
+                'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+                ['centers', 'display_name']
+            ) > 0;
+        });
+        $centerName = $hasSyncedDisplayName
+            ? "COALESCE(NULLIF(centers.display_name, ''), NULLIF(users.name, ''), CASE WHEN institutes.center_id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END)"
+            : "COALESCE(NULLIF(users.name, ''), CASE WHEN institutes.center_id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END)";
         $q = (new Query('institutes'))
             ->leftJoin('centers', 'centers.id', '=', 'institutes.center_id')
             ->leftJoin('users', 'users.id', '=', 'centers.user_id')
             ->select('institutes.*')
-            // `centers.institute_name` is the physical venue, not the center's
-            // display name. Avoid presenting it as the center when the linked
-            // account name is missing; use an honest ID fallback instead.
-            ->selectRaw("COALESCE(NULLIF(users.name, ''), CASE WHEN institutes.center_id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END) AS center_name")
+            // The synced center label is independent of the linked account so
+            // it still displays when historical centers have a missing user.
+            ->selectRaw($centerName . ' AS center_name')
             ->orderBy('institutes.id', 'desc');
 
         $this->scopeToOwnCenter($q);

@@ -139,6 +139,7 @@ final class DatabaseSyncService
         $source = $this->connectSource();
         $target = $this->connectTarget();
         try {
+            $this->assertCenterDisplayNameSchema($target);
             $plan = $this->centerNameSyncPlan($source, $target);
             return [
                 'matched' => $plan['matched'],
@@ -148,7 +149,7 @@ final class DatabaseSyncService
                 'examples' => array_slice(array_map(static fn(array $row): array => [
                     'code' => $row['code'], 'from' => $row['old_name'], 'to' => $row['new_name'],
                 ], $plan['updates']), 0, 100),
-                'note' => 'Matches centers only by a unique center code. Applying updates the linked center-user display name in demo; it does not copy accounts, passwords, or modify exam.',
+                'note' => 'Matches by a unique center code; duplicate codes are disambiguated by venue and geographic names. Applying stores the exam center name on the matching demo center record; it does not copy accounts, passwords, or modify exam.',
             ];
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
@@ -162,16 +163,18 @@ final class DatabaseSyncService
         $source = $this->connectSource();
         $target = $this->connectTarget();
         try {
+            $this->assertCenterDisplayNameSchema($target);
             $plan = $this->centerNameSyncPlan($source, $target);
             $target->beginTransaction();
             try {
-                $update = $target->prepare('UPDATE `users` SET `name` = ?, `updated_at` = NOW() WHERE `id` = ? AND `type` = 4 AND `name` <=> ?');
+                $update = $target->prepare('UPDATE `centers` SET `display_name` = ?, `updated_at` = NOW() WHERE `id` = ? AND `display_name` <=> ?');
                 $updated = 0;
                 foreach ($plan['updates'] as $row) {
-                    $update->execute([$row['new_name'], $row['user_id'], $row['old_name']]);
+                    $update->execute([$row['new_name'], $row['center_id'], $row['stored_name']]);
                     $updated += $update->rowCount();
                 }
                 $target->commit();
+                \App\Core\Cache::forget('schema:centers.display_name');
             } catch (\Throwable $e) {
                 if ($target->inTransaction()) { $target->rollBack(); }
                 throw $e;
@@ -182,14 +185,26 @@ final class DatabaseSyncService
         }
     }
 
+    private function assertCenterDisplayNameSchema(PDO $target): void
+    {
+        $check = $target->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = \'centers\' AND COLUMN_NAME = \'display_name\'');
+        $check->execute([(string) $this->targetSettings()['database']]);
+        if ((int) $check->fetchColumn() === 0) {
+            throw new RuntimeException('Apply the pending `center_display_name` demo schema migration first, then preview center names again.');
+        }
+    }
+
     /** @return array{updates:array<int,array<string,mixed>>,matched:int,ambiguous:int,unmatched:int} */
     private function centerNameSyncPlan(PDO $source, PDO $target): array
     {
-        $readCenters = static function (PDO $pdo): array {
-            return $pdo->query('SELECT c.`id`, c.`code`, c.`user_id`, u.`name`, u.`type` FROM `centers` c LEFT JOIN `users` u ON u.`id` = c.`user_id`')->fetchAll(PDO::FETCH_ASSOC);
-        };
-        $sourceRows = $readCenters($source);
-        $targetRows = $readCenters($target);
+        $selectCenters = 'SELECT c.`id`, c.`code`, c.`institute_name`, c.`division_id`, c.`district_id`, c.`upazila_id`, c.`union_id`, '
+            . 'd.`name` AS `division_name`, di.`name` AS `district_name`, up.`name` AS `upazila_name`, un.`name` AS `union_name`';
+        $joins = ' FROM `centers` c LEFT JOIN `divisions` d ON d.`id` = c.`division_id` '
+            . 'LEFT JOIN `districts` di ON di.`id` = c.`district_id` '
+            . 'LEFT JOIN `upozilas` up ON up.`id` = c.`upazila_id` '
+            . 'LEFT JOIN `unions` un ON un.`id` = c.`union_id` ';
+        $sourceRows = $source->query($selectCenters . ', u.`name` AS `source_name`, u.`type`' . $joins . 'LEFT JOIN `users` u ON u.`id` = c.`user_id`')->fetchAll(PDO::FETCH_ASSOC);
+        $targetRows = $target->query($selectCenters . ', c.`display_name`, u.`name` AS `user_name`' . $joins . 'LEFT JOIN `users` u ON u.`id` = c.`user_id`')->fetchAll(PDO::FETCH_ASSOC);
         $byCode = static function (array $rows): array {
             $grouped = [];
             foreach ($rows as $row) {
@@ -204,31 +219,73 @@ final class DatabaseSyncService
         $matched = 0;
         $ambiguous = 0;
         $unmatched = 0;
-        $targetUserUsage = [];
-        foreach ($sourceByCode as $code => $sourceMatches) {
-            if (count($sourceMatches) !== 1 || count($targetByCode[$code] ?? []) > 1) { $ambiguous++; continue; }
+        $codes = array_unique(array_merge(array_keys($sourceByCode), array_keys($targetByCode)));
+        foreach ($codes as $code) {
+            $sourceMatches = $sourceByCode[$code] ?? [];
             $targetMatches = $targetByCode[$code] ?? [];
-            $sourceName = trim((string) ($sourceMatches[0]['name'] ?? ''));
-            if (count($targetMatches) !== 1 || $sourceName === ''
-                || (int) ($sourceMatches[0]['type'] ?? -1) !== 4
-                || (int) ($targetMatches[0]['type'] ?? -1) !== 4) { $unmatched++; continue; }
-            $matched++;
-            $targetUserId = (int) $targetMatches[0]['user_id'];
-            $targetUserUsage[$targetUserId][] = ['code' => (string) $targetMatches[0]['code'], 'name' => $sourceName];
-            $oldName = (string) ($targetMatches[0]['name'] ?? '');
-            if (trim($oldName) !== $sourceName) {
-                $updates[$targetUserId] = ['user_id' => $targetUserId, 'code' => (string) $targetMatches[0]['code'], 'old_name' => $oldName, 'new_name' => $sourceName];
+            if ($sourceMatches === []) { continue; }
+            $pairs = [];
+            if (count($sourceMatches) === 1 && count($targetMatches) === 1) {
+                $pairs[] = [$sourceMatches[0], $targetMatches[0]];
+            } elseif ($targetMatches === []) {
+                $unmatched += count($sourceMatches);
+                continue;
+            } else {
+                $sourceSecondary = [];
+                $targetSecondary = [];
+                foreach ($sourceMatches as $row) {
+                    $identity = $this->centerSecondaryIdentity($row);
+                    if ($identity !== null) { $sourceSecondary[$identity][] = $row; }
+                }
+                foreach ($targetMatches as $row) {
+                    $identity = $this->centerSecondaryIdentity($row);
+                    if ($identity !== null) { $targetSecondary[$identity][] = $row; }
+                }
+                foreach ($sourceMatches as $sourceRow) {
+                    $identity = $this->centerSecondaryIdentity($sourceRow);
+                    if ($identity === null || !isset($targetSecondary[$identity])) { $unmatched++; continue; }
+                    if (count($sourceSecondary[$identity] ?? []) !== 1 || count($targetSecondary[$identity]) !== 1) { $ambiguous++; continue; }
+                    $pairs[] = [$sourceRow, $targetSecondary[$identity][0]];
+                }
             }
-        }
-        foreach ($targetUserUsage as $userId => $uses) {
-            $names = array_unique(array_map(static fn(array $use): string => mb_strtolower(trim($use['name']), 'UTF-8'), $uses));
-            if (count($uses) > 1 && count($names) > 1) {
-                unset($updates[$userId]);
-                $ambiguous += count($uses);
-                $matched -= count($uses);
+            foreach ($pairs as [$sourceRow, $targetRow]) {
+                $sourceName = trim((string) ($sourceRow['source_name'] ?? ''));
+                if ($sourceName === '' || (int) ($sourceRow['type'] ?? -1) !== 4) { $unmatched++; continue; }
+                $matched++;
+                $targetCenterId = (int) $targetRow['id'];
+                $storedName = $targetRow['display_name'];
+                $oldName = trim((string) $storedName) !== ''
+                    ? trim((string) $storedName)
+                    : trim((string) ($targetRow['user_name'] ?? ''));
+                if ($oldName !== $sourceName) {
+                    $updates[$targetCenterId] = [
+                        'center_id' => $targetCenterId,
+                        'code' => (string) $targetRow['code'],
+                        'old_name' => $oldName,
+                        'stored_name' => $storedName,
+                        'new_name' => $sourceName,
+                    ];
+                }
             }
         }
         return ['updates' => array_values($updates), 'matched' => $matched, 'ambiguous' => $ambiguous, 'unmatched' => $unmatched];
+    }
+
+    private function centerSecondaryIdentity(array $row): ?string
+    {
+        $venue = $this->normalizeCenterIdentity($row['institute_name'] ?? '');
+        $division = $this->normalizeCenterIdentity($row['division_name'] ?? '');
+        $district = $this->normalizeCenterIdentity($row['district_name'] ?? '');
+        $upazila = $this->normalizeCenterIdentity($row['upazila_name'] ?? '');
+        $union = $this->normalizeCenterIdentity($row['union_name'] ?? '');
+        if ($venue === '' || ($district === '' && $upazila === '')) { return null; }
+        return implode("\x1F", [$venue, $division, $district, $upazila, $union]);
+    }
+
+    private function normalizeCenterIdentity(mixed $value): string
+    {
+        $value = mb_strtolower(trim((string) $value), 'UTF-8');
+        return preg_replace('/\s+/u', ' ', $value) ?? $value;
     }
 
     /** Count missing registration numbers without transferring any records. */
@@ -681,6 +738,9 @@ final class DatabaseSyncService
             $stmt = $pdo->prepare('INSERT INTO `codex_schema_migrations` (`migration`, `applied_at`) VALUES (?, NOW())');
             $stmt->execute([$name]);
             $done[] = $name;
+            if ($name === '2026_10_24_center_display_name') {
+                \App\Core\Cache::forget('schema:centers.display_name');
+            }
         }
         return ['applied' => $done, 'message' => $done ? 'Demo schema migrations applied.' : 'There are no pending demo schema migrations.'];
     }
@@ -791,6 +851,14 @@ final class DatabaseSyncService
     /** Execute MySQL-compatible additive DDL, including idempotent index additions. */
     private function executeAdditiveDdl(PDO $pdo, string $sql): void
     {
+        if (preg_match('/^ALTER TABLE\s+`?([A-Za-z0-9_]+)`?\s+ADD COLUMN\s+IF\s+NOT\s+EXISTS\s+`?([A-Za-z0-9_]+)`?/i', trim($sql), $match)) {
+            $check = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1');
+            $check->execute([$match[1], $match[2]]);
+            if ($check->fetchColumn()) {
+                return;
+            }
+            $sql = preg_replace('/\s+IF\s+NOT\s+EXISTS\s+/i', ' ', $sql, 1);
+        }
         if (preg_match('/^ALTER TABLE\s+`?([A-Za-z0-9_]+)`?\s+ADD\s+(?:INDEX|KEY)\s+IF\s+NOT\s+EXISTS\s+`?([A-Za-z0-9_]+)`?/i', trim($sql), $match)) {
             $check = $pdo->prepare('SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ? LIMIT 1');
             $check->execute([$match[1], $match[2]]);

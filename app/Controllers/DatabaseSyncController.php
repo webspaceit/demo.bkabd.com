@@ -79,7 +79,7 @@ final class DatabaseSyncController extends Controller
             return ['error' => $e->getMessage()];
         } catch (PDOException $e) {
             error_log('[database-sync] center-name sync failed: ' . $e->getCode());
-            return ['error' => 'Center-name sync failed safely. Check UPDATE permission for demo center-user names and review the server log.'];
+            return ['error' => 'Center-name sync failed safely. Check UPDATE permission on demo centers.display_name and review the server log.'];
         }
     }
 
