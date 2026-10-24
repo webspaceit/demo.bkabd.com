@@ -166,10 +166,12 @@ final class DatabaseSyncService
     }
 
     /** Import one small idempotent batch; only the demo connection is written. */
-    public function importStudentBatch(int $afterId = 0, int $batchSize = 100): array
+    public function importStudentBatch(int $afterId = 0, int $batchSize = 1000): array
     {
         $this->assertReady();
-        $batchSize = max(1, min(250, $batchSize));
+        // Larger batches substantially reduce the per-request connection and
+        // metadata overhead when scanning a large source database.
+        $batchSize = max(1, min(1000, $batchSize));
         $source = $this->connectSource();
         $target = $this->connectTarget();
         try {
@@ -197,8 +199,13 @@ final class DatabaseSyncService
             $presentFingerprints = $duplicateKeysAvailable
                 ? $this->existingValues($target, 'student_duplicate_keys', 'fingerprint', $fingerprints)
                 : [];
-            foreach ($this->existingStudentFingerprints($target, $rows) as $fingerprint => $_present) {
-                $presentFingerprints[$fingerprint] = true;
+            // The duplicate-key table is backfilled by its migration and is
+            // maintained by student writes. Avoid the much slower row-by-row
+            // fallback query when that indexed source of truth is available.
+            if (!$duplicateKeysAvailable) {
+                foreach ($this->existingStudentFingerprints($target, $rows) as $fingerprint => $_present) {
+                    $presentFingerprints[$fingerprint] = true;
+                }
             }
             $presentRolls = $this->existingRolls($target, $rollConditions);
             $columns = $this->importStudentColumns($rows[0]);

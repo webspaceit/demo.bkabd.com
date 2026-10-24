@@ -67,7 +67,7 @@ final class DatabaseSyncController extends Controller
         }
         $afterId = max(0, (int) $request->input('after_id', 0));
         try {
-            return (new DatabaseSyncService())->importStudentBatch($afterId, 100);
+            return (new DatabaseSyncService())->importStudentBatch($afterId, 1000);
         } catch (RuntimeException $e) {
             return ['error' => $e->getMessage()];
         } catch (PDOException $e) {
