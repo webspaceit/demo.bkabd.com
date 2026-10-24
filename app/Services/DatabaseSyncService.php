@@ -119,10 +119,15 @@ final class DatabaseSyncService
         $source = $this->connectSource();
         try {
             $sql = 'SELECT s.`registration`, s.`name`, s.`class`, s.`session`, s.`created_at`, s.`active`, '
-                . 'c.`institute_name` AS `center_name`, i.`name` AS `institute_name` '
+                . 'COALESCE(NULLIF(c.`institute_name`, \'\'), NULLIF(cu.`name`, \'\'), '
+                . 'NULLIF(ic.`institute_name`, \'\'), NULLIF(iu.`name`, \'\')) AS `center_name`, '
+                . 'i.`name` AS `institute_name` '
                 . 'FROM `students` s '
                 . 'LEFT JOIN `centers` c ON c.`id` = s.`center_id` '
                 . 'LEFT JOIN `institutes` i ON i.`id` = s.`institute_id` '
+                . 'LEFT JOIN `users` cu ON cu.`id` = c.`user_id` '
+                . 'LEFT JOIN `centers` ic ON ic.`id` = i.`center_id` '
+                . 'LEFT JOIN `users` iu ON iu.`id` = ic.`user_id` '
                 . 'ORDER BY s.`created_at` DESC, s.`id` DESC LIMIT ' . $limit;
             return $source->query($sql)->fetchAll(PDO::FETCH_ASSOC);
         } finally {
