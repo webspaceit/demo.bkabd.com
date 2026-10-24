@@ -209,12 +209,23 @@ final class DatabaseSyncService
             }
             $presentRolls = $this->existingRolls($target, $rollConditions);
             $columns = $this->importStudentColumns($rows[0]);
+            $manualStudentIds = !$this->studentIdAutoIncrements($target);
+            if ($manualStudentIds) {
+                array_unshift($columns, 'id');
+            }
             $quotedColumns = implode(',', array_map(static fn(string $column): string => '`' . $column . '`', $columns));
             $insert = $target->prepare('INSERT INTO `students` (' . $quotedColumns . ') VALUES (' . implode(',', array_fill(0, count($columns), '?')) . ')');
             $keyInsert = $duplicateKeysAvailable ? $target->prepare('INSERT IGNORE INTO `student_duplicate_keys` (`fingerprint`) VALUES (?)') : null;
             $counts = ['imported' => 0, 'already_present' => 0, 'skipped' => 0];
             $target->beginTransaction();
             try {
+                $nextStudentId = null;
+                if ($manualStudentIds) {
+                    // Lock the highest primary-key row so concurrent import batches
+                    // cannot allocate the same IDs on schemas without AUTO_INCREMENT.
+                    $lastId = $target->query('SELECT `id` FROM `students` ORDER BY `id` DESC LIMIT 1 FOR UPDATE')->fetchColumn();
+                    $nextStudentId = ((int) $lastId) + 1;
+                }
                 foreach ($rows as $row) {
                     $registration = trim((string) ($row['registration'] ?? ''));
                     if ($registration === '') { $counts['skipped']++; continue; }
@@ -226,7 +237,13 @@ final class DatabaseSyncService
                     $rollKey = $this->rollKey($row);
                     if ($rollKey !== null && isset($presentRolls[$rollKey])) { $counts['skipped']++; continue; }
                     $values = [];
-                    foreach ($columns as $column) { $values[] = $row[$column] ?? null; }
+                    foreach ($columns as $column) {
+                        if ($manualStudentIds && $column === 'id') { continue; }
+                        $values[] = $row[$column] ?? null;
+                    }
+                    if ($manualStudentIds) {
+                        array_unshift($values, $nextStudentId++);
+                    }
                     try {
                         $insert->execute($values);
                     } catch (\PDOException $e) {
@@ -281,6 +298,13 @@ final class DatabaseSyncService
     {
         $excluded = ['id', 'user_id', 'photo', 'bangla', 'english', 'math', 'total', 'percentage', 'grade', 'ml', 'place_id', 'marker_id'];
         return array_values(array_diff(array_keys($row), $excluded));
+    }
+
+    private function studentIdAutoIncrements(PDO $pdo): bool
+    {
+        $stmt = $pdo->prepare('SELECT `EXTRA` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = \'students\' AND COLUMN_NAME = \'id\'');
+        $stmt->execute([(string) $this->targetSettings()['database']]);
+        return str_contains(strtolower((string) $stmt->fetchColumn()), 'auto_increment');
     }
 
     private function studentReferenceMaps(PDO $source, PDO $target, array $rows): array
