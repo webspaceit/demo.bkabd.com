@@ -59,7 +59,7 @@
                 <div id="db-sync-import-progress" class="mt-2 hidden text-sm text-slate-600" aria-live="polite"></div>
             </section>
 
-            <dialog id="db-sync-import-confirm" class="w-full max-w-lg rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50">
+            <dialog id="db-sync-import-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
                 <form method="dialog" class="p-6">
                     <h2 class="text-lg font-semibold text-slate-900">Import missing students?</h2>
                     <p class="mt-3 text-sm leading-6 text-slate-600">Add missing student registrations to the configured demo database? Existing demo rows will be left unchanged. Exam remains read-only. Photos, user accounts, and marks will not be copied.</p>
