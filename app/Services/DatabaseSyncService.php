@@ -261,6 +261,9 @@ final class DatabaseSyncService
                 if ($target->inTransaction()) { $target->rollBack(); }
                 throw $e;
             }
+            if ($counts['imported'] > 0) {
+                \App\Core\Cache::forgetPrefix('pending_students');
+            }
             $lastId = (int) $rows[array_key_last($rows)]['id'];
             return ['done' => count($rows) < $batchSize, 'next_after_id' => $lastId, 'processed' => count($rows)] + $counts;
         } finally {

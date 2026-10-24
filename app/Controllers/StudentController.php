@@ -264,6 +264,7 @@ final class StudentController extends Controller
 
         if ((int) ($student['active'] ?? 0) !== 1) {
             Student::updateRow($id, ['active' => 1, 'updated_at' => date('Y-m-d H:i:s')]);
+            \App\Core\Cache::forgetPrefix('pending_students');
         }
 
         return $this->sendResponse(
@@ -293,6 +294,7 @@ final class StudentController extends Controller
         }
 
         Student::updateRow($id, ['active' => 0, 'updated_at' => date('Y-m-d H:i:s')]);
+        \App\Core\Cache::forgetPrefix('pending_students');
 
         return $this->sendResponse(
             ['id' => $id, 'registration' => $student['registration'], 'active' => 0],
@@ -342,6 +344,9 @@ final class StudentController extends Controller
             . 'AND (`active` = 0 OR `active` IS NULL)',
             array_merge([$updatedAt], $ids)
         );
+        if ($updated->rowCount() > 0) {
+            \App\Core\Cache::forgetPrefix('pending_students');
+        }
 
         return $this->sendResponse(
             ['approved' => $updated->rowCount(), 'selected' => count($ids)],
@@ -652,6 +657,8 @@ final class StudentController extends Controller
             }
             throw $e;
         }
+
+        \App\Core\Cache::forgetPrefix('pending_students');
 
         // --- SMS notification (optional dry-run) ---
         if (Config::getBool('SMS_DRY_RUN', false) !== true) {
@@ -988,6 +995,9 @@ final class StudentController extends Controller
             }
             return $deleted;
         });
+        if ($deleted > 0 && (int) ($student['active'] ?? 0) !== 1) {
+            \App\Core\Cache::forgetPrefix('pending_students');
+        }
 
         return $this->sendResponse(
             ['deleted' => $deleted],

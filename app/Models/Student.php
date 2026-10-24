@@ -31,10 +31,13 @@ class Student extends Model
      */
     public static function pendingCount(?int $centerId = null): int
     {
-        $q = static::query()->whereRaw('(`active` = 0 OR `active` IS NULL)');
-        if ($centerId !== null && $centerId > 0) {
-            $q->where('center_id', $centerId);
-        }
-        return $q->count();
+        $scope = $centerId !== null && $centerId > 0 ? (string) $centerId : 'all';
+        return (int) \App\Core\Cache::remember('pending_students:' . $scope, 30, static function () use ($centerId): int {
+            $q = static::query()->whereRaw('(`active` = 0 OR `active` IS NULL)');
+            if ($centerId !== null && $centerId > 0) {
+                $q->where('center_id', $centerId);
+            }
+            return $q->count();
+        });
     }
 }
