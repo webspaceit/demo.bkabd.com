@@ -59,6 +59,17 @@
                 <div id="db-sync-import-progress" class="mt-2 hidden text-sm text-slate-600" aria-live="polite"></div>
             </section>
 
+            <dialog id="db-sync-import-confirm" class="w-full max-w-lg rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50">
+                <form method="dialog" class="p-6">
+                    <h2 class="text-lg font-semibold text-slate-900">Import missing students?</h2>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">Add missing student registrations to the configured demo database? Existing demo rows will be left unchanged. Exam remains read-only. Photos, user accounts, and marks will not be copied.</p>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
+                        <button type="submit" value="confirm" class="btn btn-primary">Continue import</button>
+                    </div>
+                </form>
+            </dialog>
+
             <section class="rounded-xl border border-slate-200 bg-white p-4">
                 <h2 class="font-semibold text-slate-800">Process</h2>
                 <ol class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -93,6 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const startImportButton = document.getElementById('db-sync-start-import');
     const importPreview = document.getElementById('db-sync-import-preview');
     const importProgress = document.getElementById('db-sync-import-progress');
+    const importConfirmDialog = document.getElementById('db-sync-import-confirm');
     const studentsStatus = document.getElementById('db-sync-students-status');
     const studentsTable = document.getElementById('db-sync-students-table');
     let state = null;
@@ -101,6 +113,16 @@ document.addEventListener('DOMContentLoaded', function () {
         feedback.textContent = text;
         feedback.className = 'rounded-lg border p-3 text-sm ' + (error ? 'border-rose-300 bg-rose-50 text-rose-900' : 'border-emerald-300 bg-emerald-50 text-emerald-900');
         feedback.classList.remove('hidden');
+    }
+
+    function confirmStudentImport() {
+        return new Promise(function (resolve) {
+            importConfirmDialog.returnValue = '';
+            importConfirmDialog.addEventListener('close', function () {
+                resolve(importConfirmDialog.returnValue === 'confirm');
+            }, { once: true });
+            importConfirmDialog.showModal();
+        });
     }
 
     async function loadStatus() {
@@ -196,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     startImportButton.addEventListener('click', async function () {
-        if (!window.confirm('Add missing student registrations to the configured demo database now? Existing demo rows will be left unchanged. Exam remains read-only. Photos, user accounts, and marks will not be copied.')) return;
+        if (!(await confirmStudentImport())) return;
         startImportButton.disabled = true;
         previewImportButton.disabled = true;
         importProgress.classList.remove('hidden');
@@ -218,11 +240,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.done) break;
             }
             importPreview.textContent = 'Import finished. Added ' + totalImported + ' student(s) to demo; ' + totalExisting + ' already existed; ' + totalSkipped + ' were skipped because registration or reference data did not match safely. Reload the Students page on demo to see its updated count.';
+            BK.toast('Import finished. Added ' + totalImported + ' student(s) to demo.', 'success');
             message('Import complete. Only the demo database received new student rows; exam was read-only.', false);
             startImportButton.classList.add('hidden');
             await loadLatestStudents();
         } catch (error) {
             importProgress.textContent = 'Import stopped after processing ' + processed + ' source record(s). ' + error.message + ' You can preview again; already imported rows will be skipped on retry.';
+            BK.toast('Import stopped after ' + processed + ' source record(s): ' + error.message, 'error');
         } finally {
             startImportButton.disabled = false;
             previewImportButton.disabled = false;
