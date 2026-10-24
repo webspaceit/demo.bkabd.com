@@ -44,7 +44,8 @@ final class InstituteController extends Controller
         $q = (new Query('institutes'))
             ->leftJoin('centers', 'centers.id', '=', 'institutes.center_id')
             ->leftJoin('users', 'users.id', '=', 'centers.user_id')
-            ->select('institutes.*', 'users.name AS center_name')
+            ->select('institutes.*')
+            ->selectRaw("COALESCE(NULLIF(users.name, ''), NULLIF(centers.institute_name, ''), NULLIF(centers.code, ''), CASE WHEN institutes.center_id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END) AS center_name")
             ->orderBy('institutes.id', 'desc');
 
         $this->scopeToOwnCenter($q);
