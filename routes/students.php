@@ -79,10 +79,11 @@ Router::get('/students', function (Request $request) {
         'classes'      => [1, 2, 3, 4, 5, 6],
         // Include historical centers whose linked user account is missing by
         // using the synchronized center display name when available.
-        'centers'      => Cache::remember('filter:active_centers', 120, static fn(): array => Database::select(
+        'centers'      => Cache::remember('filter:active_centers_named_v2', 120, static fn(): array => Database::select(
             'SELECT c.`id`, ' . $centerLabel . ' AS `name` FROM `centers` c
                LEFT JOIN `users` u ON u.`id` = c.`user_id`
-              WHERE c.`active` = 1
+              WHERE c.`active` = 1 AND ' . $centerLabel . ' IS NOT NULL AND TRIM(' . $centerLabel . ') <> \'\'
+                AND LOWER(TRIM(' . $centerLabel . ')) <> \'select center\'
               ORDER BY `name`'
         )),
         'instituteCount' => (int) Database::scalar('SELECT COUNT(*) FROM `institutes` WHERE `active` = 1'),

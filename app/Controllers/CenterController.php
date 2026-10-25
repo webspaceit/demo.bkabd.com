@@ -229,6 +229,7 @@ class CenterController extends Controller
         }
 
         Cache::forget('filter:active_centers');
+        Cache::forget('filter:active_centers_named_v2');
 
         $msg = 'Dear ' . $data['authority_person'] . ', Congratulations from BKABD. From now on you will fulfill all the duties of this center with devotion, for any consultation regarding BKABD please contact this number 01711168094. Thanks';
         send_sms((string) $data['phone'], $msg);
@@ -321,6 +322,7 @@ class CenterController extends Controller
         }
 
         Cache::forget('filter:active_centers');
+        Cache::forget('filter:active_centers_named_v2');
 
         return ['status' => 'success'];
     }
@@ -356,6 +358,7 @@ class CenterController extends Controller
         $this->dropUpload('authority_photo', $center['authority_photo'] ?? null);
         $this->dropUpload('authority_signature', $center['authority_signature'] ?? null);
         Cache::forget('filter:active_centers');
+        Cache::forget('filter:active_centers_named_v2');
 
         return ['status' => 'success'];
     }
@@ -381,6 +384,7 @@ class CenterController extends Controller
         }
         Center::updateRow($id, ['active' => (int) $sta]);
         Cache::forget('filter:active_centers');
+        Cache::forget('filter:active_centers_named_v2');
         Cache::forgetPrefix('center_id'); // Auth::centerId() memo may be stale
 
         return ['status' => 'success'];

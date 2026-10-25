@@ -543,7 +543,13 @@ window.BK = (function () {
         function render(query) {
             const normalizedQuery = String(query || '').trim().toLocaleLowerCase();
             const matches = Array.from(select.options).filter(function (option) {
-                return option.textContent.trim().toLocaleLowerCase().includes(normalizedQuery);
+                const label = option.textContent.trim();
+                const normalizedLabel = label.toLocaleLowerCase();
+                // Blank names were previously rendered as repeated
+                // "Select Center" entries. Keep the real input placeholder
+                // in the field, but never offer it as a center choice.
+                if (!label || normalizedLabel === 'select center') return false;
+                return normalizedLabel.includes(normalizedQuery);
             });
             options.textContent = '';
             activeIndex = -1;
@@ -557,7 +563,7 @@ window.BK = (function () {
                 choice.setAttribute('aria-selected', isSelectedOption(option) ? 'true' : 'false');
                 choice.dataset.value = option.value;
                 choice.disabled = option.disabled;
-                choice.textContent = option.textContent.trim() || 'Select Center';
+                choice.textContent = option.textContent.trim();
                 options.appendChild(choice);
             });
             if (!matches.length) {

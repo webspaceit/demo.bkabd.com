@@ -630,6 +630,7 @@ final class DatabaseSyncService
                 }
                 $target->commit();
                 \App\Core\Cache::forget('schema:centers.display_name');
+                \App\Core\Cache::forget('filter:active_centers_named_v2');
             } catch (\Throwable $e) {
                 if ($target->inTransaction()) { $target->rollBack(); }
                 throw $e;
