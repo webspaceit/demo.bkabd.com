@@ -51,23 +51,19 @@ final class StudentController extends Controller
         // Centre-user scoping: students where centers.user_id = Auth::id()
         $centerId = Auth::centerId();
         $q = (new Query('students'))->select(
-            'students.*',
-            'institutes.name as institute_name',
-            'divisions.name as division_name',
-            'districts.name as district_name',
-            'upozilas.name as upazila_name',
-            'unions.name as union_name'
+            'students.id', 'students.registration', 'students.roll', 'students.name',
+            'students.father_name', 'students.mother_name', 'students.class',
+            'students.session', 'students.center_id', 'students.institute_id',
+            'students.active', 'students.created_at',
+            'institutes.name as institute_name'
         )->selectRaw($this->studentCenterNameExpression() . ' AS center_name');
 
-        // Join all eager relations in one query (avoid N+1); LEFT joins keep
-        // rows even when a geo reference is missing.
+        // Only join the relations used by this table. The detail modal fetches
+        // geography separately, so joining four location tables and returning
+        // every student column for every page row only adds database work.
         $q->leftJoin('centers', 'centers.id', '=', 'students.center_id')
           ->leftJoin('users', 'users.id', '=', 'centers.user_id')
-          ->leftJoin('institutes', 'institutes.id', '=', 'students.institute_id')
-          ->leftJoin('divisions', 'divisions.id', '=', 'students.division_id')
-          ->leftJoin('districts', 'districts.id', '=', 'students.district_id')
-          ->leftJoin('upozilas', 'upozilas.id', '=', 'students.upazila_id')
-          ->leftJoin('unions', 'unions.id', '=', 'students.union_id');
+          ->leftJoin('institutes', 'institutes.id', '=', 'students.institute_id');
 
         if ($centerId !== null && !Auth::isAdmin()) {
             $q->where('students.center_id', $centerId);
