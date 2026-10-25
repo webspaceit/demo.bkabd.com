@@ -991,18 +991,18 @@ final class DatabaseSyncService
         $sourceMaps = [
             'centers' => $this->lookupCenterReferences($source, $ids['centers']),
             'institutes' => $this->lookupIds($source, 'institutes', ['name', 'center_id', 'certificate_no'], $ids['institutes']),
-            'divisions' => $this->lookupIds($source, 'divisions', ['name'], $ids['divisions']),
-            'districts' => $this->lookupIds($source, 'districts', ['name', 'division_id'], $ids['districts']),
-            'upozilas' => $this->lookupIds($source, 'upozilas', ['name', 'district_id'], $ids['upozilas']),
-            'unions' => $this->lookupIds($source, 'unions', ['name', 'upozila_id'], $ids['unions']),
+            'divisions' => $this->lookupAllIds($source, 'divisions', ['name']),
+            'districts' => $this->lookupAllIds($source, 'districts', ['name', 'division_id']),
+            'upozilas' => $this->lookupAllIds($source, 'upozilas', ['name', 'district_id']),
+            'unions' => $this->lookupAllIds($source, 'unions', ['name', 'upozila_id']),
         ];
         $targetMaps = [
             'centers' => $this->lookupCenterReferences($target, []),
             'institutes' => $this->lookupAllIds($target, 'institutes', ['name', 'center_id', 'certificate_no']),
-            'divisions' => $this->lookupIds($target, 'divisions', ['name'], $ids['divisions']),
-            'districts' => $this->lookupIds($target, 'districts', ['name', 'division_id'], $ids['districts']),
-            'upozilas' => $this->lookupIds($target, 'upozilas', ['name', 'district_id'], $ids['upozilas']),
-            'unions' => $this->lookupIds($target, 'unions', ['name', 'upozila_id'], $ids['unions']),
+            'divisions' => $this->lookupAllIds($target, 'divisions', ['name']),
+            'districts' => $this->lookupAllIds($target, 'districts', ['name', 'division_id']),
+            'upozilas' => $this->lookupAllIds($target, 'upozilas', ['name', 'district_id']),
+            'unions' => $this->lookupAllIds($target, 'unions', ['name', 'upozila_id']),
         ];
         $centerMap = [];
         foreach ($sourceMaps['centers'] as $sourceId => $sourceCenter) {
@@ -1033,7 +1033,54 @@ final class DatabaseSyncService
                 $instituteMap[$sourceId] = (int) $match['id'];
             }
         }
-        return ['source' => $sourceMaps, 'target' => $targetMaps, 'center_map' => $centerMap, 'institute_map' => $instituteMap];
+        // Geographic IDs are database-local. Resolve locations by unique names
+        // within their already-mapped parent instead of requiring equal IDs.
+        $divisionMap = $this->mapLocationReferences($sourceMaps['divisions'], $targetMaps['divisions'], null, []);
+        $districtMap = $this->mapLocationReferences($sourceMaps['districts'], $targetMaps['districts'], 'division_id', $divisionMap);
+        $upazilaMap = $this->mapLocationReferences($sourceMaps['upozilas'], $targetMaps['upozilas'], 'district_id', $districtMap);
+        $unionMap = $this->mapLocationReferences($sourceMaps['unions'], $targetMaps['unions'], 'upozila_id', $upazilaMap);
+        return [
+            'source' => $sourceMaps, 'target' => $targetMaps,
+            'center_map' => $centerMap, 'institute_map' => $instituteMap,
+            'location_map' => [
+                'divisions' => $divisionMap, 'districts' => $districtMap,
+                'upozilas' => $upazilaMap, 'unions' => $unionMap,
+            ],
+        ];
+    }
+
+    /** Match a geography level by unique name and the mapped parent ID. */
+    private function mapLocationReferences(array $sourceRows, array $targetRows, ?string $parentColumn, array $parentMap): array
+    {
+        $sourceGroups = [];
+        $targetGroups = [];
+        foreach ($sourceRows as $id => $row) {
+            $name = mb_strtolower(trim((string) ($row['name'] ?? '')), 'UTF-8');
+            if ($name === '') { continue; }
+            $parentId = 0;
+            if ($parentColumn !== null) {
+                $sourceParentId = (int) ($row[$parentColumn] ?? 0);
+                if (!isset($parentMap[$sourceParentId])) { continue; }
+                $parentId = (int) $parentMap[$sourceParentId];
+            }
+            $key = $name . "\x1F" . $parentId;
+            $sourceGroups[$key][] = (int) $id;
+        }
+        foreach ($targetRows as $id => $row) {
+            $name = mb_strtolower(trim((string) ($row['name'] ?? '')), 'UTF-8');
+            if ($name === '') { continue; }
+            $parentId = $parentColumn === null ? 0 : (int) ($row[$parentColumn] ?? 0);
+            $key = $name . "\x1F" . $parentId;
+            $targetGroups[$key][] = (int) $id;
+        }
+        $map = [];
+        foreach ($sourceGroups as $key => $sourceIds) {
+            $targetIds = $targetGroups[$key] ?? [];
+            if (count($sourceIds) === 1 && count($targetIds) === 1) {
+                $map[$sourceIds[0]] = $targetIds[0];
+            }
+        }
+        return $map;
     }
 
     /** Load center names from their linked users without copying user accounts. */
@@ -1074,18 +1121,9 @@ final class DatabaseSyncService
         foreach (['division_id' => 'divisions', 'district_id' => 'districts', 'upazila_id' => 'upozilas', 'union_id' => 'unions'] as $field => $table) {
             $id = (int) ($row[$field] ?? 0);
             if ($id === 0 && $field === 'union_id') { continue; }
-            $source = $maps['source'][$table][$id] ?? null;
-            $target = $maps['target'][$table][$id] ?? null;
-            if ($source === null || $target === null || !$this->sameReference($source['name'] ?? '', $target['name'] ?? '')) {
-                $failureReason = ucfirst(str_replace('_id', '', $field)) . ' reference is missing or does not match demo.';
-                return null;
-            }
-            foreach (['district_id' => 'districts', 'upazila_id' => 'upozilas'] as $parentField => $parentTable) {
-                if ($field === 'district_id' && $parentField === 'district_id' || $field === 'upazila_id' && $parentField === 'upazila_id' || $field === 'union_id' && $parentField === 'upazila_id') {
-                    $parentId = (int) ($source[$parentField] ?? 0);
-                    if ($parentId !== (int) ($target[$parentField] ?? 0)) { $failureReason = ucfirst(str_replace('_id', '', $field)) . ' belongs to a different parent location in demo.'; return null; }
-                }
-            }
+            $targetId = $maps['location_map'][$table][$id] ?? null;
+            if ($targetId === null) { $failureReason = ucfirst(str_replace('_id', '', $field)) . ' has no unique name-and-parent match in demo.'; return null; }
+            $row[$field] = $targetId;
         }
         $row['center_id'] = $centerId;
         $row['institute_id'] = $instituteId;
