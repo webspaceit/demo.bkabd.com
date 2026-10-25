@@ -45,9 +45,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     const root=document.getElementById('institute-form-page'); if(!root)return;
     const isEdit=root.dataset.mode==='edit', id=root.dataset.id, form=document.getElementById('institute-form');
     const center=document.getElementById('f-center_id'), division=document.getElementById('f-division_id'), district=document.getElementById('f-district_id'), upazila=document.getElementById('f-upazila_id');
+    const allDistricts=<?= json_encode($districtOptions ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+    const allUpazilas=<?= json_encode($upazilaOptions ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
     function options(items,selected,label){let html='<option value="">'+BK.esc(label)+'</option>';(items||[]).forEach(x=>{html+='<option value="'+BK.esc(String(x.id))+'"'+(String(x.id)===String(selected??'')?' selected':'')+'>'+BK.esc(String(x.name||'').toUpperCase())+'</option>';});return html;}
-    async function districts(selected){const rows=division.value?(await BK.get('/api/districtById/'+division.value)).districtById||[]:[];district.innerHTML=options(rows,selected,'Select District');}
-    async function upazilas(selected){const rows=district.value?(await BK.get('/api/upazilaById/'+district.value)).upazilaById||[]:[];upazila.innerHTML=options(rows,selected,'Select Upazila');}
+    function districts(selected){const rows=allDistricts.filter(x=>String(x.division_id)===String(division.value));district.innerHTML=options(rows,selected,'Select District');}
+    function upazilas(selected){const rows=allUpazilas.filter(x=>String(x.district_id)===String(district.value));upazila.innerHTML=options(rows,selected,'Select Upazila');}
     division.addEventListener('change',()=>{upazila.innerHTML=options([],'','Select Upazila');districts('');});
     district.addEventListener('change',()=>upazilas(''));
     document.getElementById('f-member_type').addEventListener('change',function(){const show=this.value==='2';document.getElementById('cert-wrap').classList.toggle('hidden',!show);document.getElementById('f-certificate_no').required=show;});
@@ -61,7 +63,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         if(isEdit){
             const row=(await BK.get('/api/institutes/'+id)).instituteById;
             ['center_id','name','address','director_name','phone','email','zip','established_date','website','total_students','total_teachers','membership_type','member_type','certificate_no','type','recognized','institution_run','monthly_income','monthly_expense','note','active'].forEach(k=>{const el=form.elements[k];if(el&&row[k]!=null)el.value=row[k];});
-            division.value=row.division_id||'';await districts(row.district_id);await upazilas(row.upazila_id);
+            division.value=row.division_id||'';districts(row.district_id);upazilas(row.upazila_id);
             const memberType=document.getElementById('f-member_type');memberType.dispatchEvent(new Event('change'));
             showPreview('logo-preview','images/logos',row.logo);showPreview('principal-preview','images/principals',row.principal_photo);
         }

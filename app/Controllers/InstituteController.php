@@ -419,6 +419,7 @@ final class InstituteController extends Controller
             'title' => 'Institute Registration Form',
             'mode' => 'create',
             'instituteId' => 0,
+            ...$this->geoDropdownOptions(),
         ], 'layouts.dashboard');
     }
 
@@ -433,6 +434,7 @@ final class InstituteController extends Controller
             'title' => 'Edit Institute',
             'mode' => 'edit',
             'instituteId' => $id,
+            ...$this->geoDropdownOptions(),
         ], 'layouts.dashboard');
     }
 
@@ -456,6 +458,15 @@ final class InstituteController extends Controller
     // ---------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------
+
+    /** Load compact geo lists with the page so cascade dropdowns need no extra requests. */
+    private function geoDropdownOptions(): array
+    {
+        return [
+            'districtOptions' => (new Query('districts'))->select('id', 'name', 'division_id')->orderBy('name', 'asc')->get(),
+            'upazilaOptions' => (new Query('upozilas'))->select('id', 'name', 'district_id')->orderBy('name', 'asc')->get(),
+        ];
+    }
 
     /** @return array<string,mixed> */
     private function findOrFail(int $id): array
