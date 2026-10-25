@@ -152,6 +152,17 @@ final class DatabaseSyncService
                 $this->assertPhotoSyncHistoryTable($target);
                 $start = $target->prepare('INSERT INTO `codex_student_photo_sync_runs` (`run_id`, `session`, `status`, `started_at`, `updated_at`) VALUES (?, ?, \'running\', NOW(), NOW())');
                 $start->execute([$runId, $session]);
+            } else {
+                // Resume only the exact saved checkpoint. This prevents a stale browser
+                // tab from overwriting a newer run or skipping source records.
+                $resume = $target->prepare('SELECT `status`, `last_source_id` FROM `codex_student_photo_sync_runs` WHERE `run_id` = ? AND `session` = ?');
+                $resume->execute([$runId, $session]);
+                $savedRun = $resume->fetch(PDO::FETCH_ASSOC);
+                if (!$savedRun || (int) $savedRun['last_source_id'] !== $afterId || !in_array($savedRun['status'], ['running', 'failed'], true)) {
+                    throw new RuntimeException('This photo-sync checkpoint is no longer resumable. Refresh the page and start a new sync.');
+                }
+                $resume = $target->prepare('UPDATE `codex_student_photo_sync_runs` SET `status` = \'running\', `finished_at` = NULL, `failure_message` = NULL, `updated_at` = NOW() WHERE `run_id` = ? AND `session` = ?');
+                $resume->execute([$runId, $session]);
             }
             $stmt = $source->prepare(
                 'SELECT `id`, `registration`, `photo` FROM `students` WHERE `session` = ? AND `id` > ? '
@@ -265,7 +276,7 @@ final class DatabaseSyncService
             return ['requires_migration' => true, 'runs' => []];
         }
         $limit = max(1, min(20, $limit));
-        $rows = $target->query('SELECT `run_id`, `session`, `status`, `started_at`, `finished_at`, `updated_at`, `checked_count`, `copied_count`, `missing_demo_count`, `unavailable_count`, `failure_message` FROM `codex_student_photo_sync_runs` ORDER BY `id` DESC LIMIT ' . $limit)->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $target->query('SELECT `run_id`, `session`, `status`, `started_at`, `finished_at`, `updated_at`, `last_source_id`, `checked_count`, `copied_count`, `missing_demo_count`, `unavailable_count`, `failure_message` FROM `codex_student_photo_sync_runs` ORDER BY `id` DESC LIMIT ' . $limit)->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as &$row) {
             $row['already_synced_count'] = max(0, (int) $row['checked_count'] - (int) $row['copied_count'] - (int) $row['missing_demo_count'] - (int) $row['unavailable_count']);
             if ($row['status'] === 'running' && strtotime((string) $row['updated_at']) < time() - 1800) {

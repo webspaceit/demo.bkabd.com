@@ -438,42 +438,51 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function confirmPhotoSync() {
-        photosConfirmDetails.textContent = 'Each attempt scans from the beginning; it does not resume previous progress. Existing synced photo files are skipped, so only pending or missing files are fetched again.';
+        photosConfirmDetails.textContent = 'Already synced photo files are skipped. If a previous sync was interrupted, you can continue from its saved checkpoint.';
+        let resumable = null;
         try {
             const history = await BK.get('/api/database-sync/student-photo-history');
-            const previous = history && history.runs && history.runs[0];
-            if (previous && Number(previous.checked_count || 0) > 0) {
-                const started = previous.started_at ? new Date(String(previous.started_at).replace(' ', 'T')).toLocaleString() : 'a previous attempt';
-                photosConfirmDetails.textContent = 'A previous attempt (' + started + ') checked ' + Number(previous.checked_count).toLocaleString() + ' record(s), copied ' + Number(previous.copied_count || 0).toLocaleString() + ', and reported ' + Number(previous.unavailable_count || 0).toLocaleString() + ' unavailable. Starting now scans again from the first record instead of resuming, but valid photos already synced by this tool are skipped. Continue?';
+            const runs = history && history.runs || [];
+            resumable = runs.find(function (run) {
+                return Number(run.session) === photoSession
+                    && Number(run.last_source_id || 0) > 0
+                    && ['running', 'interrupted', 'failed'].includes(String(run.status));
+            }) || null;
+            if (resumable) {
+                const started = resumable.started_at ? new Date(String(resumable.started_at).replace(' ', 'T')).toLocaleString() : 'the previous attempt';
+                photosConfirmDetails.textContent = 'Continue the interrupted sync from its saved position (' + Number(resumable.checked_count || 0).toLocaleString() + ' source records checked since ' + started + '). Synced files will be skipped, and remaining photos will be retried.';
+            } else if (runs.length && Number(runs[0].session) === photoSession && runs[0].status === 'completed') {
+                photosConfirmDetails.textContent = 'The last sync completed. A new pass starts at the beginning to retry photos that were unavailable or missing, while valid photos already synced by this tool are skipped.';
             }
         } catch (error) {
-            // The static warning still explains restart behavior if history cannot be loaded.
+            // The static note still explains that interrupted runs can resume.
         }
         return new Promise(function (resolve) {
             photosConfirmDialog.returnValue = '';
             photosConfirmDialog.addEventListener('close', function () {
-                resolve(photosConfirmDialog.returnValue === 'confirm');
+                resolve(photosConfirmDialog.returnValue === 'confirm' ? resumable : false);
             }, { once: true });
             photosConfirmDialog.showModal();
         });
     }
 
     syncPhotosButton.addEventListener('click', async function () {
-        if (!(await confirmPhotoSync())) return;
+        const resumeRun = await confirmPhotoSync();
+        if (resumeRun === false) return;
         syncPhotosButton.disabled = true;
         photoProgress.classList.remove('hidden');
-        let afterId = 0;
-        let checked = 0;
-        let updated = 0;
-        let alreadySynced = 0;
-        let missingDemo = 0;
-        let unavailable = 0;
-        const runId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+        let afterId = resumeRun ? Number(resumeRun.last_source_id || 0) : 0;
+        let checked = resumeRun ? Number(resumeRun.checked_count || 0) : 0;
+        let updated = resumeRun ? Number(resumeRun.copied_count || 0) : 0;
+        let alreadySynced = resumeRun ? Number(resumeRun.already_synced_count || 0) : 0;
+        let missingDemo = resumeRun ? Number(resumeRun.missing_demo_count || 0) : 0;
+        let unavailable = resumeRun ? Number(resumeRun.unavailable_count || 0) : 0;
+        const runId = resumeRun ? resumeRun.run_id : ((window.crypto && typeof window.crypto.randomUUID === 'function')
             ? window.crypto.randomUUID()
             : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
                 const r = Math.random() * 16 | 0;
                 return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-            });
+            }));
         try {
             while (true) {
                 const data = await BK.post('/api/database-sync/sync-student-photos', { after_id: afterId, session: photoSession, run_id: runId });
