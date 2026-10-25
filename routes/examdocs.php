@@ -32,6 +32,7 @@ Router::get('/admitcards', function (Request $request) {
         ],
     ], 'layouts.dashboard');
 }, 'auth|permission:admit-card');
+Router::get('/api/admitcards/search', [AdmitCardController::class, 'searchList'], 'auth|permission:admit-card');
 
 Router::get('/seatplan', function () {
     return View::render('seatplan.index', [

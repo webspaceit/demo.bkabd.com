@@ -13,6 +13,64 @@ use App\Services\SeatAssignmentService;
 
 final class AdmitCardController extends Controller
 {
+    /** Fast, compact list search for the admit-card filter bar. */
+    public function searchList(Request $request): array
+    {
+        if (!Auth::check()) { Response::json(['status' => 'errors'], 401); }
+        if (!Auth::can('admit-card')) { Response::json(['message' => 'This action is unauthorized.'], 403); }
+
+        $q = (new Query('students'))->select(
+            'students.id', 'students.registration', 'students.roll', 'students.name',
+            'students.father_name', 'students.mother_name', 'students.class',
+            'users.name as center_name', 'institutes.name as institute_name'
+        );
+        $q->leftJoin('centers', 'centers.id', '=', 'students.center_id')
+          ->leftJoin('users', 'users.id', '=', 'centers.user_id')
+          ->leftJoin('institutes', 'institutes.id', '=', 'students.institute_id')
+          ->whereRaw('`students`.`active` = 1');
+
+        $countQuery = $q->withoutJoins();
+        $session = $request->query('session');
+        if ($session !== null && $session !== '') { $q->where('students.session', (int) $session); $countQuery->where('students.session', (int) $session); }
+        $centerId = $request->query('center_id');
+        if ($centerId !== null && $centerId !== '') { $q->where('students.center_id', (int) $centerId); $countQuery->where('students.center_id', (int) $centerId); }
+        $instituteId = $request->query('institute_id');
+        if ($instituteId !== null && $instituteId !== '') { $q->where('students.institute_id', (int) $instituteId); $countQuery->where('students.institute_id', (int) $instituteId); }
+        $class = $request->query('class');
+        if ($class !== null && $class !== '') { $q->where('students.class', (int) $class); $countQuery->where('students.class', (int) $class); }
+        if (!Auth::isAdmin() && Auth::centerId() !== null) {
+            $ownCenterId = (int) Auth::centerId();
+            $q->where('students.center_id', $ownCenterId);
+            $countQuery->where('students.center_id', $ownCenterId);
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $classWord = match (strtolower($search)) { 'kg' => 6, 'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5, default => null };
+        if ($classWord !== null) {
+            $q->where('students.class', $classWord);
+            $countQuery->where('students.class', $classWord);
+        } elseif ($search !== '' && ctype_digit($search)) {
+            $params = [$search . '%', $search];
+            $q->whereRaw('(`students`.`registration` LIKE ? OR `students`.`roll` = ?)', $params);
+            $countQuery->whereRaw('(`students`.`registration` LIKE ? OR `students`.`roll` = ?)', $params);
+        } elseif ($search !== '') {
+            $like = '%' . $search . '%';
+            $q->whereRaw('(`students`.`name` LIKE ? OR `students`.`registration` LIKE ? OR `students`.`roll` LIKE ? OR `users`.`name` LIKE ? OR `institutes`.`name` LIKE ?)', [$like, $like, $like, $like, $like]);
+            $countQuery->whereRaw(
+                '(`students`.`name` LIKE ? OR `students`.`registration` LIKE ? OR `students`.`roll` LIKE ?'
+                . ' OR `students`.`center_id` IN (SELECT c.`id` FROM `centers` c JOIN `users` u ON u.`id` = c.`user_id` WHERE u.`name` LIKE ?)'
+                . ' OR `students`.`institute_id` IN (SELECT i.`id` FROM `institutes` i WHERE i.`name` LIKE ?))',
+                [$like, $like, $like, $like, $like]
+            );
+        }
+
+        $q->orderBy('students.created_at', 'desc')->orderBy('students.id', 'desc');
+        return $this->sendResponse(
+            $q->paginate((int) $request->query('per_page', 20), null, '/api/admitcards/search', $countQuery),
+            'Admit-card student list retrieved.'
+        );
+    }
+
     /**
      * Fetch admit cards data for given institute/center and class
      * Original route: GET /admitcards/{id}/{class}

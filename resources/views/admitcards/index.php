@@ -145,6 +145,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let pageNum     = 1;
     let searchTimer = null;
     let centerCountRequest = 0;
+    let listRequest = 0;
+    let listController = null;
     const val = el => el ? el.value : '';
     const initialSession = val(sessionEl);
 
@@ -326,7 +328,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function reload() {
-        const url = BK.qs('/api/students', {
+        if (listController) listController.abort();
+        listController = new AbortController();
+        const requestId = ++listRequest;
+        const url = BK.qs('/api/admitcards/search', {
             page:         pageNum,
             per_page:     PER_PAGE,
             session:      val(sessionEl),
@@ -336,7 +341,8 @@ document.addEventListener('DOMContentLoaded', function () {
             status:       'active',
             search:       val(searchEl),
         });
-        BK.get(url).then(function (json) {
+        BK.get(url, { signal: listController.signal }).then(function (json) {
+            if (requestId !== listRequest) return;
             const pager = (json && json.data) || {};
             const rows  = pager.data || [];
             rowsEl.innerHTML = rows.length ? rows.map(function (r, idx) {
@@ -361,6 +367,7 @@ document.addEventListener('DOMContentLoaded', function () {
             pagerEl.innerHTML = '';
             BK.renderPagination(pagerEl, pager);
         }).catch(function (err) {
+            if (err.name === 'AbortError' || requestId !== listRequest) return;
             rowsEl.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-500">Could not load list</td></tr>';
             BK.toast(err.message || 'Could not load list', 'error');
         });
@@ -405,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Search with debounce
     searchEl.addEventListener('input', function () {
         clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => { pageNum = 1; reload(); }, 200);
+        searchTimer = setTimeout(() => { pageNum = 1; reload(); }, 350);
     });
 
     reload();

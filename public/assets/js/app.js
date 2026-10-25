@@ -31,7 +31,8 @@ window.BK = (function () {
             headers: headers,
             body: body,
             credentials: 'same-origin',
-            cache: opts.cache || 'default'
+            cache: opts.cache || 'default',
+            signal: opts.signal
         });
 
         const ct = res.headers.get('content-type') || '';

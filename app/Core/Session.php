@@ -29,8 +29,12 @@ final class Session
             session_id(bin2hex(random_bytes(16)));
         }
 
-        $lifetime = Config::getInt('SESSION_LIFETIME', 120);
+        // Keep the server-side session data at least as long as the browser cookie.
+        // PHP's default gc_maxlifetime (24 minutes) can otherwise expire sessions
+        // long before the configured cookie lifetime.
+        $lifetime = max(1, Config::getInt('SESSION_LIFETIME', 1440));
         ini_set('session.use_strict_mode', '1'); // reject unknown ids (anti session fixation)
+        ini_set('session.gc_maxlifetime', (string) ($lifetime * 60));
         session_name(self::COOKIE);
         session_set_cookie_params([
             'lifetime' => $lifetime * 60,
