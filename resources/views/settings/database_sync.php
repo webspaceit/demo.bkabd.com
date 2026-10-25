@@ -78,6 +78,7 @@
                         <button id="db-sync-refresh-photo-history" type="button" class="btn btn-light">Refresh history</button>
                     </div>
                     <div id="db-sync-photo-history" class="overflow-x-auto text-sm text-slate-600" aria-live="polite">Loading sync history…</div>
+                    <div id="db-sync-photo-run-details" class="mt-3 hidden overflow-x-auto rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-sm text-slate-700" aria-live="polite"></div>
                 </div>
             </section>
 
@@ -119,7 +120,8 @@
 
             <dialog id="db-sync-photos-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
                 <form method="dialog" class="p-6">
-                    <h2 class="text-lg font-semibold text-slate-900">Sync student photos?</h2>
+                    <h2 class="text-lg font-semibold text-slate-900">Start photo sync?</h2>
+                    <p id="db-sync-photos-confirm-details" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-slate-700" role="status">Each attempt starts at the beginning; it does not resume previous progress.</p>
                     <p class="mt-3 text-sm leading-6 text-slate-600">Copy available exam photos from the current session into demo for matching registration numbers. Photos will be center-cropped and resized to 60 × 70 px, replacing the current demo photo. Students outside the current session and students without a usable exam photo will be left unchanged. Exam remains read-only.</p>
                     <div class="mt-6 flex justify-end gap-2">
                         <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
@@ -168,8 +170,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const photoSummary = document.getElementById('db-sync-photo-summary');
     const photoProgress = document.getElementById('db-sync-photo-progress');
     const photoHistory = document.getElementById('db-sync-photo-history');
+    const photoRunDetails = document.getElementById('db-sync-photo-run-details');
     const refreshPhotoHistoryButton = document.getElementById('db-sync-refresh-photo-history');
     const photosConfirmDialog = document.getElementById('db-sync-photos-confirm');
+    const photosConfirmDetails = document.getElementById('db-sync-photos-confirm-details');
     const previewCentersButton = document.getElementById('db-sync-preview-centers');
     const syncCentersButton = document.getElementById('db-sync-start-centers');
     const centersPreview = document.getElementById('db-sync-centers-preview');
@@ -303,7 +307,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!runs.length) { photoHistory.textContent = 'No student-photo sync runs have been recorded yet.'; return; }
             const columns = [
                 ['Started', 'started_at'], ['Session', 'session'], ['Status', 'status'],
-                ['Checked', 'checked_count'], ['Copied', 'copied_count'],
+                ['Checked', 'checked_count'], ['Copied', 'copied_count'], ['Already synced', 'already_synced_count'],
                 ['No demo match', 'missing_demo_count'], ['Unavailable', 'unavailable_count']
             ];
             const table = document.createElement('table');
@@ -332,6 +336,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     td.textContent = value == null ? '—' : String(value);
                     row.appendChild(td);
                 });
+                const action = document.createElement('td');
+                action.className = 'border-b px-3 py-2';
+                if (Number(run.unavailable_count || 0) > 0 || run.status === 'interrupted') {
+                    const review = document.createElement('button');
+                    review.type = 'button';
+                    review.className = 'btn btn-light whitespace-nowrap';
+                    review.textContent = 'Review students';
+                    review.dataset.reviewPhotoRun = run.run_id;
+                    action.appendChild(review);
+                } else {
+                    action.textContent = '—';
+                }
+                row.appendChild(action);
                 tbody.appendChild(row);
                 if (run.failure_message) {
                     const detailRow = document.createElement('tr');
@@ -345,12 +362,93 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             table.appendChild(tbody);
             photoHistory.replaceChildren(table);
+            photoHistory.querySelectorAll('[data-review-photo-run]').forEach(function (button) {
+                button.addEventListener('click', function () { reviewPhotoSyncRun(button.dataset.reviewPhotoRun); });
+            });
         } catch (error) {
             photoHistory.textContent = error.message || 'Could not load sync history.';
         }
     }
 
-    function confirmPhotoSync() {
+    async function reviewPhotoSyncRun(runId) {
+        photoRunDetails.classList.remove('hidden');
+        photoRunDetails.textContent = 'Comparing processed students with current demo photos…';
+        try {
+            const data = await BK.get('/api/database-sync/student-photo-run-details?run_id=' + encodeURIComponent(runId));
+            if (data.error) { photoRunDetails.textContent = data.error; return; }
+            const candidates = data.candidates || [];
+            photoRunDetails.replaceChildren();
+            const title = document.createElement('p');
+            title.className = 'mb-2 font-semibold text-slate-800';
+            title.textContent = candidates.length + ' processed student(s) currently need photo attention. This list is reconstructed from exam records and demo photo paths; the original run did not save per-student failure reasons.';
+            photoRunDetails.appendChild(title);
+            if (!candidates.length) {
+                const empty = document.createElement('p');
+                empty.textContent = 'All processed students currently have their synced photo file in demo.';
+                photoRunDetails.appendChild(empty);
+                return;
+            }
+            const columns = ['Registration', 'Student', 'Class', 'Center', 'Institute', 'Current status', 'Exam photo'];
+            const table = document.createElement('table');
+            table.className = 'min-w-full border-collapse text-left';
+            const head = document.createElement('thead');
+            const headRow = document.createElement('tr');
+            columns.forEach(function (label) {
+                const th = document.createElement('th');
+                th.className = 'border-b px-3 py-2 font-semibold text-slate-700';
+                th.textContent = label;
+                headRow.appendChild(th);
+            });
+            head.appendChild(headRow);
+            table.appendChild(head);
+            const body = document.createElement('tbody');
+            candidates.forEach(function (student) {
+                const row = document.createElement('tr');
+                [student.registration, student.name, student.class, student.center, student.institute, student.reason].forEach(function (value) {
+                    const td = document.createElement('td');
+                    td.className = 'border-b px-3 py-2';
+                    td.textContent = value || '—';
+                    row.appendChild(td);
+                });
+                const photoCell = document.createElement('td');
+                photoCell.className = 'border-b px-3 py-2';
+                if (student.source_photo_url) {
+                    const link = document.createElement('a');
+                    link.href = student.source_photo_url;
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    link.textContent = 'View / save photo';
+                    link.className = 'text-sky-700 underline';
+                    photoCell.appendChild(link);
+                } else {
+                    photoCell.textContent = 'Source path unavailable';
+                }
+                row.appendChild(photoCell);
+                body.appendChild(row);
+            });
+            table.appendChild(body);
+            const helper = document.createElement('p');
+            helper.className = 'mb-2 text-slate-600';
+            helper.textContent = 'Use the registration number to locate a student in demo. “View / save photo” opens the current exam image in a new tab; you can save it and upload it from that student’s edit page if needed.';
+            photoRunDetails.appendChild(helper);
+            photoRunDetails.appendChild(table);
+        } catch (error) {
+            photoRunDetails.textContent = error.message || 'Could not load student details for this sync.';
+        }
+    }
+
+    async function confirmPhotoSync() {
+        photosConfirmDetails.textContent = 'Each attempt scans from the beginning; it does not resume previous progress. Existing synced photo files are skipped, so only pending or missing files are fetched again.';
+        try {
+            const history = await BK.get('/api/database-sync/student-photo-history');
+            const previous = history && history.runs && history.runs[0];
+            if (previous && Number(previous.checked_count || 0) > 0) {
+                const started = previous.started_at ? new Date(String(previous.started_at).replace(' ', 'T')).toLocaleString() : 'a previous attempt';
+                photosConfirmDetails.textContent = 'A previous attempt (' + started + ') checked ' + Number(previous.checked_count).toLocaleString() + ' record(s), copied ' + Number(previous.copied_count || 0).toLocaleString() + ', and reported ' + Number(previous.unavailable_count || 0).toLocaleString() + ' unavailable. Starting now scans again from the first record instead of resuming, but valid photos already synced by this tool are skipped. Continue?';
+            }
+        } catch (error) {
+            // The static warning still explains restart behavior if history cannot be loaded.
+        }
         return new Promise(function (resolve) {
             photosConfirmDialog.returnValue = '';
             photosConfirmDialog.addEventListener('close', function () {
@@ -367,6 +465,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let afterId = 0;
         let checked = 0;
         let updated = 0;
+        let alreadySynced = 0;
         let missingDemo = 0;
         let unavailable = 0;
         const runId = (window.crypto && typeof window.crypto.randomUUID === 'function')
@@ -381,17 +480,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.error) throw new Error(data.error);
                 checked += Number(data.checked || 0);
                 updated += Number(data.updated || 0);
+                alreadySynced += Number(data.already_synced || 0);
                 missingDemo += Number(data.missing_demo || 0);
                 unavailable += Number(data.unavailable || 0);
                 afterId = Number(data.next_after_id || afterId);
-                photoProgress.textContent = 'Session ' + photoSession + ': checked ' + checked + ' exam photo record(s)… copied ' + updated + ', no demo match ' + missingDemo + ', unavailable or invalid photo ' + unavailable + '.';
+                photoProgress.textContent = 'Session ' + photoSession + ': checked ' + checked + ' exam photo record(s)… copied ' + updated + ', already synced ' + alreadySynced + ', no demo match ' + missingDemo + ', unavailable or invalid photo ' + unavailable + '.';
                 if (data.done) break;
             }
-            photoProgress.textContent = 'Session ' + photoSession + ' photo sync finished. Copied ' + updated + ' photo(s) to demo; no demo match ' + missingDemo + ', unavailable or invalid ' + unavailable + '. Exam was read-only.';
+            photoProgress.textContent = 'Session ' + photoSession + ' photo sync finished. Copied ' + updated + ' photo(s), skipped ' + alreadySynced + ' already synced, no demo match ' + missingDemo + ', unavailable or invalid ' + unavailable + '. Exam was read-only.';
             message('Student-photo sync complete. Updated ' + updated + ' demo student photo(s).', false);
             BK.toast('Copied ' + updated + ' student photo(s) to demo.', 'success');
         } catch (error) {
-            photoProgress.textContent = 'Photo sync stopped after checking ' + checked + ' source record(s). ' + error.message + ' You can safely retry; matching photos will be recopied.';
+            photoProgress.textContent = 'Photo sync stopped after checking ' + checked + ' source record(s). ' + error.message + ' You can safely retry; valid photos already synced by this tool will be skipped.';
             message(error.message || 'Could not sync student photos.', true);
             BK.toast(error.message || 'Could not sync student photos.', 'error');
         } finally {

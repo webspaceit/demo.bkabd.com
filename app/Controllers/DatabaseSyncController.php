@@ -100,7 +100,7 @@ final class DatabaseSyncController extends Controller
             if ($activeSession <= 0 || $requestedSession !== $activeSession) {
                 return ['error' => 'The active session changed or is unavailable. Reload this page and start photo sync again.'];
             }
-            return $service->syncStudentPhotoBatch($activeSession, $afterId, 25, $runId);
+            return $service->syncStudentPhotoBatch($activeSession, $afterId, 50, $runId);
         } catch (RuntimeException $e) {
             $service->failStudentPhotoSync($runId, $e->getMessage());
             return ['error' => $e->getMessage()];
@@ -120,6 +120,21 @@ final class DatabaseSyncController extends Controller
         } catch (PDOException $e) {
             error_log('[database-sync] student-photo history failed: ' . $e->getCode());
             return ['error' => 'Could not load student-photo sync history. Check demo database read access.'];
+        }
+    }
+
+    public function studentPhotoSyncRunDetails(Request $request): array
+    {
+        try {
+            return (new DatabaseSyncService())->studentPhotoSyncRunDetails(
+                trim((string) $request->query('run_id', '')),
+                (int) Auth::activeSession()
+            );
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] student-photo detail lookup failed: ' . $e->getCode());
+            return ['error' => 'Could not compare the run with current exam and demo student records.'];
         }
     }
 

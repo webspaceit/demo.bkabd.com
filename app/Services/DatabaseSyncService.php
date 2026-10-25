@@ -162,7 +162,7 @@ final class DatabaseSyncService
             $sourceRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if ($sourceRows === []) {
                 $this->recordPhotoSyncBatch($target, $runId, 0, 0, 0, 0, $afterId, true);
-                return ['done' => true, 'session' => $session, 'next_after_id' => $afterId, 'checked' => 0, 'updated' => 0, 'missing_demo' => 0, 'unavailable' => 0];
+                return ['done' => true, 'session' => $session, 'next_after_id' => $afterId, 'checked' => 0, 'updated' => 0, 'already_synced' => 0, 'missing_demo' => 0, 'unavailable' => 0];
             }
 
             $registrations = array_values(array_unique(array_map(static fn(array $row): string => trim((string) $row['registration']), $sourceRows)));
@@ -182,7 +182,7 @@ final class DatabaseSyncService
             }
 
             $update = $target->prepare('UPDATE `students` SET `photo` = ?, `updated_at` = NOW() WHERE `id` = ?');
-            $counts = ['updated' => 0, 'missing_demo' => 0, 'unavailable' => 0];
+            $counts = ['updated' => 0, 'already_synced' => 0, 'missing_demo' => 0, 'unavailable' => 0];
             $lastId = (int) $sourceRows[array_key_last($sourceRows)]['id'];
             $matched = [];
             $primaryUrls = [];
@@ -193,7 +193,14 @@ final class DatabaseSyncService
                     $counts['missing_demo']++;
                     continue;
                 }
-                $urls = $this->studentPhotoUrls((string) $sourceRow['photo']);
+                $storedPath = (string) $sourceRow['photo'];
+                $expectedPath = 'uploads/students/sync_' . (int) $targetRow['id'] . '_' . substr(hash('sha256', $storedPath), 0, 16) . '.jpg';
+                $currentPath = ltrim(str_replace('\\', '/', trim((string) ($targetRow['photo'] ?? ''))), '/');
+                if ($currentPath === $expectedPath && is_file(BASE_PATH . '/public/' . $expectedPath)) {
+                    $counts['already_synced']++;
+                    continue;
+                }
+                $urls = $this->studentPhotoUrls($storedPath);
                 if ($urls === []) {
                     $counts['unavailable']++;
                     continue;
@@ -258,14 +265,81 @@ final class DatabaseSyncService
             return ['requires_migration' => true, 'runs' => []];
         }
         $limit = max(1, min(20, $limit));
-        $rows = $target->query('SELECT `session`, `status`, `started_at`, `finished_at`, `updated_at`, `checked_count`, `copied_count`, `missing_demo_count`, `unavailable_count`, `failure_message` FROM `codex_student_photo_sync_runs` ORDER BY `id` DESC LIMIT ' . $limit)->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $target->query('SELECT `run_id`, `session`, `status`, `started_at`, `finished_at`, `updated_at`, `checked_count`, `copied_count`, `missing_demo_count`, `unavailable_count`, `failure_message` FROM `codex_student_photo_sync_runs` ORDER BY `id` DESC LIMIT ' . $limit)->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as &$row) {
+            $row['already_synced_count'] = max(0, (int) $row['checked_count'] - (int) $row['copied_count'] - (int) $row['missing_demo_count'] - (int) $row['unavailable_count']);
             if ($row['status'] === 'running' && strtotime((string) $row['updated_at']) < time() - 1800) {
                 $row['status'] = 'interrupted';
             }
         }
         unset($row);
         return ['requires_migration' => false, 'runs' => $rows];
+    }
+
+    /** Reconstruct which processed students still lack their synced photo. */
+    public function studentPhotoSyncRunDetails(string $runId, int $session): array
+    {
+        $this->assertReady();
+        if (!preg_match('/^[a-f0-9-]{36}$/i', $runId)) { throw new RuntimeException('Invalid photo-sync run.'); }
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $runStmt = $target->prepare('SELECT `run_id`, `session`, `status`, `started_at`, `last_source_id`, `checked_count`, `copied_count`, `unavailable_count` FROM `codex_student_photo_sync_runs` WHERE `run_id` = ? AND `session` = ?');
+            $runStmt->execute([$runId, $session]);
+            $run = $runStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$run) { throw new RuntimeException('This photo-sync run could not be found.'); }
+
+            $sourceStmt = $source->prepare(
+                'SELECT s.`id`, s.`registration`, s.`name`, s.`class`, s.`photo`, NULLIF(cu.`name`, \'\') AS `center_name`, i.`name` AS `institute_name` '
+                . 'FROM `students` s LEFT JOIN `centers` c ON c.`id` = s.`center_id` '
+                . 'LEFT JOIN `institutes` i ON i.`id` = s.`institute_id` '
+                . 'LEFT JOIN `users` cu ON cu.`id` = c.`user_id` '
+                . 'WHERE s.`session` = ? AND s.`id` > ? AND s.`id` <= ? '
+                . 'AND s.`registration` IS NOT NULL AND TRIM(s.`registration`) <> \'\' '
+                . 'AND s.`photo` IS NOT NULL AND TRIM(s.`photo`) <> \'\' ORDER BY s.`id` ASC LIMIT 500'
+            );
+            $candidates = [];
+            $afterId = 0;
+            $lastSourceId = (int) $run['last_source_id'];
+            do {
+                $sourceStmt->execute([$session, $afterId, $lastSourceId]);
+                $rows = $sourceStmt->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows === []) { break; }
+                $afterId = (int) $rows[array_key_last($rows)]['id'];
+                $registrations = array_values(array_unique(array_map(static fn(array $row): string => trim((string) $row['registration']), $rows)));
+                $targetStmt = $target->prepare('SELECT `id`, `registration`, `photo` FROM `students` WHERE `registration` IN (' . implode(',', array_fill(0, count($registrations), '?')) . ')');
+                $targetStmt->execute($registrations);
+                $targetByRegistration = [];
+                foreach ($targetStmt->fetchAll(PDO::FETCH_ASSOC) as $targetRow) {
+                    $key = mb_strtolower(trim((string) $targetRow['registration']), 'UTF-8');
+                    if (array_key_exists($key, $targetByRegistration)) { $targetByRegistration[$key] = null; }
+                    else { $targetByRegistration[$key] = $targetRow; }
+                }
+                foreach ($rows as $row) {
+                    $targetRow = $targetByRegistration[mb_strtolower(trim((string) $row['registration']), 'UTF-8')] ?? null;
+                    $storedPath = (string) $row['photo'];
+                    $urls = $this->studentPhotoUrls($storedPath);
+                    $expectedPath = $targetRow === null ? '' : 'uploads/students/sync_' . (int) $targetRow['id'] . '_' . substr(hash('sha256', $storedPath), 0, 16) . '.jpg';
+                    $actualPath = str_replace('\\', '/', trim((string) ($targetRow['photo'] ?? '')));
+                    $pathMatches = $expectedPath !== '' && ltrim($actualPath, '/') === $expectedPath;
+                    $fileExists = $pathMatches && is_file(BASE_PATH . '/public/' . $expectedPath);
+                    if ($targetRow !== null && $fileExists) { continue; }
+                    $candidates[] = [
+                        'source_id' => (int) $row['id'],
+                        'registration' => (string) $row['registration'],
+                        'name' => (string) $row['name'],
+                        'class' => (string) $row['class'],
+                        'center' => (string) ($row['center_name'] ?? ''),
+                        'institute' => (string) ($row['institute_name'] ?? ''),
+                        'reason' => $targetRow === null ? 'No unique demo registration match' : ($pathMatches ? 'Synced photo file is missing on this server' : 'No matching synced photo is currently saved on demo'),
+                        'source_photo_url' => $urls[0] ?? null,
+                    ];
+                }
+            } while (count($rows) === 500);
+            return ['run' => $run, 'candidate_count' => count($candidates), 'candidates' => $candidates];
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
     }
 
     /** Record an API failure without masking the original sync error. */
