@@ -87,6 +87,7 @@ $instituteCount = (int) ($instituteCount ?? 0);
                 <div class="fl" style="display:flex;align-items:center;gap:.5rem">
                     <input type="search" id="f-search" class="w-full min-w-0" style="flex:1" placeholder="Name, reg. no, roll...">
                     <label for="f-search">Search</label>
+                    <button type="button" id="btn-search-admit" class="btn btn-primary shrink-0">Search</button>
                     <button type="button" id="btn-reset-filters" class="btn btn-light shrink-0">Reset</button>
                 </div>
             </div>
@@ -108,7 +109,7 @@ $instituteCount = (int) ($instituteCount ?? 0);
                         </tr>
                     </thead>
                     <tbody id="admit-rows">
-                        <tr><td colspan="10" class="text-center py-8 text-slate-400">Use the filters above and press Search</td></tr>
+                        <tr><td colspan="10" class="text-center py-8 text-slate-400">Loading students…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -126,6 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const instituteEl = document.getElementById('f-institute');
     const classEl     = document.getElementById('f-class');
     const searchEl    = document.getElementById('f-search');
+    const searchBtn   = document.getElementById('btn-search-admit');
     const resetFiltersBtn = document.getElementById('btn-reset-filters');
     const rowsEl      = document.getElementById('admit-rows');
     const pagerEl     = document.getElementById('admit-pagination');
@@ -331,6 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (listController) listController.abort();
         listController = new AbortController();
         const requestId = ++listRequest;
+        rowsEl.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-slate-400">Loading students…</td></tr>';
         const url = BK.qs('/api/admitcards/search', {
             page:         pageNum,
             per_page:     PER_PAGE,
@@ -361,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     '<td><button type="button" class="btn btn-sm btn-primary"' +
                         ' data-student="' + BK.esc(String(r.id)) + '">View/Print</button></td>' +
                 '</tr>';
-            }).join('') : '<tr><td colspan="10" class="text-center py-8 text-slate-400">No records found</td></tr>';
+            }).join('') : '<tr><td colspan="10" class="text-center py-8 text-slate-400">No matching students found. Check the session and filters, then search again.</td></tr>';
 
             if (pager.current_page) pageNum = pager.current_page;
             pagerEl.innerHTML = '';
@@ -413,6 +416,10 @@ document.addEventListener('DOMContentLoaded', function () {
     searchEl.addEventListener('input', function () {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => { pageNum = 1; reload(); }, 350);
+    });
+    searchBtn.addEventListener('click', function () { clearTimeout(searchTimer); pageNum = 1; reload(); });
+    searchEl.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') { event.preventDefault(); clearTimeout(searchTimer); pageNum = 1; reload(); }
     });
 
     reload();
