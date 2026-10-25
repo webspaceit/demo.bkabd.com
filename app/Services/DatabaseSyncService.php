@@ -829,8 +829,9 @@ final class DatabaseSyncService
             $referenceMaps = $this->studentReferenceMaps($source, $target, $rows);
             $unmappedIds = [];
             foreach ($rows as &$row) {
-                $mapped = $this->remapStudentReferences($row, $referenceMaps);
-                if ($mapped === null) { $unmappedIds[(int) $row['id']] = true; }
+                $referenceFailure = '';
+                $mapped = $this->remapStudentReferences($row, $referenceMaps, $referenceFailure);
+                if ($mapped === null) { $unmappedIds[(int) $row['id']] = $referenceFailure; }
                 else { $row = $mapped; }
             }
             unset($row);
@@ -868,6 +869,7 @@ final class DatabaseSyncService
             $insert = $target->prepare('INSERT INTO `students` (' . $quotedColumns . ') VALUES (' . implode(',', array_fill(0, count($columns), '?')) . ')');
             $keyInsert = $duplicateKeysAvailable ? $target->prepare('INSERT IGNORE INTO `student_duplicate_keys` (`fingerprint`) VALUES (?)') : null;
             $counts = ['imported' => 0, 'already_present' => 0, 'skipped' => 0];
+            $skippedDetails = [];
             $target->beginTransaction();
             try {
                 $nextStudentId = null;
@@ -879,14 +881,26 @@ final class DatabaseSyncService
                 }
                 foreach ($rows as $row) {
                     $registration = trim((string) ($row['registration'] ?? ''));
-                    if ($registration === '') { $counts['skipped']++; continue; }
-                    if (isset($unmappedIds[(int) $row['id']])) { $counts['skipped']++; continue; }
+                    if ($registration === '') {
+                        $counts['skipped']++;
+                        $skippedDetails[] = $this->studentImportSkipDetail($row, 'Missing registration number.', $referenceMaps);
+                        continue;
+                    }
+                    if (isset($unmappedIds[(int) $row['id']])) {
+                        $counts['skipped']++;
+                        $skippedDetails[] = $this->studentImportSkipDetail($row, $unmappedIds[(int) $row['id']], $referenceMaps);
+                        continue;
+                    }
                     $regKey = mb_strtolower($registration, 'UTF-8');
                     if (isset($presentRegistrations[$regKey])) { $counts['already_present']++; continue; }
                     $fingerprint = \App\Services\StudentService::duplicateFingerprint($row);
                     if (isset($presentFingerprints[$fingerprint])) { $counts['already_present']++; continue; }
                     $rollKey = $this->rollKey($row);
-                    if ($rollKey !== null && isset($presentRolls[$rollKey])) { $counts['skipped']++; continue; }
+                    if ($rollKey !== null && isset($presentRolls[$rollKey])) {
+                        $counts['skipped']++;
+                        $skippedDetails[] = $this->studentImportSkipDetail($row, 'Another demo student already uses this session, class, and roll.', $referenceMaps);
+                        continue;
+                    }
                     $values = [];
                     foreach ($columns as $column) {
                         if ($manualStudentIds && $column === 'id') { continue; }
@@ -898,7 +912,11 @@ final class DatabaseSyncService
                     try {
                         $insert->execute($values);
                     } catch (\PDOException $e) {
-                        if (($e->errorInfo[1] ?? 0) === 1062) { $counts['skipped']++; continue; }
+                        if (($e->errorInfo[1] ?? 0) === 1062) {
+                            $counts['skipped']++;
+                            $skippedDetails[] = $this->studentImportSkipDetail($row, 'A unique-value conflict occurred while inserting this registration.', $referenceMaps);
+                            continue;
+                        }
                         throw $e;
                     }
                     if ($keyInsert !== null) { $keyInsert->execute([$fingerprint]); }
@@ -916,7 +934,7 @@ final class DatabaseSyncService
                 \App\Core\Cache::forgetPrefix('pending_students');
             }
             $lastId = (int) $rows[array_key_last($rows)]['id'];
-            return ['done' => !$hasMoreMissing, 'next_after_id' => $lastId, 'processed' => count($rows)] + $counts;
+            return ['done' => !$hasMoreMissing, 'next_after_id' => $lastId, 'processed' => count($rows), 'skipped_details' => $skippedDetails] + $counts;
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
         }
@@ -1041,33 +1059,53 @@ final class DatabaseSyncService
         return mb_strtolower(trim((string) $left), 'UTF-8') === mb_strtolower(trim((string) $right), 'UTF-8');
     }
 
-    private function remapStudentReferences(array $row, array $maps): ?array
+    private function remapStudentReferences(array $row, array $maps, ?string &$failureReason = null): ?array
     {
         $sourceCenterId = (int) ($row['center_id'] ?? 0);
         $sourceInstituteId = (int) ($row['institute_id'] ?? 0);
         $centerId = $maps['center_map'][$sourceCenterId] ?? null;
         $instituteId = $maps['institute_map'][$sourceInstituteId] ?? null;
-        if ($centerId === null || $instituteId === null) { return null; }
+        if ($centerId === null) { $failureReason = 'Center reference did not match one unique center in demo.'; return null; }
+        if ($instituteId === null) { $failureReason = 'Institute reference did not match one unique institute in demo.'; return null; }
         $sourceInstitute = $maps['source']['institutes'][$sourceInstituteId] ?? null;
-        if ($sourceInstitute === null || (int) ($sourceInstitute['center_id'] ?? 0) !== $sourceCenterId) { return null; }
+        if ($sourceInstitute === null || (int) ($sourceInstitute['center_id'] ?? 0) !== $sourceCenterId) { $failureReason = 'Exam institute is missing or is not linked to the student’s exam center.'; return null; }
         $targetInstitute = $maps['target']['institutes'][$instituteId] ?? null;
-        if ($targetInstitute === null || (int) ($targetInstitute['center_id'] ?? 0) !== $centerId) { return null; }
+        if ($targetInstitute === null || (int) ($targetInstitute['center_id'] ?? 0) !== $centerId) { $failureReason = 'Matched demo institute is not linked to the matched demo center.'; return null; }
         foreach (['division_id' => 'divisions', 'district_id' => 'districts', 'upazila_id' => 'upozilas', 'union_id' => 'unions'] as $field => $table) {
             $id = (int) ($row[$field] ?? 0);
             if ($id === 0 && $field === 'union_id') { continue; }
             $source = $maps['source'][$table][$id] ?? null;
             $target = $maps['target'][$table][$id] ?? null;
-            if ($source === null || $target === null || !$this->sameReference($source['name'] ?? '', $target['name'] ?? '')) { return null; }
+            if ($source === null || $target === null || !$this->sameReference($source['name'] ?? '', $target['name'] ?? '')) {
+                $failureReason = ucfirst(str_replace('_id', '', $field)) . ' reference is missing or does not match demo.';
+                return null;
+            }
             foreach (['district_id' => 'districts', 'upazila_id' => 'upozilas'] as $parentField => $parentTable) {
                 if ($field === 'district_id' && $parentField === 'district_id' || $field === 'upazila_id' && $parentField === 'upazila_id' || $field === 'union_id' && $parentField === 'upazila_id') {
                     $parentId = (int) ($source[$parentField] ?? 0);
-                    if ($parentId !== (int) ($target[$parentField] ?? 0)) { return null; }
+                    if ($parentId !== (int) ($target[$parentField] ?? 0)) { $failureReason = ucfirst(str_replace('_id', '', $field)) . ' belongs to a different parent location in demo.'; return null; }
                 }
             }
         }
         $row['center_id'] = $centerId;
         $row['institute_id'] = $instituteId;
         return $row;
+    }
+
+    private function studentImportSkipDetail(array $row, string $reason, array $maps): array
+    {
+        $center = $maps['source']['centers'][(int) ($row['center_id'] ?? 0)] ?? [];
+        $institute = $maps['source']['institutes'][(int) ($row['institute_id'] ?? 0)] ?? [];
+        return [
+            'registration' => trim((string) ($row['registration'] ?? '')),
+            'name' => trim((string) ($row['name'] ?? '')),
+            'class' => (string) ($row['class'] ?? ''),
+            'session' => (string) ($row['session'] ?? ''),
+            'roll' => (string) ($row['roll'] ?? ''),
+            'center' => trim((string) ($center['display_name'] ?? '')) ?: trim((string) ($center['institute_name'] ?? '')),
+            'institute' => trim((string) ($institute['name'] ?? '')),
+            'reason' => $reason,
+        ];
     }
 
     private function lookupIds(PDO $pdo, string $table, array $columns, array $ids): array

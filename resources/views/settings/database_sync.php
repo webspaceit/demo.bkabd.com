@@ -600,6 +600,52 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    function showImportResult(summary, skippedDetails) {
+        importPreview.replaceChildren();
+        const paragraph = document.createElement('p');
+        paragraph.textContent = summary;
+        importPreview.appendChild(paragraph);
+        if (!skippedDetails.length) return;
+        const heading = document.createElement('h3');
+        heading.className = 'mt-3 font-semibold text-slate-800';
+        heading.textContent = 'Skipped student details (' + skippedDetails.length + ')';
+        importPreview.appendChild(heading);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mt-2 overflow-x-auto';
+        const table = document.createElement('table');
+        table.className = 'min-w-full border-collapse text-left text-xs';
+        const columns = [
+            ['Registration', 'registration'], ['Student', 'name'], ['Class / session', null],
+            ['Roll', 'roll'], ['Exam center', 'center'], ['Exam institute', 'institute'], ['Skip reason', 'reason']
+        ];
+        const thead = document.createElement('thead');
+        const headRow = document.createElement('tr');
+        columns.forEach(function (column) {
+            const th = document.createElement('th');
+            th.className = 'border-b px-2 py-2 font-semibold';
+            th.textContent = column[0];
+            headRow.appendChild(th);
+        });
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        skippedDetails.forEach(function (student) {
+            const row = document.createElement('tr');
+            columns.forEach(function (column) {
+                const td = document.createElement('td');
+                td.className = 'border-b px-2 py-2 align-top';
+                td.textContent = column[1] === null
+                    ? String(student.class || '—') + ' / ' + String(student.session || '—')
+                    : (student[column[1]] || '—');
+                row.appendChild(td);
+            });
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+        wrapper.appendChild(table);
+        importPreview.appendChild(wrapper);
+    }
+
     startImportButton.addEventListener('click', async function () {
         if (!(await confirmStudentImport())) return;
         startImportButton.disabled = true;
@@ -610,6 +656,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let totalExisting = 0;
         let totalSkipped = 0;
         let processed = 0;
+        const skippedDetails = [];
         try {
             while (true) {
                 const data = await BK.post('/api/database-sync/import-students', { after_id: afterId });
@@ -617,18 +664,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 totalImported += Number(data.imported || 0);
                 totalExisting += Number(data.already_present || 0);
                 totalSkipped += Number(data.skipped || 0);
+                skippedDetails.push(...(data.skipped_details || []));
                 processed += Number(data.processed || 0);
                 afterId = Number(data.next_after_id || afterId);
                 importProgress.textContent = 'Checked ' + processed + ' missing registration candidate(s)… Added ' + totalImported + ', already present ' + totalExisting + ', skipped ' + totalSkipped + '.';
                 if (data.done) break;
             }
-            importPreview.textContent = 'Import finished. Added ' + totalImported + ' student(s) to demo; ' + totalExisting + ' already existed; ' + totalSkipped + ' were skipped because registration or reference data did not match safely. Reload the Students page on demo to see its updated count.';
+            showImportResult('Import finished. Added ' + totalImported + ' student(s) to demo; ' + totalExisting + ' already existed; ' + totalSkipped + ' were skipped because registration or reference data did not match safely. Reload the Students page on demo to see its updated count.', skippedDetails);
             BK.toast('Import finished. Added ' + totalImported + ' student(s) to demo.', 'success');
             message('Import complete. Only the demo database received new student rows; exam was read-only.', false);
             startImportButton.classList.add('hidden');
             await loadLatestStudents();
         } catch (error) {
             importProgress.textContent = 'Import stopped after checking ' + processed + ' missing candidate(s). ' + error.message + ' You can preview again; already imported rows will be skipped on retry.';
+            if (skippedDetails.length) showImportResult('Import stopped after checking ' + processed + ' missing candidate(s). Details below list students skipped in completed batches; already imported rows will be skipped on retry.', skippedDetails);
             BK.toast('Import stopped after checking ' + processed + ' missing candidate(s): ' + error.message, 'error');
         } finally {
             startImportButton.disabled = false;
