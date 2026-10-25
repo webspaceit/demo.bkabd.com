@@ -4,9 +4,9 @@ Scholarship exam management system: a **plain PHP 8 OOP + fetch(Ajax) + Tailwind
 clone of the original Laravel 10 / Vue 2 SPA (`E:\wamp64\www\exam`), keeping the **same
 MySQL schema, features, and ~100 `/api/*` URL contracts**.
 
-Built for **~10,000 concurrent users on result day** and for **shared hosting with no
-SSH, Composer, or Node** — `vendor/` is committed, CSS is prebuilt, deployment is FTP-only
-(see [DEPLOY.md](DEPLOY.md)).
+Built for **shared hosting with no SSH or Composer on the host**. CSS is prebuilt. The
+`vendor/` directory is intentionally not tracked in Git; prepare it locally with Composer
+and upload it along with the application files (see [DEPLOY.md](DEPLOY.md)).
 
 ## Features
 
