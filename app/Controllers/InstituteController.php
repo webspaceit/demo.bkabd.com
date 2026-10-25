@@ -36,7 +36,10 @@ final class InstituteController extends Controller
     private const FIELDS = [
         'center_id', 'name', 'director_name', 'phone', 'email', 'website',
         'division_id', 'district_id', 'upazila_id', 'union_id', 'address',
-        'certificate_no', 'established_date', 'membership_type', 'member_type', 'active',
+        'zip', 'country', 'established_date', 'membership_type', 'member_type',
+        'certificate_no', 'total_students', 'total_teachers', 'type', 'recognized',
+        'institution_run', 'monthly_income', 'monthly_expense', 'logo', 'principal_photo',
+        'note', 'active', 'user_id',
     ];
 
     /** GET /api/institutes — paginated list with the owning center's name. */
@@ -121,13 +124,35 @@ final class InstituteController extends Controller
     {
         $data = $this->validated($request);
         Auth::assertCenterAccess((int) $data['center_id']); // RLS/BOLA
-        $row = $this->pick($data);
-        $row['created_at'] = date('Y-m-d H:i:s');
-        $row['updated_at'] = date('Y-m-d H:i:s');
-        Database::insert('institutes', $row);
+        if (!$request->hasFile('logo')) {
+            throw new \App\Core\ValidationException(['logo' => ['The institute logo field is required.']]);
+        }
+        if ((int) $data['member_type'] === 2 && trim((string) ($data['certificate_no'] ?? '')) === '') {
+            throw new \App\Core\ValidationException(['certificate_no' => ['The membership certificate number is required for old members.']]);
+        }
+        $service = new InstituteService();
+        $logo = $service->saveUpload($request->file('logo'), InstituteService::LOGO_DIR, 'logo');
+        $principal = null;
+        try {
+            $principal = $service->saveUpload($request->file('principal_photo'), InstituteService::PRINCIPAL_DIR, 'principal_photo');
+            $row = $this->pick($data);
+            $row['certificate_no'] = (int) $data['member_type'] === 1 ? null : ($data['certificate_no'] ?? null);
+            $row['logo'] = $logo;
+            $row['principal_photo'] = $principal;
+            $row['country'] = 1;
+            $row['active'] = 0;
+            $row['user_id'] = Auth::id() ?? 0;
+            $row['created_at'] = date('Y-m-d H:i:s');
+            $row['updated_at'] = date('Y-m-d H:i:s');
+            $id = Database::insert('institutes', $row);
+        } catch (\Throwable $e) {
+            $service->delete($logo, InstituteService::LOGO_DIR);
+            $service->delete($principal, InstituteService::PRINCIPAL_DIR);
+            throw $e;
+        }
         Cache::forget('filter:active_institutes');
 
-        return ['status' => 'success'];
+        return ['status' => 'success', 'id' => $id];
     }
 
     /** PUT (or POST twin) /api/institutes/{id} */
@@ -141,8 +166,30 @@ final class InstituteController extends Controller
             Auth::assertCenterAccess((int) $data['center_id']); // must not move center
         }
         $row = $this->pick($data);
-        $row['updated_at'] = date('Y-m-d H:i:s');
-        (new Query('institutes'))->where('id', $id)->update($row);
+        $service = new InstituteService();
+        $old = $this->findOrFail($id);
+        $newFiles = [];
+        try {
+            if ($request->hasFile('logo')) {
+                $newFiles['logo'] = $service->saveUpload($request->file('logo'), InstituteService::LOGO_DIR, 'logo');
+                $row['logo'] = $newFiles['logo'];
+            }
+            if ($request->hasFile('principal_photo')) {
+                $newFiles['principal_photo'] = $service->saveUpload($request->file('principal_photo'), InstituteService::PRINCIPAL_DIR, 'principal_photo');
+                $row['principal_photo'] = $newFiles['principal_photo'];
+            }
+            $row['certificate_no'] = (int) $data['member_type'] === 1 ? null : ($data['certificate_no'] ?? null);
+            $row['updated_at'] = date('Y-m-d H:i:s');
+            (new Query('institutes'))->where('id', $id)->update($row);
+        } catch (\Throwable $e) {
+            foreach ($newFiles as $field => $filename) {
+                $service->delete($filename, $field === 'logo' ? InstituteService::LOGO_DIR : InstituteService::PRINCIPAL_DIR);
+            }
+            throw $e;
+        }
+        foreach ($newFiles as $field => $_filename) {
+            $service->delete($old[$field] ?? null, $field === 'logo' ? InstituteService::LOGO_DIR : InstituteService::PRINCIPAL_DIR);
+        }
         Cache::forget('filter:active_institutes');
 
         return ['status' => 'success'];
@@ -369,7 +416,7 @@ final class InstituteController extends Controller
     public function pageCreate(Request $request): string
     {
         return View::render('institutes.form', [
-            'title' => 'Add Institute',
+            'title' => 'Institute Registration Form',
             'mode' => 'create',
             'instituteId' => 0,
         ], 'layouts.dashboard');
@@ -433,19 +480,28 @@ final class InstituteController extends Controller
         return Validator::validate($request, [
             'center_id' => 'required|integer',
             'name' => 'required|string|max:255',
-            'director_name' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
+            'director_name' => 'required|string|max:255',
+            'phone' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
             'website' => 'nullable|string|max:255',
-            'division_id' => 'nullable|integer',
-            'district_id' => 'nullable|integer',
-            'upazila_id' => 'nullable|integer',
+            'division_id' => 'required|integer',
+            'district_id' => 'required|integer',
+            'upazila_id' => 'required|integer',
             'union_id' => 'nullable|integer',
-            'address' => 'nullable|string|max:255',
+            'address' => 'required|string|max:255',
             'certificate_no' => 'nullable|string|max:255',
-            'established_date' => 'nullable|string|max:10',
-            'membership_type' => 'nullable|integer',
-            'member_type' => 'nullable|integer',
+            'zip' => 'required|string|max:255',
+            'established_date' => 'required|date_format:Y-m-d',
+            'total_students' => 'required|integer',
+            'total_teachers' => 'required|integer',
+            'membership_type' => 'required|in:1,2',
+            'member_type' => 'required|in:1,2',
+            'type' => 'required|in:1,2,3',
+            'recognized' => 'required|in:1,2',
+            'institution_run' => 'required|in:1,2,3',
+            'monthly_income' => 'nullable|string|max:255',
+            'monthly_expense' => 'nullable|string|max:255',
+            'note' => 'nullable|string',
             'active' => 'nullable|in:0,1',
         ]);
     }
