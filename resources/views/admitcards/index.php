@@ -87,7 +87,6 @@ $instituteCount = (int) ($instituteCount ?? 0);
                 <div class="fl" style="display:flex;align-items:center;gap:.5rem">
                     <input type="search" id="f-search" class="w-full min-w-0" style="flex:1" placeholder="Name, reg. no, roll...">
                     <label for="f-search">Search</label>
-                    <button type="button" id="btn-search-admit" class="btn btn-primary shrink-0">Search</button>
                     <button type="button" id="btn-reset-filters" class="btn btn-light shrink-0">Reset</button>
                 </div>
             </div>
@@ -127,7 +126,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const instituteEl = document.getElementById('f-institute');
     const classEl     = document.getElementById('f-class');
     const searchEl    = document.getElementById('f-search');
-    const searchBtn   = document.getElementById('btn-search-admit');
     const resetFiltersBtn = document.getElementById('btn-reset-filters');
     const rowsEl      = document.getElementById('admit-rows');
     const pagerEl     = document.getElementById('admit-pagination');
@@ -417,7 +415,6 @@ document.addEventListener('DOMContentLoaded', function () {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => { pageNum = 1; reload(); }, 350);
     });
-    searchBtn.addEventListener('click', function () { clearTimeout(searchTimer); pageNum = 1; reload(); });
     searchEl.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') { event.preventDefault(); clearTimeout(searchTimer); pageNum = 1; reload(); }
     });
