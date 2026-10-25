@@ -445,13 +445,15 @@ final class StudentController extends Controller
             return;
         }
 
-        // Registration numbers are numeric and indexed. Avoid the broad
-        // multi-column contains search (which scans the whole session) for
-        // numeric input; prefix matching keeps partial registration searches
-        // useful while allowing MySQL to use the registration index. Short
-        // numeric values can also be searched as an exact roll number.
+        // Full registration numbers are unique and indexed. Use equality for
+        // them (without an OR against roll) so MySQL can do a direct index hit.
+        // Keep prefix/roll matching for shorter numeric fragments.
         $numericSearch = trim($search);
         if ($numericSearch !== '' && ctype_digit($numericSearch)) {
+            if (strlen($numericSearch) >= 12) {
+                $q->where('students.registration', $numericSearch);
+                return;
+            }
             $q->whereRaw(
                 '(`students`.`registration` LIKE ? OR `students`.`roll` = ?)',
                 [$numericSearch . '%', $numericSearch]

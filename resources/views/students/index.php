@@ -175,6 +175,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let pageNum = 1;
     let searchTimer = null;
+    let studentListRequest = 0;
+    let studentListAbort = null;
     let instituteOptionsLoaded = false;
     let centerSummaryRequest = 0;
     let instituteSummaryRequest = 0;
@@ -277,6 +279,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function reload() {
+        const requestId = ++studentListRequest;
+        if (studentListAbort) { studentListAbort.abort(); }
+        studentListAbort = new AbortController();
         const url = BK.qs('/api/students', {
             page: pageNum,
             per_page: PER_PAGE,
@@ -287,7 +292,8 @@ document.addEventListener('DOMContentLoaded', function () {
             institute_id: val(instituteEl) || (instituteOptionsLoaded ? '' : initialInstituteId),
             search: val(searchEl)
         });
-        BK.get(url).then(function (json) {
+        BK.get(url, { signal: studentListAbort.signal }).then(function (json) {
+            if (requestId !== studentListRequest) return;
             const pager = (json && json.data) || {};
             const rows = pager.data || [];
             totalEl.textContent = pager.total || 0;
@@ -300,6 +306,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 BK.renderPagination(pagerEl, pager);
             }
         }).catch(function (err) {
+            if (requestId !== studentListRequest || err.name === 'AbortError') return;
             rowsEl.innerHTML = '<tr><td colspan="9" class="px-4 py-8 text-center text-red-500">Could not load the list</td></tr>';
             BK.toast(err.message || 'Could not load the list', 'error');
         });
