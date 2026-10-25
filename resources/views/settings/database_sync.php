@@ -27,7 +27,7 @@
                 </section>
                 <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
                     <h2 class="font-semibold text-sky-900">Demo: migration destination</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables, INSERT and UPDATE on <code>students</code> for imports and photo paths, INSERT on <code>student_duplicate_keys</code> when present, and permission to apply the reviewed <code>centers.user_id</code> migration plus INSERT on <code>centers</code> and <code>institutes</code> for reference sync. It also needs UPDATE on <code>centers</code> for center-name sync and write access to <code>public/uploads/students</code>. It does not need write access to exam.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables, INSERT and UPDATE on <code>students</code> for imports and photo paths, INSERT on <code>student_duplicate_keys</code> when present, and permission to apply the reviewed reference migrations plus INSERT on center, institute, and location tables. It also needs UPDATE on <code>centers</code> for center-name sync and write access to <code>public/uploads/students</code>. It does not need write access to exam.</p>
                     <p id="db-sync-target" class="mt-2 text-xs text-slate-500"></p>
                 </section>
             </div>
@@ -99,11 +99,11 @@
             <section class="rounded-xl border border-teal-200 bg-teal-50/50 p-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h2 class="font-semibold text-teal-950">Sync missing centers and institutes</h2>
-                        <p class="mt-1 text-sm leading-6 text-slate-700">Preview missing exam reference records, then add safe matches to demo. Existing records are not changed. Creates center references without login accounts and copies no passwords, photos, or private contact information. Exam stays read-only. Missing geographic references can still prevent some student imports.</p>
+                        <h2 class="font-semibold text-teal-950">Sync missing centers, institutes, and locations</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Preview missing exam reference records, then add safe matches to demo, including division, district, upazila, and union hierarchy. Existing records are not changed. Creates reference rows without login accounts and copies no passwords, photos, or private contact information. Exam stays read-only.</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <button id="db-sync-preview-references" type="button" class="btn btn-light" disabled>Preview center/institute sync</button>
+                        <button id="db-sync-preview-references" type="button" class="btn btn-light" disabled>Preview reference sync</button>
                         <button id="db-sync-start-references" type="button" class="btn btn-primary hidden" disabled>Sync missing references</button>
                     </div>
                 </div>
@@ -630,9 +630,9 @@ document.addEventListener('DOMContentLoaded', function () {
             referencesPreview.replaceChildren();
             const summary = document.createElement('p');
             summary.className = 'mb-3';
-            summary.textContent = Number(data.centers || 0) + ' center(s) and ' + Number(data.institutes || 0) + ' institute(s) would be added. Ambiguous centers: ' + Number(data.ambiguous_centers || 0) + '; ambiguous institutes: ' + Number(data.ambiguous_institutes || 0) + '; institutes without a safe center match: ' + Number(data.unmatched_institutes || 0) + '. ' + (data.note || '');
+            summary.textContent = Number(data.centers || 0) + ' center(s), ' + Number(data.institutes || 0) + ' institute(s), and ' + Number(data.locations || 0) + ' location(s) would be added. Ambiguous centers: ' + Number(data.ambiguous_centers || 0) + '; ambiguous institutes: ' + Number(data.ambiguous_institutes || 0) + '; ambiguous locations: ' + Number(data.ambiguous_locations || 0) + '; unmatched locations: ' + Number(data.unmatched_locations || 0) + '; institutes without a safe center match: ' + Number(data.unmatched_institutes || 0) + '. ' + (data.note || '');
             referencesPreview.appendChild(summary);
-            [['Centers to add', data.examples && data.examples.centers, ['code','name','venue']], ['Institutes to add', data.examples && data.examples.institutes, ['name','certificate_no','center']]].forEach(function (group) {
+            [['Centers to add', data.examples && data.examples.centers, ['code','name','venue']], ['Institutes to add', data.examples && data.examples.institutes, ['name','certificate_no','center']], ['Locations to add', Object.values(data.examples && data.examples.locations || {}).flat(), ['name']]].forEach(function (group) {
                 const rows = group[1] || [];
                 if (!rows.length) return;
                 const heading = document.createElement('h3'); heading.className = 'mt-3 font-semibold'; heading.textContent = group[0]; referencesPreview.appendChild(heading);
@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const tbody=document.createElement('tbody'); rows.forEach(function (row) { const tr=document.createElement('tr'); group[2].forEach(function (key) { const td=document.createElement('td'); td.textContent=String(row[key] || '—'); tr.appendChild(td); }); tbody.appendChild(tr); });
                 table.appendChild(tbody); referencesPreview.appendChild(table);
             });
-            const count = Number(data.centers || 0) + Number(data.institutes || 0);
+            const count = Number(data.centers || 0) + Number(data.institutes || 0) + Number(data.locations || 0);
             syncReferencesButton.classList.toggle('hidden', count < 1);
             syncReferencesButton.disabled = count < 1;
         } catch (error) {
@@ -656,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const data = await BK.post('/api/database-sync/sync-references', {});
             if (data.error) throw new Error(data.error);
-            const text = 'Reference sync complete. Added ' + Number(data.centers_added || 0) + ' center(s) and ' + Number(data.institutes_added || 0) + ' institute(s).';
+            const text = 'Reference sync complete. Added ' + Number(data.centers_added || 0) + ' center(s), ' + Number(data.institutes_added || 0) + ' institute(s), and ' + Number(data.locations_added || 0) + ' location(s).';
             message(text + ' Exam was read-only.', false); BK.toast(text, 'success');
             await previewReferences();
         } catch (error) { message(error.message || 'Could not sync references.', true); BK.toast(error.message || 'Could not sync references.', 'error'); }
