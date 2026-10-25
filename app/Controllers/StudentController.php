@@ -52,13 +52,12 @@ final class StudentController extends Controller
         $centerId = Auth::centerId();
         $q = (new Query('students'))->select(
             'students.*',
-            'users.name as center_name',
             'institutes.name as institute_name',
             'divisions.name as division_name',
             'districts.name as district_name',
             'upozilas.name as upazila_name',
             'unions.name as union_name'
-        );
+        )->selectRaw($this->studentCenterNameExpression() . ' AS center_name');
 
         // Join all eager relations in one query (avoid N+1); LEFT joins keep
         // rows even when a geo reference is missing.
@@ -213,13 +212,12 @@ final class StudentController extends Controller
         $centerId = Auth::centerId();
         $q = (new Query('students'))->select(
             'students.*',
-            'users.name as center_name',
             'institutes.name as institute_name',
             'divisions.name as division_name',
             'districts.name as district_name',
             'upozilas.name as upazila_name',
             'unions.name as union_name'
-        );
+        )->selectRaw($this->studentCenterNameExpression() . ' AS center_name');
 
         $q->leftJoin('centers', 'centers.id', '=', 'students.center_id')
           ->leftJoin('users', 'users.id', '=', 'centers.user_id')
@@ -415,6 +413,23 @@ final class StudentController extends Controller
     }
 
     /** Shared free-text search for the student list queries (see index()). */
+    /** Display the synchronized center label even when its historical user account is missing. */
+    private function studentCenterNameExpression(): string
+    {
+        $hasDisplayName = Cache::remember('schema:centers.display_name', 300, static function (): bool {
+            return (int) Database::scalar(
+                'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+                ['centers', 'display_name']
+            ) > 0;
+        });
+        $centerDisplayName = $hasDisplayName ? "NULLIF(centers.`display_name`, '')" : 'NULL';
+        $instituteCenterDisplayName = $hasDisplayName ? "NULLIF(ic.`display_name`, '')" : 'NULL';
+        return 'COALESCE(' . $centerDisplayName . ", NULLIF(users.`name`, ''), "
+            . '(SELECT COALESCE(' . $instituteCenterDisplayName . ", NULLIF(iu.`name`, '')) "
+            . 'FROM `centers` ic LEFT JOIN `users` iu ON iu.`id` = ic.`user_id` '
+            . 'WHERE ic.`id` = `institutes`.`center_id` LIMIT 1))';
+    }
+
     private function applyStudentSearch(Query $q, ?string $search): void
     {
         if ($search === null || trim($search) === '') {
@@ -722,17 +737,17 @@ final class StudentController extends Controller
         $upazila = $student['upazila_id'] ? Upazila::find($student['upazila_id']) : null;
         $union = $student['union_id'] ? Union::find($student['union_id']) : null;
 
-        // Original detail-modal "Center" = the center's USER name
-        // (User::join('centers'...)->name); the centers table itself has no
-        // `name` column, so fall back to its institute_name.
-        $centerName = '';
-        if ($center) {
-            $centerUser = Database::selectOne(
-                'SELECT `name` FROM `users` WHERE `id` = ? LIMIT 1',
-                [(int) $center['user_id']]
-            );
-            $centerName = $centerUser['name'] ?? ($center['institute_name'] ?? '');
-        }
+        // Prefer the synchronized display label, then the linked center user;
+        // historical students with a missing center_id can use their institute's center.
+        $centerNames = Database::selectOne(
+            'SELECT ' . $this->studentCenterNameExpression() . ' AS center_name '
+            . 'FROM `students` LEFT JOIN `centers` ON `centers`.`id` = `students`.`center_id` '
+            . 'LEFT JOIN `users` ON `users`.`id` = `centers`.`user_id` '
+            . 'LEFT JOIN `institutes` ON `institutes`.`id` = `students`.`institute_id` '
+            . 'WHERE `students`.`id` = ? LIMIT 1',
+            [$id]
+        );
+        $centerName = (string) ($centerNames['center_name'] ?? '');
 
         $result = array_merge($student, [
             'center_name' => $centerName,

@@ -66,17 +66,24 @@ Router::post('/api/uploadFile', [StudentController::class, 'uploadFile'], ['auth
 // Students list page (server-side pagination + lazily loaded institute filters)
 // Original: GET /students -> students/index.vue
 Router::get('/students', function (Request $request) {
+    $hasCenterDisplayName = Cache::remember('schema:centers.display_name', 300, static fn(): bool => (int) Database::scalar(
+        'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+        ['centers', 'display_name']
+    ) > 0);
+    $centerLabel = $hasCenterDisplayName
+        ? "COALESCE(NULLIF(c.`display_name`, ''), NULLIF(u.`name`, ''))"
+        : "NULLIF(u.`name`, '')";
     return View::render('students.index', [
         'title'        => 'Students',
         'sessions'     => ExamSession::query()->orderBy('id', 'desc')->get(),
         'classes'      => [1, 2, 3, 4, 5, 6],
-        // Center dropdown shows the center USER's name (centers table has no
-        // `name` column) — same shape as ReportService::centersCache().
+        // Include historical centers whose linked user account is missing by
+        // using the synchronized center display name when available.
         'centers'      => Cache::remember('filter:active_centers', 120, static fn(): array => Database::select(
-            'SELECT c.`id`, u.`name` FROM `centers` c
-               JOIN `users` u ON u.`id` = c.`user_id`
+            'SELECT c.`id`, ' . $centerLabel . ' AS `name` FROM `centers` c
+               LEFT JOIN `users` u ON u.`id` = c.`user_id`
               WHERE c.`active` = 1
-              ORDER BY u.`name`'
+              ORDER BY `name`'
         )),
         'instituteCount' => (int) Database::scalar('SELECT COUNT(*) FROM `institutes` WHERE `active` = 1'),
         'activeSession' => Auth::activeSession(),
