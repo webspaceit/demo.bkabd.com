@@ -135,22 +135,34 @@ final class DatabaseSyncService
     }
 
     /** Copy exam student photos to demo for registrations already present there. */
-    public function syncStudentPhotoBatch(int $afterId = 0, int $batchSize = 25): array
+    public function syncStudentPhotoBatch(int $session, int $afterId = 0, int $batchSize = 25, string $runId = ''): array
     {
         $this->assertReady();
+        if ($session <= 0) {
+            throw new RuntimeException('The current exam session could not be determined.');
+        }
         $batchSize = max(1, min(50, $batchSize));
+        if (!preg_match('/^[a-f0-9-]{36}$/i', $runId)) {
+            throw new RuntimeException('A valid photo-sync run ID is required. Reload the page and start again.');
+        }
         $source = $this->connectSource();
         $target = $this->connectTarget();
         try {
+            if ($afterId === 0) {
+                $this->assertPhotoSyncHistoryTable($target);
+                $start = $target->prepare('INSERT INTO `codex_student_photo_sync_runs` (`run_id`, `session`, `status`, `started_at`, `updated_at`) VALUES (?, ?, \'running\', NOW(), NOW())');
+                $start->execute([$runId, $session]);
+            }
             $stmt = $source->prepare(
-                'SELECT `id`, `registration`, `photo` FROM `students` WHERE `id` > ? '
+                'SELECT `id`, `registration`, `photo` FROM `students` WHERE `session` = ? AND `id` > ? '
                 . 'AND `registration` IS NOT NULL AND TRIM(`registration`) <> \'\' '
                 . 'AND `photo` IS NOT NULL AND TRIM(`photo`) <> \'\' ORDER BY `id` ASC LIMIT ' . $batchSize
             );
-            $stmt->execute([max(0, $afterId)]);
+            $stmt->execute([$session, max(0, $afterId)]);
             $sourceRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if ($sourceRows === []) {
-                return ['done' => true, 'next_after_id' => $afterId, 'checked' => 0, 'updated' => 0, 'missing_demo' => 0, 'unavailable' => 0];
+                $this->recordPhotoSyncBatch($target, $runId, 0, 0, 0, 0, $afterId, true);
+                return ['done' => true, 'session' => $session, 'next_after_id' => $afterId, 'checked' => 0, 'updated' => 0, 'missing_demo' => 0, 'unavailable' => 0];
             }
 
             $registrations = array_values(array_unique(array_map(static fn(array $row): string => trim((string) $row['registration']), $sourceRows)));
@@ -172,6 +184,8 @@ final class DatabaseSyncService
             $update = $target->prepare('UPDATE `students` SET `photo` = ?, `updated_at` = NOW() WHERE `id` = ?');
             $counts = ['updated' => 0, 'missing_demo' => 0, 'unavailable' => 0];
             $lastId = (int) $sourceRows[array_key_last($sourceRows)]['id'];
+            $matched = [];
+            $primaryUrls = [];
             foreach ($sourceRows as $sourceRow) {
                 $key = mb_strtolower(trim((string) $sourceRow['registration']), 'UTF-8');
                 $targetRow = $targetByRegistration[$key] ?? null;
@@ -179,7 +193,32 @@ final class DatabaseSyncService
                     $counts['missing_demo']++;
                     continue;
                 }
-                $photo = $this->downloadStudentPhoto((string) $sourceRow['photo'], (int) $targetRow['id']);
+                $urls = $this->studentPhotoUrls((string) $sourceRow['photo']);
+                if ($urls === []) {
+                    $counts['unavailable']++;
+                    continue;
+                }
+                $jobId = count($matched);
+                $matched[$jobId] = ['source' => $sourceRow, 'target' => $targetRow, 'urls' => $urls];
+                $primaryUrls[$jobId] = $urls[0];
+            }
+
+            // Fetch each chunk concurrently so latency is paid once per batch instead of once per photo.
+            $photoBytesByJob = $this->fetchStudentPhotoUrls($primaryUrls);
+            $fallbackUrls = [];
+            foreach ($matched as $jobId => $job) {
+                if (empty($photoBytesByJob[$jobId]) && isset($job['urls'][1])) {
+                    $fallbackUrls[$jobId] = $job['urls'][1];
+                }
+            }
+            if ($fallbackUrls !== []) {
+                foreach ($this->fetchStudentPhotoUrls($fallbackUrls) as $jobId => $bytes) {
+                    if ($bytes !== null) { $photoBytesByJob[$jobId] = $bytes; }
+                }
+            }
+
+            foreach ($matched as $jobId => $job) {
+                $photo = $this->storeStudentPhoto($photoBytesByJob[$jobId] ?? null, (string) $job['source']['photo'], (int) $job['target']['id']);
                 if ($photo === null) {
                     $counts['unavailable']++;
                     continue;
@@ -191,7 +230,7 @@ final class DatabaseSyncService
                     continue;
                 }
                 try {
-                    $update->execute([$relativePath, (int) $targetRow['id']]);
+                    $update->execute([$relativePath, (int) $job['target']['id']]);
                 } catch (\Throwable $e) {
                     @unlink($absolutePath);
                     throw $e;
@@ -199,17 +238,143 @@ final class DatabaseSyncService
                 $counts['updated']++;
             }
 
-            return ['done' => count($sourceRows) < $batchSize, 'next_after_id' => $lastId, 'checked' => count($sourceRows)] + $counts;
+            $done = count($sourceRows) < $batchSize;
+            $this->recordPhotoSyncBatch($target, $runId, count($sourceRows), $counts['updated'], $counts['missing_demo'], $counts['unavailable'], $lastId, $done);
+            return ['done' => $done, 'session' => $session, 'next_after_id' => $lastId, 'checked' => count($sourceRows)] + $counts;
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
             if ($target->inTransaction()) { $target->rollBack(); }
         }
     }
 
-    /** @return array{0:string,1:string,2:string}|null relative path, disk path, bytes */
-    private function downloadStudentPhoto(string $storedPath, int $studentId): ?array
+    /** List recent current-destination photo-sync runs and their accumulated results. */
+    public function studentPhotoSyncHistory(int $limit = 10): array
     {
-        if (!function_exists('curl_init')) {
+        $this->assertReady();
+        $target = $this->connectTarget();
+        $check = $target->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?');
+        $check->execute(['codex_student_photo_sync_runs']);
+        if (!(int) $check->fetchColumn()) {
+            return ['requires_migration' => true, 'runs' => []];
+        }
+        $limit = max(1, min(20, $limit));
+        $rows = $target->query('SELECT `session`, `status`, `started_at`, `finished_at`, `updated_at`, `checked_count`, `copied_count`, `missing_demo_count`, `unavailable_count`, `failure_message` FROM `codex_student_photo_sync_runs` ORDER BY `id` DESC LIMIT ' . $limit)->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$row) {
+            if ($row['status'] === 'running' && strtotime((string) $row['updated_at']) < time() - 1800) {
+                $row['status'] = 'interrupted';
+            }
+        }
+        unset($row);
+        return ['requires_migration' => false, 'runs' => $rows];
+    }
+
+    /** Record an API failure without masking the original sync error. */
+    public function failStudentPhotoSync(string $runId, string $reason): void
+    {
+        if (!preg_match('/^[a-f0-9-]{36}$/i', $runId)) { return; }
+        try {
+            $target = $this->connectTarget();
+            $stmt = $target->prepare('UPDATE `codex_student_photo_sync_runs` SET `status` = \'failed\', `finished_at` = NOW(), `updated_at` = NOW(), `failure_message` = ? WHERE `run_id` = ? AND `status` = \'running\'');
+            $stmt->execute([mb_substr($reason, 0, 500), $runId]);
+        } catch (\Throwable $ignored) {
+            // History is best-effort when the database itself is unavailable.
+        }
+    }
+
+    private function assertPhotoSyncHistoryTable(PDO $target): void
+    {
+        $check = $target->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?');
+        $check->execute(['codex_student_photo_sync_runs']);
+        if (!(int) $check->fetchColumn()) {
+            throw new RuntimeException('Apply the pending student-photo sync history migration on the demo database, then try again.');
+        }
+    }
+
+    private function recordPhotoSyncBatch(PDO $target, string $runId, int $checked, int $copied, int $missing, int $unavailable, int $lastId, bool $done): void
+    {
+        $stmt = $target->prepare('UPDATE `codex_student_photo_sync_runs` SET `checked_count` = `checked_count` + ?, `copied_count` = `copied_count` + ?, `missing_demo_count` = `missing_demo_count` + ?, `unavailable_count` = `unavailable_count` + ?, `last_source_id` = ?, `status` = ?, `finished_at` = IF(? = 1, NOW(), `finished_at`), `updated_at` = NOW() WHERE `run_id` = ? AND `status` = \'running\'');
+        $stmt->execute([$checked, $copied, $missing, $unavailable, $lastId, $done ? 'completed' : 'running', $done ? 1 : 0, $runId]);
+    }
+
+    /** Count current-session photos already copied by this tool and still pending. */
+    public function previewStudentPhotoSync(int $session): array
+    {
+        $this->assertReady();
+        if ($session <= 0) {
+            throw new RuntimeException('The current exam session could not be determined.');
+        }
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $totals = $source->prepare(
+                'SELECT COUNT(*) AS `source_photos`, SUM(CASE WHEN `registration` IS NULL OR TRIM(`registration`) = \'\' THEN 1 ELSE 0 END) AS `without_registration` '
+                . 'FROM `students` WHERE `session` = ? AND `photo` IS NOT NULL AND TRIM(`photo`) <> \'\''
+            );
+            $totals->execute([$session]);
+            $totalRow = $totals->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            $sourceRows = $source->prepare(
+                'SELECT `id`, `registration` FROM `students` WHERE `session` = ? '
+                . 'AND `photo` IS NOT NULL AND TRIM(`photo`) <> \'\' '
+                . 'AND `registration` IS NOT NULL AND TRIM(`registration`) <> \'\' '
+                . 'AND `id` > ? ORDER BY `id` ASC LIMIT 500'
+            );
+            $counts = ['matched' => 0, 'uploaded' => 0, 'pending' => 0, 'missing_demo' => 0];
+            $afterId = 0;
+            do {
+                $sourceRows->execute([$session, $afterId]);
+                $rows = $sourceRows->fetchAll(PDO::FETCH_ASSOC);
+                if ($rows === []) { break; }
+                $afterId = (int) $rows[array_key_last($rows)]['id'];
+                $registrations = array_values(array_unique(array_map(static fn(array $row): string => trim((string) $row['registration']), $rows)));
+                $targetStmt = $target->prepare(
+                    'SELECT `id`, `registration`, `photo` FROM `students` WHERE `registration` IN ('
+                    . implode(',', array_fill(0, count($registrations), '?')) . ')'
+                );
+                $targetStmt->execute($registrations);
+                $targetByRegistration = [];
+                foreach ($targetStmt->fetchAll(PDO::FETCH_ASSOC) as $targetRow) {
+                    $key = mb_strtolower(trim((string) $targetRow['registration']), 'UTF-8');
+                    if (array_key_exists($key, $targetByRegistration)) {
+                        $targetByRegistration[$key] = null;
+                    } else {
+                        $targetByRegistration[$key] = $targetRow;
+                    }
+                }
+                foreach ($rows as $row) {
+                    $key = mb_strtolower(trim((string) $row['registration']), 'UTF-8');
+                    $targetRow = $targetByRegistration[$key] ?? null;
+                    if ($targetRow === null) {
+                        $counts['missing_demo']++;
+                    } else {
+                        $counts['matched']++;
+                        $photoPath = str_replace('\\', '/', (string) ($targetRow['photo'] ?? ''));
+                        if (preg_match('#(?:^|/)sync_[^/]+\.(?:jpe?g|png|gif)$#i', $photoPath)) {
+                            $counts['uploaded']++;
+                        } else {
+                            $counts['pending']++;
+                        }
+                    }
+                }
+            } while (count($rows) === 500);
+
+            return [
+                'session' => $session,
+                'source_photos' => (int) ($totalRow['source_photos'] ?? 0),
+                'without_registration' => (int) ($totalRow['without_registration'] ?? 0),
+            ] + $counts + [
+                'note' => 'Already synced counts demo photo paths created by this sync tool. Pending counts matched students whose demo photo has not been synced by this tool yet; sync replaces the current demo photo when an exam photo is available.',
+            ];
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+            if ($target->inTransaction()) { $target->rollBack(); }
+        }
+    }
+
+    /** @return list<string> safe source URLs, with the legacy path as fallback when applicable */
+    private function studentPhotoUrls(string $storedPath): array
+    {
+        if (!function_exists('curl_init') || !function_exists('curl_multi_init')) {
             throw new RuntimeException('Student photo sync requires the PHP cURL extension on demo.');
         }
         $base = rtrim((string) Config::get('SYNC_SOURCE_FILES_BASE_URL', 'https://exam.bkabd.com'), '/');
@@ -221,55 +386,88 @@ final class DatabaseSyncService
         $path = trim(str_replace('\\', '/', $storedPath));
         if (preg_match('#^https?://#i', $path)) {
             $parts = parse_url($path);
-            if (!is_array($parts) || strtolower((string) ($parts['host'] ?? '')) !== strtolower((string) $baseParts['host'])) { return null; }
+            if (!is_array($parts) || strtolower((string) ($parts['host'] ?? '')) !== strtolower((string) $baseParts['host'])) { return []; }
             $path = (string) ($parts['path'] ?? '');
         }
         $path = ltrim($path, '/');
-        if ($path === '' || preg_match('/[\x00-\x20?#]/', $path)) { return null; }
+        if ($path === '' || preg_match('/[\x00-\x20?#]/', $path)) { return []; }
         $paths = str_contains($path, '/') ? [$path] : ['uploads/students/' . $path, 'images/students/' . $path];
-        $bytes = '';
+        $urls = [];
         foreach ($paths as $candidate) {
             $segments = explode('/', $candidate);
             foreach ($segments as $segment) {
-                if ($segment === '' || $segment === '.' || $segment === '..') { return null; }
+                if ($segment === '' || $segment === '.' || $segment === '..') { return []; }
             }
-            $url = $base . '/' . implode('/', array_map('rawurlencode', $segments));
-            $attemptBytes = '';
-            $handle = curl_init($url);
-            curl_setopt_array($handle, [
-                CURLOPT_RETURNTRANSFER => false,
-                CURLOPT_FOLLOWLOCATION => false,
-                CURLOPT_CONNECTTIMEOUT => 5,
-                CURLOPT_TIMEOUT => 15,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_SSL_VERIFYHOST => 2,
-                CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use (&$attemptBytes): int {
-                    if (strlen($attemptBytes) + strlen($chunk) > 2 * 1024 * 1024) { return 0; }
-                    $attemptBytes .= $chunk;
-                    return strlen($chunk);
-                },
-            ]);
-            $ok = curl_exec($handle);
-            $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
-            curl_close($handle);
-            if ($ok !== false && $status === 200 && $attemptBytes !== '') {
-                $bytes = $attemptBytes;
-                break;
-            }
+            $urls[] = $base . '/' . implode('/', array_map('rawurlencode', $segments));
         }
-        if ($bytes === '') { return null; }
+        return $urls;
+    }
+
+    /** @param array<int,string> $urls @return array<int,string|null> */
+    private function fetchStudentPhotoUrls(array $urls): array
+    {
+        if ($urls === []) { return []; }
+        $multi = curl_multi_init();
+        $handles = [];
+        $buffers = [];
+        $results = [];
+        try {
+            foreach ($urls as $jobId => $url) {
+                $buffers[$jobId] = '';
+                $handle = curl_init($url);
+                curl_setopt_array($handle, [
+                    CURLOPT_RETURNTRANSFER => false,
+                    CURLOPT_FOLLOWLOCATION => false,
+                    CURLOPT_CONNECTTIMEOUT => 3,
+                    CURLOPT_TIMEOUT => 10,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_SSL_VERIFYHOST => 2,
+                    CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use (&$buffers, $jobId): int {
+                        if (strlen($buffers[$jobId]) + strlen($chunk) > 2 * 1024 * 1024) { return 0; }
+                        $buffers[$jobId] .= $chunk;
+                        return strlen($chunk);
+                    },
+                ]);
+                curl_multi_add_handle($multi, $handle);
+                $handles[$jobId] = $handle;
+            }
+            do {
+                do { $status = curl_multi_exec($multi, $running); } while ($status === CURLM_CALL_MULTI_PERFORM);
+                if ($running > 0) {
+                    $selected = curl_multi_select($multi, 0.5);
+                    if ($selected === -1) { usleep(10000); }
+                }
+            } while ($running > 0 && $status === CURLM_OK);
+
+            foreach ($handles as $jobId => $handle) {
+                $statusCode = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+                $results[$jobId] = curl_errno($handle) === 0 && $statusCode === 200 && $buffers[$jobId] !== '' ? $buffers[$jobId] : null;
+            }
+        } finally {
+            foreach ($handles as $handle) {
+                curl_multi_remove_handle($multi, $handle);
+            }
+            curl_multi_close($multi);
+        }
+        return $results;
+    }
+
+    /** @return array{0:string,1:string,2:string}|null relative path, disk path, bytes */
+    private function storeStudentPhoto(?string $bytes, string $storedPath, int $studentId): ?array
+    {
+        if ($bytes === null || $bytes === '') { return null; }
         $imageInfo = @getimagesizefromstring($bytes);
         $allowed = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_GIF => 'gif'];
         if ($imageInfo === false || !isset($allowed[(int) $imageInfo[2]]) || $imageInfo[0] > 8000 || $imageInfo[1] > 8000) { return null; }
 
-        $image = function_exists('imagecreatefromstring') ? @imagecreatefromstring($bytes) : false;
-        if ($image !== false) {
-            $bytes = $this->encodeStudentPhoto($image);
-            unset($image);
-            $ext = 'jpg';
-        } else {
-            $ext = $allowed[(int) $imageInfo[2]];
+        if (!function_exists('imagecreatefromstring') || !function_exists('imagecreatetruecolor') || !function_exists('imagejpeg')) {
+            throw new RuntimeException('Student photo resizing requires the PHP GD extension on demo.');
         }
+        $image = @imagecreatefromstring($bytes);
+        if ($image === false) { return null; }
+        $bytes = $this->encodeStudentPhoto($image);
+        unset($image);
+        $ext = 'jpg';
         $directory = BASE_PATH . '/public/uploads/students';
         if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) { return null; }
         $name = 'sync_' . $studentId . '_' . substr(hash('sha256', $storedPath), 0, 16) . '.' . $ext;
@@ -280,14 +478,25 @@ final class DatabaseSyncService
     {
         $width = imagesx($image);
         $height = imagesy($image);
-        $scale = max($width, $height) > 600 ? 600 / max($width, $height) : 1.0;
-        $newWidth = max(1, (int) round($width * $scale));
-        $newHeight = max(1, (int) round($height * $scale));
-        $canvas = imagecreatetruecolor($newWidth, $newHeight);
+        $targetWidth = 60;
+        $targetHeight = 70;
+        $targetRatio = $targetWidth / $targetHeight;
+        if ($width / $height > $targetRatio) {
+            $cropHeight = $height;
+            $cropWidth = max(1, (int) round($height * $targetRatio));
+            $sourceX = (int) floor(($width - $cropWidth) / 2);
+            $sourceY = 0;
+        } else {
+            $cropWidth = $width;
+            $cropHeight = max(1, (int) round($width / $targetRatio));
+            $sourceX = 0;
+            $sourceY = (int) floor(($height - $cropHeight) / 2);
+        }
+        $canvas = imagecreatetruecolor($targetWidth, $targetHeight);
         imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
-        imagecopyresampled($canvas, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+        imagecopyresampled($canvas, $image, 0, 0, $sourceX, $sourceY, $targetWidth, $targetHeight, $cropWidth, $cropHeight);
         ob_start();
-        imagejpeg($canvas, null, 82);
+        imagejpeg($canvas, null, 86);
         $encoded = (string) ob_get_clean();
         if ($encoded === '') { throw new RuntimeException('A student photo could not be encoded on demo.'); }
         return $encoded;

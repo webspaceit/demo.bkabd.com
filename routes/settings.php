@@ -28,6 +28,8 @@ Router::get('/database-sync', function () {
 }, 'auth|permission:settings');
 Router::get('/api/database-sync/status', [DatabaseSyncController::class, 'status'], 'auth|permission:settings');
 Router::get('/api/database-sync/latest-students', [DatabaseSyncController::class, 'latestStudents'], 'auth|permission:settings');
+Router::get('/api/database-sync/student-photo-preview', [DatabaseSyncController::class, 'previewStudentPhotos'], 'auth|permission:settings');
+Router::get('/api/database-sync/student-photo-history', [DatabaseSyncController::class, 'studentPhotoSyncHistory'], 'auth|permission:settings');
 Router::get('/api/database-sync/student-import-preview', [DatabaseSyncController::class, 'previewStudentImport'], 'auth|permission:settings');
 Router::post('/api/database-sync/import-students', [DatabaseSyncController::class, 'importStudents'], 'auth|permission:settings');
 Router::post('/api/database-sync/sync-student-photos', [DatabaseSyncController::class, 'syncStudentPhotos'], 'auth|permission:settings');

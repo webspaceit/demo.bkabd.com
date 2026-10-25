@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Request;
+use App\Core\Auth;
 use App\Services\DatabaseSyncService;
 use PDOException;
 use RuntimeException;
@@ -12,10 +13,12 @@ final class DatabaseSyncController extends Controller
     public function status(): array
     {
         try {
-            return (new DatabaseSyncService())->readiness();
+            $status = (new DatabaseSyncService())->readiness();
+            $status['active_session'] = (int) Auth::activeSession();
+            return $status;
         } catch (PDOException $e) {
             error_log('[database-sync] status failed: ' . $e->getCode());
-            return ['ready' => false, 'missing' => ['Could not connect to the configured demo database; check host, database, and target account.'], 'source' => [], 'target' => [], 'pending_migrations' => []];
+            return ['ready' => false, 'active_session' => 0, 'missing' => ['Could not connect to the configured demo database; check host, database, and target account.'], 'source' => [], 'target' => [], 'pending_migrations' => []];
         }
     }
 
@@ -89,13 +92,46 @@ final class DatabaseSyncController extends Controller
             return ['error' => 'Student-photo sync can run only from demo.bkabd.com or an explicitly allowed local dashboard.'];
         }
         $afterId = max(0, (int) $request->input('after_id', 0));
+        $runId = trim((string) $request->input('run_id', ''));
+        $service = new DatabaseSyncService();
         try {
-            return (new DatabaseSyncService())->syncStudentPhotoBatch($afterId, 25);
+            $activeSession = (int) Auth::activeSession();
+            $requestedSession = (int) $request->input('session', 0);
+            if ($activeSession <= 0 || $requestedSession !== $activeSession) {
+                return ['error' => 'The active session changed or is unavailable. Reload this page and start photo sync again.'];
+            }
+            return $service->syncStudentPhotoBatch($activeSession, $afterId, 25, $runId);
+        } catch (RuntimeException $e) {
+            $service->failStudentPhotoSync($runId, $e->getMessage());
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            $service->failStudentPhotoSync($runId, 'Database error (' . (string) $e->getCode() . ').');
+            error_log('[database-sync] student-photo sync failed: ' . $e->getCode());
+            return ['error' => 'Student-photo sync stopped safely. Check database permissions and the server error log.'];
+        }
+    }
+
+    public function studentPhotoSyncHistory(): array
+    {
+        try {
+            return (new DatabaseSyncService())->studentPhotoSyncHistory();
         } catch (RuntimeException $e) {
             return ['error' => $e->getMessage()];
         } catch (PDOException $e) {
-            error_log('[database-sync] student-photo sync failed: ' . $e->getCode());
-            return ['error' => 'Student-photo sync stopped safely. Check database permissions and the server error log.'];
+            error_log('[database-sync] student-photo history failed: ' . $e->getCode());
+            return ['error' => 'Could not load student-photo sync history. Check demo database read access.'];
+        }
+    }
+
+    public function previewStudentPhotos(): array
+    {
+        try {
+            return (new DatabaseSyncService())->previewStudentPhotoSync((int) Auth::activeSession());
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] student-photo preview failed: ' . $e->getCode());
+            return ['error' => 'Could not count current-session student photos. Check read access to students on exam and demo.'];
         }
     }
 

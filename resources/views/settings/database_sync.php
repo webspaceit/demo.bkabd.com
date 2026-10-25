@@ -7,7 +7,7 @@
         <div class="card-body space-y-5">
             <p class="text-sm leading-6 text-slate-600">
                 This page compares table structures and can import missing student registrations from <strong>exam.bkabd.com</strong> into <strong>demo.bkabd.com</strong>.
-                The exam connection is read-only. Student imports add rows only; center-name sync updates linked display names on demo after preview and confirmation.
+                The exam connection is read-only. Student imports add rows only; photo sync is limited to the current session; center-name sync updates linked display names on demo after preview and confirmation.
             </p>
 
             <div id="db-sync-setup" class="hidden rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
@@ -63,11 +63,22 @@
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 class="font-semibold text-sky-950">Sync student photos from exam</h2>
-                        <p class="mt-1 text-sm leading-6 text-slate-700">Matches by registration number and syncs photos for students already in demo, including newly imported students. An available exam photo replaces the demo photo; missing or unsafe source photos leave the demo photo unchanged. Exam stays read-only.</p>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Matches by registration number and syncs only students in the current session, including newly imported students from that session. Photos are center-cropped and resized to 60 × 70 px before saving in demo. An available exam photo replaces the demo photo; missing or unsafe source photos leave the demo photo unchanged. Exam stays read-only.</p>
                     </div>
-                    <button id="db-sync-start-photos" type="button" class="btn btn-primary" disabled>Sync student photos</button>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="db-sync-refresh-photo-counts" type="button" class="btn btn-light" disabled>Refresh counts</button>
+                        <button id="db-sync-start-photos" type="button" class="btn btn-primary" disabled>Sync student photos</button>
+                    </div>
                 </div>
+                <div id="db-sync-photo-summary" class="mt-3 hidden rounded-lg border border-sky-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
                 <div id="db-sync-photo-progress" class="mt-3 hidden text-sm text-slate-600" aria-live="polite"></div>
+                <div class="mt-4 rounded-lg border border-sky-200 bg-white p-3">
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                        <h3 class="font-semibold text-slate-800">Recent photo syncs</h3>
+                        <button id="db-sync-refresh-photo-history" type="button" class="btn btn-light">Refresh history</button>
+                    </div>
+                    <div id="db-sync-photo-history" class="overflow-x-auto text-sm text-slate-600" aria-live="polite">Loading sync history…</div>
+                </div>
             </section>
 
             <section class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
@@ -109,7 +120,7 @@
             <dialog id="db-sync-photos-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
                 <form method="dialog" class="p-6">
                     <h2 class="text-lg font-semibold text-slate-900">Sync student photos?</h2>
-                    <p class="mt-3 text-sm leading-6 text-slate-600">Copy available exam photos into demo for matching registration numbers, replacing their current demo photo. Students without a usable exam photo will be left unchanged. Exam remains read-only.</p>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">Copy available exam photos from the current session into demo for matching registration numbers. Photos will be center-cropped and resized to 60 × 70 px, replacing the current demo photo. Students outside the current session and students without a usable exam photo will be left unchanged. Exam remains read-only.</p>
                     <div class="mt-6 flex justify-end gap-2">
                         <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
                         <button type="submit" value="confirm" class="btn btn-primary">Continue photo sync</button>
@@ -153,7 +164,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const importProgress = document.getElementById('db-sync-import-progress');
     const importConfirmDialog = document.getElementById('db-sync-import-confirm');
     const syncPhotosButton = document.getElementById('db-sync-start-photos');
+    const refreshPhotoCountsButton = document.getElementById('db-sync-refresh-photo-counts');
+    const photoSummary = document.getElementById('db-sync-photo-summary');
     const photoProgress = document.getElementById('db-sync-photo-progress');
+    const photoHistory = document.getElementById('db-sync-photo-history');
+    const refreshPhotoHistoryButton = document.getElementById('db-sync-refresh-photo-history');
     const photosConfirmDialog = document.getElementById('db-sync-photos-confirm');
     const previewCentersButton = document.getElementById('db-sync-preview-centers');
     const syncCentersButton = document.getElementById('db-sync-start-centers');
@@ -162,6 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const studentsStatus = document.getElementById('db-sync-students-status');
     const studentsTable = document.getElementById('db-sync-students-table');
     let state = null;
+    let photoSession = 0;
 
     function message(text, error) {
         feedback.textContent = text;
@@ -182,6 +198,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function loadStatus() {
         try {
             state = await BK.get('/api/database-sync/status');
+            photoSession = Number(state.active_session || 0);
             document.getElementById('db-sync-source').textContent = state.source.host ? state.source.host + ' / ' + state.source.database + ' · read-only' : 'Source connection not configured';
             document.getElementById('db-sync-target').textContent = state.target.host ? state.target.host + ' / ' + state.target.database + ' · dedicated demo connection' : 'Demo target is not explicitly confirmed';
             if (state.ready) {
@@ -191,10 +208,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 refreshStudents.disabled = false;
                 previewImportButton.disabled = false;
                 previewCentersButton.disabled = false;
-                syncPhotosButton.disabled = false;
+                syncPhotosButton.disabled = photoSession <= 0;
+                refreshPhotoCountsButton.disabled = photoSession <= 0;
                 applyButton.classList.toggle('hidden', !state.pending_migrations.length);
                 message('Ready. Comparing the exam connection reads schema metadata only.', false);
                 await loadLatestStudents();
+                previewPhotoCounts();
+                loadPhotoSyncHistory();
             } else {
                 badge.textContent = 'Setup required';
                 badge.className = 'rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800';
@@ -254,6 +274,82 @@ document.addEventListener('DOMContentLoaded', function () {
 
     refreshStudents.addEventListener('click', loadLatestStudents);
 
+    async function previewPhotoCounts() {
+        if (photoSession <= 0) return;
+        photoSummary.classList.remove('hidden');
+        photoSummary.textContent = 'Counting current-session student photos…';
+        try {
+            const data = await BK.get('/api/database-sync/student-photo-preview');
+            if (data.error) { photoSummary.textContent = data.error; return; }
+            photoSummary.textContent = 'Session ' + data.session + ': ' + Number(data.source_photos || 0) + ' exam student(s) have a photo; ' + Number(data.uploaded || 0) + ' already synced, ' + Number(data.pending || 0) + ' pending sync, ' + Number(data.missing_demo || 0) + ' have no unique demo match, and ' + Number(data.without_registration || 0) + ' have no registration number. ' + (data.note || '');
+        } catch (error) {
+            photoSummary.textContent = error.message || 'Could not count current-session student photos.';
+        }
+    }
+
+    refreshPhotoCountsButton.addEventListener('click', previewPhotoCounts);
+    refreshPhotoHistoryButton.addEventListener('click', loadPhotoSyncHistory);
+
+    async function loadPhotoSyncHistory() {
+        photoHistory.textContent = 'Loading sync history…';
+        try {
+            const data = await BK.get('/api/database-sync/student-photo-history');
+            if (data.error) { photoHistory.textContent = data.error; return; }
+            if (data.requires_migration) {
+                photoHistory.textContent = 'Apply the pending student-photo sync history migration using the migration controls above. Sync runs will be recorded after it is applied.';
+                return;
+            }
+            const runs = data.runs || [];
+            if (!runs.length) { photoHistory.textContent = 'No student-photo sync runs have been recorded yet.'; return; }
+            const columns = [
+                ['Started', 'started_at'], ['Session', 'session'], ['Status', 'status'],
+                ['Checked', 'checked_count'], ['Copied', 'copied_count'],
+                ['No demo match', 'missing_demo_count'], ['Unavailable', 'unavailable_count']
+            ];
+            const table = document.createElement('table');
+            table.className = 'min-w-full border-collapse text-left';
+            const thead = document.createElement('thead');
+            const headRow = document.createElement('tr');
+            columns.forEach(function (column) {
+                const th = document.createElement('th');
+                th.className = 'border-b px-3 py-2 font-semibold text-slate-700';
+                th.textContent = column[0];
+                headRow.appendChild(th);
+            });
+            thead.appendChild(headRow);
+            table.appendChild(thead);
+            const tbody = document.createElement('tbody');
+            runs.forEach(function (run) {
+                const row = document.createElement('tr');
+                columns.forEach(function (column) {
+                    const td = document.createElement('td');
+                    td.className = 'border-b px-3 py-2';
+                    let value = run[column[1]];
+                    if (column[1] === 'started_at' && value) {
+                        const date = new Date(String(value).replace(' ', 'T'));
+                        value = Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+                    }
+                    td.textContent = value == null ? '—' : String(value);
+                    row.appendChild(td);
+                });
+                tbody.appendChild(row);
+                if (run.failure_message) {
+                    const detailRow = document.createElement('tr');
+                    const detail = document.createElement('td');
+                    detail.colSpan = columns.length;
+                    detail.className = 'border-b px-3 py-2 text-rose-700';
+                    detail.textContent = 'Stopped: ' + run.failure_message;
+                    detailRow.appendChild(detail);
+                    tbody.appendChild(detailRow);
+                }
+            });
+            table.appendChild(tbody);
+            photoHistory.replaceChildren(table);
+        } catch (error) {
+            photoHistory.textContent = error.message || 'Could not load sync history.';
+        }
+    }
+
     function confirmPhotoSync() {
         return new Promise(function (resolve) {
             photosConfirmDialog.returnValue = '';
@@ -273,19 +369,25 @@ document.addEventListener('DOMContentLoaded', function () {
         let updated = 0;
         let missingDemo = 0;
         let unavailable = 0;
+        const runId = (window.crypto && typeof window.crypto.randomUUID === 'function')
+            ? window.crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
         try {
             while (true) {
-                const data = await BK.post('/api/database-sync/sync-student-photos', { after_id: afterId });
+                const data = await BK.post('/api/database-sync/sync-student-photos', { after_id: afterId, session: photoSession, run_id: runId });
                 if (data.error) throw new Error(data.error);
                 checked += Number(data.checked || 0);
                 updated += Number(data.updated || 0);
                 missingDemo += Number(data.missing_demo || 0);
                 unavailable += Number(data.unavailable || 0);
                 afterId = Number(data.next_after_id || afterId);
-                photoProgress.textContent = 'Checked ' + checked + ' exam student photo record(s)… copied ' + updated + ', no demo match ' + missingDemo + ', unavailable or invalid photo ' + unavailable + '.';
+                photoProgress.textContent = 'Session ' + photoSession + ': checked ' + checked + ' exam photo record(s)… copied ' + updated + ', no demo match ' + missingDemo + ', unavailable or invalid photo ' + unavailable + '.';
                 if (data.done) break;
             }
-            photoProgress.textContent = 'Photo sync finished. Copied ' + updated + ' photo(s) to demo; no demo match ' + missingDemo + ', unavailable or invalid ' + unavailable + '. Exam was read-only.';
+            photoProgress.textContent = 'Session ' + photoSession + ' photo sync finished. Copied ' + updated + ' photo(s) to demo; no demo match ' + missingDemo + ', unavailable or invalid ' + unavailable + '. Exam was read-only.';
             message('Student-photo sync complete. Updated ' + updated + ' demo student photo(s).', false);
             BK.toast('Copied ' + updated + ' student photo(s) to demo.', 'success');
         } catch (error) {
@@ -294,6 +396,8 @@ document.addEventListener('DOMContentLoaded', function () {
             BK.toast(error.message || 'Could not sync student photos.', 'error');
         } finally {
             syncPhotosButton.disabled = false;
+            previewPhotoCounts();
+            loadPhotoSyncHistory();
         }
     });
 
