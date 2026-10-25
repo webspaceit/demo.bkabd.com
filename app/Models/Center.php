@@ -5,9 +5,9 @@ namespace App\Models;
 use App\Core\Model;
 
 /**
- * Exam center. Display name lives on the linked user row
- * (join users on users.id = centers.user_id); institute_name is the
- * physical venue.
+ * Center. Account-backed centers use users.name; synchronized demo reference
+ * rows can store display_name without creating a login account. institute_name
+ * remains the physical venue.
  */
 class Center extends Model
 {

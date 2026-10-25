@@ -7,7 +7,7 @@
         <div class="card-body space-y-5">
             <p class="text-sm leading-6 text-slate-600">
                 This page compares table structures and can import missing student registrations from <strong>exam.bkabd.com</strong> into <strong>demo.bkabd.com</strong>.
-                The exam connection is read-only. Student imports add rows only; photo sync is limited to the current session; center-name sync updates linked display names on demo after preview and confirmation.
+                The exam connection is read-only. Student imports add rows only; photo sync is limited to the current session; center/institute references and center display names are copied to demo only after preview and confirmation.
             </p>
 
             <div id="db-sync-setup" class="hidden rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
@@ -27,7 +27,7 @@
                 </section>
                 <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
                     <h2 class="font-semibold text-sky-900">Demo: migration destination</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables, INSERT and UPDATE on <code>students</code> for imports and photo paths, INSERT on <code>student_duplicate_keys</code> when present, and ALTER/UPDATE on <code>centers</code> for center-name sync. The app also needs write access to <code>public/uploads/students</code>. It does not need write access to exam.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables, INSERT and UPDATE on <code>students</code> for imports and photo paths, INSERT on <code>student_duplicate_keys</code> when present, and permission to apply the reviewed <code>centers.user_id</code> migration plus INSERT on <code>centers</code> and <code>institutes</code> for reference sync. It also needs UPDATE on <code>centers</code> for center-name sync and write access to <code>public/uploads/students</code>. It does not need write access to exam.</p>
                     <p id="db-sync-target" class="mt-2 text-xs text-slate-500"></p>
                 </section>
             </div>
@@ -95,6 +95,31 @@
                 </div>
                 <div id="db-sync-centers-preview" class="mt-3 hidden overflow-x-auto rounded-lg border border-indigo-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
             </section>
+
+            <section class="rounded-xl border border-teal-200 bg-teal-50/50 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-semibold text-teal-950">Sync missing centers and institutes</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Preview missing exam reference records, then add safe matches to demo. Existing records are not changed. Creates center references without login accounts and copies no passwords, photos, or private contact information. Exam stays read-only. Missing geographic references can still prevent some student imports.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="db-sync-preview-references" type="button" class="btn btn-light" disabled>Preview center/institute sync</button>
+                        <button id="db-sync-start-references" type="button" class="btn btn-primary hidden" disabled>Sync missing references</button>
+                    </div>
+                </div>
+                <div id="db-sync-references-preview" class="mt-3 hidden overflow-x-auto rounded-lg border border-teal-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
+            </section>
+
+            <dialog id="db-sync-references-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
+                <form method="dialog" class="p-6">
+                    <h2 class="text-lg font-semibold text-slate-900">Add missing center and institute references?</h2>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">Only the missing reference records shown in the preview will be added to demo. Existing records remain unchanged. No login accounts, passwords, or private contact details are copied. Exam remains read-only.</p>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
+                        <button type="submit" value="confirm" class="btn btn-primary">Continue sync</button>
+                    </div>
+                </form>
+            </dialog>
 
             <dialog id="db-sync-centers-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
                 <form method="dialog" class="p-6">
@@ -178,6 +203,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const syncCentersButton = document.getElementById('db-sync-start-centers');
     const centersPreview = document.getElementById('db-sync-centers-preview');
     const centersConfirmDialog = document.getElementById('db-sync-centers-confirm');
+    const previewReferencesButton = document.getElementById('db-sync-preview-references');
+    const syncReferencesButton = document.getElementById('db-sync-start-references');
+    const referencesPreview = document.getElementById('db-sync-references-preview');
+    const referencesConfirmDialog = document.getElementById('db-sync-references-confirm');
     const studentsStatus = document.getElementById('db-sync-students-status');
     const studentsTable = document.getElementById('db-sync-students-table');
     let state = null;
@@ -212,6 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 refreshStudents.disabled = false;
                 previewImportButton.disabled = false;
                 previewCentersButton.disabled = false;
+                previewReferencesButton.disabled = false;
                 syncPhotosButton.disabled = photoSession <= 0;
                 refreshPhotoCountsButton.disabled = photoSession <= 0;
                 applyButton.classList.toggle('hidden', !state.pending_migrations.length);
@@ -579,6 +609,58 @@ document.addEventListener('DOMContentLoaded', function () {
             syncCentersButton.disabled = false;
             previewCentersButton.disabled = false;
         }
+    });
+
+    function confirmReferenceSync() {
+        return new Promise(function (resolve) {
+            referencesConfirmDialog.returnValue = '';
+            referencesConfirmDialog.addEventListener('close', function () { resolve(referencesConfirmDialog.returnValue === 'confirm'); }, { once: true });
+            referencesConfirmDialog.showModal();
+        });
+    }
+
+    async function previewReferences() {
+        previewReferencesButton.disabled = true;
+        syncReferencesButton.classList.add('hidden');
+        referencesPreview.classList.remove('hidden');
+        referencesPreview.textContent = 'Comparing center and institute references…';
+        try {
+            const data = await BK.get('/api/database-sync/reference-preview');
+            if (data.error) { referencesPreview.textContent = data.error; return; }
+            referencesPreview.replaceChildren();
+            const summary = document.createElement('p');
+            summary.className = 'mb-3';
+            summary.textContent = Number(data.centers || 0) + ' center(s) and ' + Number(data.institutes || 0) + ' institute(s) would be added. Ambiguous centers: ' + Number(data.ambiguous_centers || 0) + '; ambiguous institutes: ' + Number(data.ambiguous_institutes || 0) + '; institutes without a safe center match: ' + Number(data.unmatched_institutes || 0) + '. ' + (data.note || '');
+            referencesPreview.appendChild(summary);
+            [['Centers to add', data.examples && data.examples.centers, ['code','name','venue']], ['Institutes to add', data.examples && data.examples.institutes, ['name','certificate_no','center']]].forEach(function (group) {
+                const rows = group[1] || [];
+                if (!rows.length) return;
+                const heading = document.createElement('h3'); heading.className = 'mt-3 font-semibold'; heading.textContent = group[0]; referencesPreview.appendChild(heading);
+                const table = document.createElement('table'); table.className = 'table w-full';
+                const head = document.createElement('tr'); group[2].forEach(function (key) { const th=document.createElement('th'); th.textContent=key.replace('_',' '); head.appendChild(th); });
+                const thead=document.createElement('thead'); thead.appendChild(head); table.appendChild(thead);
+                const tbody=document.createElement('tbody'); rows.forEach(function (row) { const tr=document.createElement('tr'); group[2].forEach(function (key) { const td=document.createElement('td'); td.textContent=String(row[key] || '—'); tr.appendChild(td); }); tbody.appendChild(tr); });
+                table.appendChild(tbody); referencesPreview.appendChild(table);
+            });
+            const count = Number(data.centers || 0) + Number(data.institutes || 0);
+            syncReferencesButton.classList.toggle('hidden', count < 1);
+            syncReferencesButton.disabled = count < 1;
+        } catch (error) {
+            referencesPreview.textContent = error.message || 'Could not preview reference sync.';
+        } finally { previewReferencesButton.disabled = false; }
+    }
+    previewReferencesButton.addEventListener('click', previewReferences);
+    syncReferencesButton.addEventListener('click', async function () {
+        if (!(await confirmReferenceSync())) return;
+        syncReferencesButton.disabled = true; previewReferencesButton.disabled = true;
+        try {
+            const data = await BK.post('/api/database-sync/sync-references', {});
+            if (data.error) throw new Error(data.error);
+            const text = 'Reference sync complete. Added ' + Number(data.centers_added || 0) + ' center(s) and ' + Number(data.institutes_added || 0) + ' institute(s).';
+            message(text + ' Exam was read-only.', false); BK.toast(text, 'success');
+            await previewReferences();
+        } catch (error) { message(error.message || 'Could not sync references.', true); BK.toast(error.message || 'Could not sync references.', 'error'); }
+        finally { syncReferencesButton.disabled = false; previewReferencesButton.disabled = false; }
     });
 
     previewImportButton.addEventListener('click', async function () {

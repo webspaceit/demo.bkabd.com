@@ -641,6 +641,165 @@ final class DatabaseSyncService
         }
     }
 
+    /** Preview missing center and institute reference rows using stable identities only. */
+    public function previewReferenceSync(): array
+    {
+        $this->assertReady();
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $this->assertReferenceSyncSchema($target);
+            $plan = $this->referenceSyncPlan($source, $target);
+            return [
+                'centers' => count($plan['centers']),
+                'institutes' => count($plan['institutes']),
+                'ambiguous_centers' => $plan['ambiguous_centers'],
+                'ambiguous_institutes' => $plan['ambiguous_institutes'],
+                'unmatched_institutes' => $plan['unmatched_institutes'],
+                'examples' => [
+                    'centers' => array_slice(array_map(static fn(array $r): array => ['code' => $r['code'], 'name' => $r['name'], 'venue' => $r['venue']], $plan['centers']), 0, 100),
+                    'institutes' => array_slice(array_map(static fn(array $r): array => ['name' => $r['name'], 'certificate_no' => $r['certificate_no'], 'center' => $r['center_name']], $plan['institutes']), 0, 100),
+                ],
+                'note' => 'Only missing center and institute reference rows are added to demo. Existing rows are unchanged; no user accounts, passwords, photos, or private contact details are copied. Exam remains read-only. Geographic references still must match safely.',
+            ];
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
+    /** Add only previewed missing reference rows, rechecking identities inside the target transaction. */
+    public function syncReferences(): array
+    {
+        $this->assertReady();
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $this->assertReferenceSyncSchema($target);
+            $plan = $this->referenceSyncPlan($source, $target);
+            $target->beginTransaction();
+            try {
+                $centerInsert = $target->prepare('INSERT INTO `centers` (`user_id`,`division_id`,`district_id`,`upazila_id`,`union_id`,`institute_name`,`code`,`display_name`,`active`,`created_at`,`updated_at`) VALUES (NULL,?,?,?,?,?,?,?,?,NOW(),NOW())');
+                $centerMap = $plan['center_map'];
+                foreach ($plan['centers'] as $row) {
+                    $centerInsert->execute([$row['division_id'], $row['district_id'], $row['upazila_id'], $row['union_id'], $row['venue'], $row['code'], $row['name'], $row['active']]);
+                    $centerMap[(int) $row['source_id']] = (int) $target->lastInsertId();
+                }
+                $instituteInsert = $target->prepare('INSERT INTO `institutes` (`center_id`,`name`,`division_id`,`district_id`,`upazila_id`,`union_id`,`certificate_no`,`active`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,NOW(),NOW())');
+                foreach ($plan['institutes'] as $row) {
+                    $centerId = $centerMap[(int) $row['source_center_id']] ?? null;
+                    if ($centerId === null) { continue; }
+                    $instituteInsert->execute([$centerId, $row['name'], $row['division_id'], $row['district_id'], $row['upazila_id'], $row['union_id'], $row['certificate_no'], $row['active']]);
+                }
+                $target->commit();
+            } catch (\Throwable $e) {
+                if ($target->inTransaction()) { $target->rollBack(); }
+                throw $e;
+            }
+            \App\Core\Cache::forget('filter:active_centers_named_v2');
+            return ['centers_added' => count($plan['centers']), 'institutes_added' => count($plan['institutes']), 'ambiguous_centers' => $plan['ambiguous_centers'], 'ambiguous_institutes' => $plan['ambiguous_institutes'], 'unmatched_institutes' => $plan['unmatched_institutes']];
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
+    private function assertReferenceSyncSchema(PDO $target): void
+    {
+        $db = (string) $this->targetSettings()['database'];
+        $stmt = $target->prepare('SELECT COLUMN_NAME, IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = \'centers\' AND COLUMN_NAME IN (\'display_name\',\'user_id\')');
+        $stmt->execute([$db]);
+        $columns = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) { $columns[$row['COLUMN_NAME']] = $row['IS_NULLABLE']; }
+        if (!isset($columns['display_name']) || ($columns['user_id'] ?? 'NO') !== 'YES') {
+            throw new RuntimeException('Apply the pending center display-name and center reference sync migrations on demo, then preview again.');
+        }
+    }
+
+    /** @return array{centers:array,institutes:array,center_map:array,ambiguous_centers:int,ambiguous_institutes:int,unmatched_institutes:int} */
+    private function referenceSyncPlan(PDO $source, PDO $target): array
+    {
+        $centerSql = 'SELECT c.`id`,c.`code`,c.`institute_name`,c.`division_id`,c.`district_id`,c.`upazila_id`,c.`union_id`,c.`active`,u.`name` AS `name`,d.`name` AS `division_name`,di.`name` AS `district_name`,up.`name` AS `upazila_name`,un.`name` AS `union_name` FROM `centers` c LEFT JOIN `users` u ON u.`id`=c.`user_id` LEFT JOIN `divisions` d ON d.`id`=c.`division_id` LEFT JOIN `districts` di ON di.`id`=c.`district_id` LEFT JOIN `upozilas` up ON up.`id`=c.`upazila_id` LEFT JOIN `unions` un ON un.`id`=c.`union_id`';
+        $sourceCenters = $source->query($centerSql)->fetchAll(PDO::FETCH_ASSOC);
+        $targetCenters = $target->query(str_replace('u.`name` AS `name`', 'COALESCE(NULLIF(c.`display_name`,\'\'),u.`name`) AS `name`', $centerSql))->fetchAll(PDO::FETCH_ASSOC);
+        $sourceByCode = $targetByCode = [];
+        foreach ($sourceCenters as $r) { $k = $this->normalizeCenterIdentity($r['code'] ?? ''); if ($k !== '') $sourceByCode[$k][] = $r; }
+        foreach ($targetCenters as $r) { $k = $this->normalizeCenterIdentity($r['code'] ?? ''); if ($k !== '') $targetByCode[$k][] = $r; }
+        $centerMap = $centerPlans = [];
+        $ambiguousCenters = 0;
+        foreach ($sourceByCode as $code => $sources) {
+            $targets = $targetByCode[$code] ?? [];
+            if (count($targets) === 1 && count($sources) === 1) { $centerMap[(int)$sources[0]['id']] = (int)$targets[0]['id']; continue; }
+            if ($targets !== []) {
+                foreach ($sources as $s) {
+                    $identity = $this->centerSecondaryIdentity($s);
+                    $matches = $identity === null ? [] : array_values(array_filter($targets, fn($t) => $this->centerSecondaryIdentity($t) === $identity));
+                    if (count($matches) === 1) { $centerMap[(int)$s['id']] = (int)$matches[0]['id']; }
+                    else { $ambiguousCenters++; }
+                }
+                continue;
+            }
+            $identities = [];
+            foreach ($sources as $s) { $identities[$this->centerSecondaryIdentity($s) ?? ''][] = $s; }
+            foreach ($sources as $s) {
+                $name = trim((string)($s['name'] ?? ''));
+                $identity = $this->centerSecondaryIdentity($s);
+                if ($name === '' || $identity === null || count($identities[$identity] ?? []) !== 1) { $ambiguousCenters++; continue; }
+                $centerPlans[] = ['source_id'=>(int)$s['id'],'code'=>(string)$s['code'],'name'=>$name,'venue'=>(string)($s['institute_name']??''),'active'=>(int)($s['active']??1),'division_id'=>null,'district_id'=>null,'upazila_id'=>null,'union_id'=>null];
+                $centerMap[(int)$s['id']] = -count($centerPlans);
+            }
+        }
+        // Map geographic IDs by unique name under mapped parents, leaving unknown IDs NULL.
+        $geos = [];
+        foreach (['divisions'=>['name'],'districts'=>['name','division_id'],'upozilas'=>['name','district_id'],'unions'=>['name','upozila_id']] as $table=>$cols) {
+            $geos[$table] = [$this->lookupAllIds($source,$table,$cols),$this->lookupAllIds($target,$table,$cols)];
+        }
+        $divisionMap = $this->mapLocationReferences($geos['divisions'][0],$geos['divisions'][1],null,[]);
+        $districtMap = $this->mapLocationReferences($geos['districts'][0],$geos['districts'][1],'division_id',$divisionMap);
+        $upazilaMap = $this->mapLocationReferences($geos['upozilas'][0],$geos['upozilas'][1],'district_id',$districtMap);
+        $unionMap = $this->mapLocationReferences($geos['unions'][0],$geos['unions'][1],'upozila_id',$upazilaMap);
+        $maps = ['division_id'=>$divisionMap,'district_id'=>$districtMap,'upazila_id'=>$upazilaMap,'union_id'=>$unionMap];
+        foreach ($centerPlans as &$p) {
+            $sourceRow = null; foreach ($sourceCenters as $s) { if ((int)$s['id']===$p['source_id']) { $sourceRow=$s; break; } }
+            foreach ($maps as $field=>$map) { $p[$field] = $map[(int)($sourceRow[$field]??0)] ?? null; }
+        } unset($p);
+
+        $sourceInstitutes = $source->query('SELECT `id`,`center_id`,`name`,`certificate_no`,`division_id`,`district_id`,`upazila_id`,`union_id`,`active` FROM `institutes`')->fetchAll(PDO::FETCH_ASSOC);
+        $targetInstitutes = $target->query('SELECT `id`,`center_id`,`name`,`certificate_no` FROM `institutes`')->fetchAll(PDO::FETCH_ASSOC);
+        $sourceCert = $targetCert = [];
+        $sourceNameCount = [];
+        foreach ($sourceInstitutes as $r) { $k=$this->normalizeCenterIdentity($r['certificate_no']??''); if($k!=='')$sourceCert[$k][]=$r; }
+        foreach ($sourceInstitutes as $r) { $key=(int)($r['center_id']??0)."\x1F".$this->normalizeCenterIdentity($r['name']??''); if (!str_ends_with($key,"\x1F")) $sourceNameCount[$key]=($sourceNameCount[$key]??0)+1; }
+        foreach ($targetInstitutes as $r) { $k=$this->normalizeCenterIdentity($r['certificate_no']??''); if($k!=='')$targetCert[$k][]=$r; }
+        $institutePlans=[]; $ambiguousInstitutes=0; $unmatchedInstitutes=0;
+        foreach ($sourceInstitutes as $r) {
+            $sourceCenter=(int)($r['center_id']??0); $demoCenter=$centerMap[$sourceCenter]??null;
+            if ($demoCenter === null) { $unmatchedInstitutes++; continue; }
+            $cert=$this->normalizeCenterIdentity($r['certificate_no']??'');
+            if ($cert!=='' && count($targetCert[$cert]??[])===1) {
+                $found = reset($targetCert[$cert]);
+                if ($demoCenter !== null && $demoCenter > 0 && (int)($found['center_id']??0) === $demoCenter) { continue; }
+                $ambiguousInstitutes++; continue;
+            }
+            if ($cert!=='' && count($targetCert[$cert]??[])>1) { $ambiguousInstitutes++; continue; }
+            if ($cert!=='' && count($sourceCert[$cert]??[])>1) { $ambiguousInstitutes++; continue; }
+            $centerId=$demoCenter>0?$demoCenter:null;
+            $name=trim((string)$r['name']); if ($name==='') {$unmatchedInstitutes++;continue;}
+            if (($sourceNameCount[$sourceCenter."\x1F".$this->normalizeCenterIdentity($name)]??0)>1) { $ambiguousInstitutes++; continue; }
+            if ($centerId!==null) {
+                $same=array_values(array_filter($targetInstitutes,fn($t)=>(int)($t['center_id']??0)===$centerId && $this->sameReference($t['name'],$name)));
+                if (count($same)===1) { continue; }
+                if (count($same)>1) { $ambiguousInstitutes++; continue; }
+            } else {
+                // Institutes under a not-yet-created center are safely keyed by a unique center+name pair in source.
+                $same=array_values(array_filter($sourceInstitutes,fn($s)=>(int)($s['center_id']??0)===$sourceCenter && $this->sameReference($s['name'],$name)));
+                if (count($same)>1) { $ambiguousInstitutes++; continue; }
+            }
+            $mappedGeo=[]; foreach($maps as $field=>$map) { $mappedGeo[$field]=$map[(int)($r[$field]??0)]??null; }
+            $centerRow=$sourceCenters[array_search($sourceCenter,array_column($sourceCenters,'id'))]??[];
+            $institutePlans[]=['source_id'=>(int)$r['id'],'source_center_id'=>$sourceCenter,'name'=>$name,'certificate_no'=>($r['certificate_no']??null)?:null,'active'=>(int)($r['active']??1),'center_name'=>(string)($centerRow['name']??''),'division_id'=>$mappedGeo['division_id'],'district_id'=>$mappedGeo['district_id'],'upazila_id'=>$mappedGeo['upazila_id'],'union_id'=>$mappedGeo['union_id']];
+        }
+        return ['centers'=>$centerPlans,'institutes'=>$institutePlans,'center_map'=>$centerMap,'ambiguous_centers'=>$ambiguousCenters,'ambiguous_institutes'=>$ambiguousInstitutes,'unmatched_institutes'=>$unmatchedInstitutes];
+    }
+
     private function assertCenterDisplayNameSchema(PDO $target): void
     {
         $check = $target->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = \'centers\' AND COLUMN_NAME = \'display_name\'');
@@ -1245,6 +1404,11 @@ final class DatabaseSyncService
             && ($difference['detail'] ?? '') === 'Column `id` has a different definition') {
             return true;
         }
+        if (($difference['table'] ?? '') === 'centers'
+            && ($difference['kind'] ?? '') === 'column_mismatch'
+            && ($difference['detail'] ?? '') === 'Column `user_id` has a different definition') {
+            return true; // Demo allows reference-only centers without login accounts.
+        }
         return ($difference['table'] ?? '') === 'unions'
             && ($difference['kind'] ?? '') === 'missing_index'
             && ($difference['detail'] ?? '') === 'Index `unions_name_unique` exists in exam but not demo';
@@ -1298,8 +1462,9 @@ final class DatabaseSyncService
             $stmt = $pdo->prepare('INSERT INTO `codex_schema_migrations` (`migration`, `applied_at`) VALUES (?, NOW())');
             $stmt->execute([$name]);
             $done[] = $name;
-            if ($name === '2026_10_24_center_display_name') {
+            if (in_array($name, ['2026_10_24_center_display_name', '2026_10_26_center_reference_sync'], true)) {
                 \App\Core\Cache::forget('schema:centers.display_name');
+                \App\Core\Cache::forget('filter:active_centers_named_v2');
             }
         }
         return ['applied' => $done, 'message' => $done ? 'Demo schema migrations applied.' : 'There are no pending demo schema migrations.'];
@@ -1435,6 +1600,10 @@ final class DatabaseSyncService
         $sql = trim($sql);
         if ($sql === '' || str_contains($sql, ';') || str_contains($sql, '--') || str_contains($sql, '/*')) {
             return false;
+        }
+        // Explicitly reviewed exception: reference-only centers need no login user.
+        if (preg_match('/^ALTER TABLE `centers` MODIFY COLUMN `user_id` int DEFAULT NULL$/i', $sql)) {
+            return true;
         }
         return (bool) preg_match('/^(CREATE TABLE IF NOT EXISTS|ALTER TABLE\s+`?[A-Za-z0-9_]+`?\s+ADD\s+(?:COLUMN|INDEX|KEY|UNIQUE)\s+IF\s+NOT\s+EXISTS\b)/i', $sql)
             && !(bool) preg_match('/\b(DROP|TRUNCATE|RENAME|MODIFY|CHANGE|DELETE|INSERT|UPDATE|REPLACE|GRANT|REVOKE|DATABASE|SCHEMA)\b/i', $sql)

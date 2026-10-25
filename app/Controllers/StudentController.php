@@ -511,14 +511,21 @@ final class StudentController extends Controller
      */
     private function centerOptions(): array
     {
+        $hasDisplayName = Cache::remember('schema:centers.display_name', 300, static function (): bool {
+            return (int) Database::scalar('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', ['centers', 'display_name']) > 0;
+        });
+        $label = $hasDisplayName
+            ? "COALESCE(NULLIF(centers.display_name, ''), NULLIF(users.name, ''))"
+            : "NULLIF(users.name, '')";
         $q = (new Query('centers'))
-            ->select('centers.id', 'users.name as name')
-            ->join('users', 'users.id', '=', 'centers.user_id')
+            ->select('centers.id')
+            ->selectRaw($label . ' AS name')
+            ->leftJoin('users', 'users.id', '=', 'centers.user_id')
             ->where('centers.active', 1);
         if (!Auth::isAdmin() && Auth::centerId() !== null) {
             $q->where('centers.id', Auth::centerId());
         }
-        return $q->orderBy('users.name', 'asc')->get();
+        return $q->orderByRaw($label . ' ASC')->get();
     }
 
     /** Check for an existing registration identity before form submission. */

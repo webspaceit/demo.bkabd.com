@@ -8,6 +8,7 @@ This directory is the allow-listed migration source for the dashboard's **Databa
 - Do not put student/application data operations, destructive statements, multi-statement SQL, or schema-qualified table names here.
 - Review and test a migration against a demo database copy and back up the actual demo database before applying it.
 - Applying a migration uses only the separately configured demo connection. The exam connection is used only for read-only schema metadata comparison.
+- `2026_10_26_center_reference_sync` makes `centers.user_id` nullable on demo so center references can be synchronized without manufacturing login accounts. This migration is intentionally limited to that column definition; back up demo before applying it.
 
 The dashboard tracks applied filenames in `codex_schema_migrations`. MySQL DDL may commit statement by statement, so keep migrations small and make each statement safe to retry on the production MySQL/MariaDB version. Local application is disabled by default; it requires `DB_SYNC_ALLOW_LOCAL=true` as well as the normal demo target checks.
 

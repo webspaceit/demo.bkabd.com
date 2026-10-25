@@ -19,9 +19,8 @@ use App\Models\Upazila;
 /**
  * Exam centers (ported from exam/app/Http/Controllers/CenterController.php).
  *
- * A center's login/display data (name, email, phone) lives on the linked
- * `users` row (type 4, role id 4) — creating a center inserts BOTH rows in one
- * transaction, and the center's name in every list is users.name.
+ * Account-backed centers keep login/display data on `users`; synchronized
+ * reference-only demo centers have no login and use centers.display_name.
  */
 class CenterController extends Controller
 {
@@ -37,9 +36,10 @@ class CenterController extends Controller
     public function index(Request $request): array
     {
         $this->requirePermission('center-list');
-        $query = (new Query('users'))
+        $label = $this->centerDisplayExpression();
+        $query = (new Query('centers'))
+            ->leftJoin('users', 'users.id', '=', 'centers.user_id')
             ->leftJoin('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
-            ->leftJoin('centers', 'users.id', '=', 'centers.user_id')
             ->leftJoin('divisions', 'divisions.id', '=', 'centers.division_id')
             ->leftJoin('districts', 'districts.id', '=', 'centers.district_id')
             ->leftJoin('upozilas', 'upozilas.id', '=', 'centers.upazila_id')
@@ -52,12 +52,14 @@ class CenterController extends Controller
                 'centers.institute_name',
                 'centers.code',
                 'centers.active',
+                'centers.user_id IS NOT NULL AS has_account',
                 'divisions.name AS division',
                 'districts.name AS district',
                 'upozilas.name AS upazila'
             )
-            ->whereRaw('`model_has_roles`.`role_id` = ?', [4])
-            ->orderByRaw('`users`.`id` DESC');
+            ->selectRaw($label . ' AS `name`')
+            ->whereRaw('(`users`.`id` IS NULL OR `model_has_roles`.`role_id` = ?)', [4])
+            ->orderByRaw('`centers`.`id` DESC');
 
         $term = trim((string) $request->input('search', ''));
         $countQuery = null;
@@ -73,7 +75,7 @@ class CenterController extends Controller
             } else {
                 $like = '%' . $term . '%';
                 $query->whereRaw(
-                    '(`users`.`name` LIKE ? OR `centers`.`authority_person` LIKE ?'
+                    '(' . $label . ' LIKE ? OR `centers`.`authority_person` LIKE ?'
                     . ' OR `divisions`.`name` LIKE ? OR `districts`.`name` LIKE ?'
                     . ' OR `upozilas`.`name` LIKE ? OR `users`.`phone` LIKE ?'
                     . ' OR `centers`.`code` LIKE ? OR `users`.`email` LIKE ?)',
@@ -85,10 +87,10 @@ class CenterController extends Controller
         // The default and status-only totals need roles and centers to retain
         // row semantics, but do not need the three geographic display joins.
         if ($term === '' || $status !== null) {
-            $countQuery = (new Query('users'))
+            $countQuery = (new Query('centers'))
+                ->leftJoin('users', 'users.id', '=', 'centers.user_id')
                 ->leftJoin('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
-                ->leftJoin('centers', 'users.id', '=', 'centers.user_id')
-                ->whereRaw('`model_has_roles`.`role_id` = ?', [4]);
+                ->whereRaw('(`users`.`id` IS NULL OR `model_has_roles`.`role_id` = ?)', [4]);
             if ($status !== null) {
                 $countQuery->whereRaw('`centers`.`active` = ?', [$status]);
             }
@@ -105,17 +107,17 @@ class CenterController extends Controller
     {
         $me = Auth::user();
         if ((int) $me['type'] === 4) {
-            $rows = (new Query('users'))
-                ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
-                ->join('centers', 'users.id', '=', 'centers.user_id')
-                ->select('users.name', 'centers.id')
-                ->whereRaw('`model_has_roles`.`role_id` IN (4,10) AND `users`.`id` = ? AND `centers`.`active` = 1', [(int) $me['id']])
-                ->orderByRaw('`users`.`name` ASC')
+            $rows = (new Query('centers'))
+                ->leftJoin('users', 'users.id', '=', 'centers.user_id')
+                ->select('centers.id')
+                ->selectRaw($this->centerDisplayExpression() . ' AS `name`')
+                ->whereRaw('`centers`.`user_id` = ? AND `centers`.`active` = 1', [(int) $me['id']])
+                ->orderByRaw('`name` ASC')
                 ->get();
         } else {
-            $rows = (new Query('users'))
+            $rows = (new Query('centers'))
+                ->leftJoin('users', 'users.id', '=', 'centers.user_id')
                 ->leftJoin('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
-                ->leftJoin('centers', 'users.id', '=', 'centers.user_id')
                 ->leftJoin('divisions', 'divisions.id', '=', 'centers.division_id')
                 ->leftJoin('districts', 'districts.id', '=', 'centers.district_id')
                 ->select(
@@ -129,8 +131,9 @@ class CenterController extends Controller
                     'divisions.name AS division',
                     'districts.name AS district'
                 )
-                ->whereRaw('`model_has_roles`.`role_id` IN (4,10) AND `centers`.`active` = 1')
-                ->orderByRaw('`users`.`name` ASC')
+                ->selectRaw($this->centerDisplayExpression() . ' AS `name`')
+                ->whereRaw('(`users`.`id` IS NULL OR `model_has_roles`.`role_id` IN (4,10)) AND `centers`.`active` = 1')
+                ->orderByRaw('`name` ASC')
                 ->get();
         }
 
@@ -142,9 +145,10 @@ class CenterController extends Controller
     {
         $this->requirePermission('center-list');
         $id = (int) $request->params['id'];
-        $centerById = (new Query('users'))
-            ->join('centers', 'users.id', '=', 'centers.user_id')
+        $centerById = (new Query('centers'))
+            ->leftJoin('users', 'users.id', '=', 'centers.user_id')
             ->select('users.*', 'centers.*')
+            ->selectRaw($this->centerDisplayExpression() . ' AS `name`')
             ->whereRaw('`centers`.`id` = ?', [$id])
             ->first();
         if ($centerById === null) {
@@ -157,6 +161,14 @@ class CenterController extends Controller
             'districts' => District::where('division_id', $centerById['division_id'])->get(),
             'upazilas' => Upazila::where('district_id', $centerById['district_id'])->get(),
         ];
+    }
+
+    private function centerDisplayExpression(): string
+    {
+        $hasDisplayName = Cache::remember('schema:centers.display_name', 300, static function (): bool {
+            return (int) Database::scalar('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', ['centers', 'display_name']) > 0;
+        });
+        return $hasDisplayName ? "COALESCE(NULLIF(centers.display_name, ''), NULLIF(users.name, ''))" : "NULLIF(users.name, '')";
     }
 
     /** POST /api/centers — user (type 4 + role 4) + center row in ONE transaction. */

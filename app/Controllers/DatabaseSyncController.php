@@ -86,6 +86,33 @@ final class DatabaseSyncController extends Controller
         }
     }
 
+    public function previewReferenceSync(): array
+    {
+        try {
+            return (new DatabaseSyncService())->previewReferenceSync();
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] reference preview failed: ' . $e->getCode());
+            return ['error' => 'Could not compare center and institute references. Check read access on both databases.'];
+        }
+    }
+
+    public function syncReferences(Request $request): array
+    {
+        if (!$this->isSyncHostAllowed($request)) {
+            return ['error' => 'Reference sync can run only from demo.bkabd.com or an explicitly allowed local dashboard.'];
+        }
+        try {
+            return (new DatabaseSyncService())->syncReferences();
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] reference sync failed: ' . $e->getCode());
+            return ['error' => 'Reference sync failed safely. Check demo write permissions and the server error log.'];
+        }
+    }
+
     public function syncStudentPhotos(Request $request): array
     {
         if (!$this->isSyncHostAllowed($request)) {

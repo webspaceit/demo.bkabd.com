@@ -34,19 +34,20 @@
             const id = BK.esc(String(rec.id));
             const sl = (pageNum - 1) * PER_PAGE + i + 1;
             const approved = String(rec.active) === '1';
-            const badge = approved
-                ? '<span class="badge badge-green">Approved</span>'
-                : '<span class="badge badge-gray">Pending</span>';
+            const referenceOnly = String(rec.has_account) === '0' || rec.has_account === false;
+            const badge = referenceOnly
+                ? '<span class="badge badge-gray">Synced reference</span>'
+                : (approved ? '<span class="badge badge-green">Approved</span>' : '<span class="badge badge-gray">Pending</span>');
 
             let actions = '<div class="row-actions flex items-center gap-1">';
-            if (can('edit')) {
+            if (!referenceOnly && can('edit')) {
                 actions += '<a class="btn btn-sm btn-light" href="/edit-center/' + id + '" title="Edit">&#9998;</a>';
             }
-            if (can('status')) {
+            if (!referenceOnly && can('status')) {
                 actions += '<button type="button" class="btn btn-sm btn-dark" data-act="status" data-id="' + id +
                     '" data-next="' + (approved ? 0 : 1) + '" title="' + (approved ? 'Set Pending' : 'Approve') + '">&#8644;</button>';
             }
-            if (can('delete')) {
+            if (!referenceOnly && can('delete')) {
                 actions += '<button type="button" class="btn btn-sm btn-danger" data-act="delete" data-id="' + id +
                     '" title="Delete">&#10005;</button>';
             }

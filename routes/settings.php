@@ -36,6 +36,8 @@ Router::post('/api/database-sync/import-students', [DatabaseSyncController::clas
 Router::post('/api/database-sync/sync-student-photos', [DatabaseSyncController::class, 'syncStudentPhotos'], 'auth|permission:settings');
 Router::get('/api/database-sync/center-name-preview', [DatabaseSyncController::class, 'previewCenterNameSync'], 'auth|permission:settings');
 Router::post('/api/database-sync/sync-center-names', [DatabaseSyncController::class, 'syncCenterNames'], 'auth|permission:settings');
+Router::get('/api/database-sync/reference-preview', [DatabaseSyncController::class, 'previewReferenceSync'], 'auth|permission:settings');
+Router::post('/api/database-sync/sync-references', [DatabaseSyncController::class, 'syncReferences'], 'auth|permission:settings');
 Router::post('/api/database-sync/compare', [DatabaseSyncController::class, 'compare'], 'auth|permission:settings');
 Router::post('/api/database-sync/apply', [DatabaseSyncController::class, 'apply'], 'auth|permission:settings');
 
