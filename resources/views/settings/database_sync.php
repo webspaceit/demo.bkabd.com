@@ -324,6 +324,13 @@ document.addEventListener('DOMContentLoaded', function () {
     refreshPhotoCountsButton.addEventListener('click', previewPhotoCounts);
     refreshPhotoHistoryButton.addEventListener('click', loadPhotoSyncHistory);
 
+    function formatDhakaDateTime(value) {
+        const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/.exec(String(value));
+        if (!match) return value;
+        const date = new Date(match[1] + '-' + match[2] + '-' + match[3] + 'T' + match[4] + ':' + match[5] + ':' + match[6] + '+06:00');
+        return Number.isNaN(date.getTime()) ? value : date.toLocaleString(undefined, {timeZone: 'Asia/Dhaka'});
+    }
+
     async function loadPhotoSyncHistory() {
         photoHistory.textContent = 'Loading sync history…';
         try {
@@ -336,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const runs = data.runs || [];
             if (!runs.length) { photoHistory.textContent = 'No student-photo sync runs have been recorded yet.'; return; }
             const columns = [
-                ['Started', 'started_at'], ['Session', 'session'], ['Status', 'status'],
+                ['Started (GMT+6)', 'started_at'], ['Session', 'session'], ['Status', 'status'],
                 ['Checked', 'checked_count'], ['Copied', 'copied_count'], ['Already synced', 'already_synced_count'],
                 ['No demo match', 'missing_demo_count'], ['Unavailable', 'unavailable_count']
             ];
@@ -360,8 +367,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     td.className = 'border-b px-3 py-2';
                     let value = run[column[1]];
                     if (column[1] === 'started_at' && value) {
-                        const date = new Date(String(value).replace(' ', 'T'));
-                        value = Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+                        value = formatDhakaDateTime(value);
                     }
                     td.textContent = value == null ? '—' : String(value);
                     row.appendChild(td);
@@ -479,7 +485,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     && ['running', 'interrupted', 'failed'].includes(String(run.status));
             }) || null;
             if (resumable) {
-                const started = resumable.started_at ? new Date(String(resumable.started_at).replace(' ', 'T')).toLocaleString() : 'the previous attempt';
+                const started = resumable.started_at ? formatDhakaDateTime(resumable.started_at) : 'the previous attempt';
                 photosConfirmDetails.textContent = 'Continue the interrupted sync from its saved position (' + Number(resumable.checked_count || 0).toLocaleString() + ' source records checked since ' + started + '). Synced files will be skipped, and remaining photos will be retried.';
             } else if (runs.length && Number(runs[0].session) === photoSession && runs[0].status === 'completed') {
                 photosConfirmDetails.textContent = 'The last sync completed. A new pass starts at the beginning to retry photos that were unavailable or missing, while valid photos already synced by this tool are skipped.';

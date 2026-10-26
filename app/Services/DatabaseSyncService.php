@@ -1559,7 +1559,11 @@ final class DatabaseSyncService
 
     private function connectTarget(): PDO
     {
-        return $this->connect($this->targetSettings());
+        $pdo = $this->connect($this->targetSettings());
+        // MySQL DATETIME columns carry no timezone. Write sync history using
+        // Bangladesh wall time so it can be displayed consistently everywhere.
+        $pdo->exec("SET SESSION time_zone = '+06:00'");
+        return $pdo;
     }
 
     private function connect(array $s): PDO
