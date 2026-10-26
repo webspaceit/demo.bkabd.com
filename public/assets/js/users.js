@@ -187,6 +187,22 @@
     // -----------------------------------------------------------------
     if (page === 'passchange') {
         const form = document.getElementById('passchange-form');
+        const profileForm = document.getElementById('account-profile-form');
+
+        if (profileForm) {
+            profileForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                BK.submit(profileForm, async function () {
+                    await BK.post('/api/account/profile', {
+                        name: fieldValue(profileForm, 'name'),
+                        email: fieldValue(profileForm, 'email'),
+                        current_password: fieldValue(profileForm, 'current_password')
+                    });
+                    BK.toast('Profile updated successfully', 'success');
+                    window.location.reload();
+                });
+            });
+        }
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();

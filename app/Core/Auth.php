@@ -83,7 +83,7 @@ final class Auth
      */
     public static function loginFailureCode(string $email): int
     {
-        $existing = Database::selectOne('SELECT `type` FROM `users` WHERE `email` = ? LIMIT 1', [$email]);
+        $existing = Database::selectOne('SELECT `id`, `type` FROM `users` WHERE `email` = ? LIMIT 1', [$email]);
         if ($existing !== null && (int) $existing['type'] === 4) {
             $center = Database::selectOne('SELECT `active` FROM `centers` WHERE `user_id` = ? LIMIT 1', [(int) $existing['id']]);
             if ($center === null || (int) $center['active'] !== 1) {

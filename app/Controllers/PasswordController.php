@@ -25,6 +25,8 @@ class PasswordController extends Controller
         $user = Auth::user();
         return \App\Core\View::render('auth.passchange', [
             'title' => 'Account Security',
+            'accountName' => (string) ($user['name'] ?? ''),
+            'accountEmail' => (string) ($user['email'] ?? ''),
             'twoFactorEnabled' => (int) ($user['two_factor_enabled'] ?? 0) === 1,
             'pageScripts' => [
                 '/assets/js/vendor/qrcode.min.js',
@@ -57,6 +59,33 @@ class PasswordController extends Controller
 
         User::updateRow((int) $user['id'], [
             'password' => password_hash($data['npassword'], PASSWORD_BCRYPT),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return ['status' => 'success'];
+    }
+
+    /** Update the signed-in user's own display name and email. */
+    public function updateProfile(Request $request): array
+    {
+        $user = Auth::user();
+        if ($user === null) {
+            throw new ValidationException(['current_password' => ['Please sign in again.']]);
+        }
+
+        $data = Validator::validate($request, [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,' . (int) $user['id'],
+            'current_password' => 'required',
+        ]);
+
+        if (!password_verify((string) $data['current_password'], (string) $user['password'])) {
+            throw new ValidationException(['current_password' => ['Current password is incorrect.']]);
+        }
+
+        User::updateRow((int) $user['id'], [
+            'name' => trim((string) $data['name']),
+            'email' => strtolower(trim((string) $data['email'])),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 

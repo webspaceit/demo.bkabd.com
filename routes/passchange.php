@@ -8,6 +8,7 @@ use App\Core\Router;
 // (POST passchange, auth only, no permission gate).
 // ---------------------------------------------------------------
 Router::post('/api/passchange', [PasswordController::class, 'change'], 'auth');
+Router::post('/api/account/profile', [PasswordController::class, 'updateProfile'], 'auth');
 
 // ---------------------------------------------------------------
 // Page

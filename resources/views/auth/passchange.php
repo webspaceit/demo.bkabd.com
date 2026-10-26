@@ -7,6 +7,34 @@
 ?>
 <div class="space-y-4" id="users-page" data-users-page="passchange">
     <div class="card max-w-3xl">
+        <div class="card-header">Profile Information</div>
+        <div class="card-body">
+            <form id="account-profile-form" novalidate>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="fl">
+                        <input class="input" type="text" id="account-name" name="name" data-field="name" value="<?= e($accountName ?? '') ?>" autocomplete="name" required>
+                        <label for="account-name">Display Name</label>
+                        <p class="field-error hidden" data-error-for="name"></p>
+                    </div>
+                    <div class="fl">
+                        <input class="input" type="email" id="account-email" name="email" data-field="email" value="<?= e($accountEmail ?? '') ?>" autocomplete="email" required>
+                        <label for="account-email">Email Address</label>
+                        <p class="field-error hidden" data-error-for="email"></p>
+                    </div>
+                    <div class="fl md:col-span-2">
+                        <input class="input" type="password" id="account-current-password" name="current_password" data-field="current_password" autocomplete="current-password" required>
+                        <label for="account-current-password">Current Password (confirm changes)</label>
+                        <p class="field-error hidden" data-error-for="current_password"></p>
+                    </div>
+                </div>
+                <div class="mt-5 flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card max-w-3xl">
         <div class="card-header">Password Change</div>
         <div class="card-body">
             <form id="passchange-form" novalidate>
