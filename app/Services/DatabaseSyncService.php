@@ -1051,6 +1051,8 @@ final class DatabaseSyncService
                 return ['done' => true, 'next_after_id' => $afterId, 'processed' => 0, 'imported' => 0, 'already_present' => 0, 'skipped' => 0];
             }
 
+            $originalRowsById = [];
+            foreach ($rows as $sourceRow) { $originalRowsById[(int) $sourceRow['id']] = $sourceRow; }
             $this->assertStudentColumnsCompatible($source, $target);
             $referenceMaps = $this->studentReferenceMaps($source, $target, $rows);
             $unmappedIds = [];
@@ -1096,6 +1098,7 @@ final class DatabaseSyncService
             $keyInsert = $duplicateKeysAvailable ? $target->prepare('INSERT IGNORE INTO `student_duplicate_keys` (`fingerprint`) VALUES (?)') : null;
             $counts = ['imported' => 0, 'already_present' => 0, 'skipped' => 0];
             $skippedDetails = [];
+            $alreadyPresentDetails = [];
             $target->beginTransaction();
             try {
                 $nextStudentId = null;
@@ -1118,9 +1121,25 @@ final class DatabaseSyncService
                         continue;
                     }
                     $regKey = mb_strtolower($registration, 'UTF-8');
-                    if (isset($presentRegistrations[$regKey])) { $counts['already_present']++; continue; }
+                    if (isset($presentRegistrations[$regKey])) {
+                        $counts['already_present']++;
+                        $alreadyPresentDetails[] = $this->studentImportSkipDetail(
+                            $originalRowsById[(int) $row['id']] ?? $row,
+                            'Registration number already exists in demo.',
+                            $referenceMaps
+                        );
+                        continue;
+                    }
                     $fingerprint = \App\Services\StudentService::duplicateFingerprint($row);
-                    if (isset($presentFingerprints[$fingerprint])) { $counts['already_present']++; continue; }
+                    if (isset($presentFingerprints[$fingerprint])) {
+                        $counts['already_present']++;
+                        $alreadyPresentDetails[] = $this->studentImportSkipDetail(
+                            $originalRowsById[(int) $row['id']] ?? $row,
+                            'Matching student details already exist in demo.',
+                            $referenceMaps
+                        );
+                        continue;
+                    }
                     $rollKey = $this->rollKey($row);
                     if ($rollKey !== null && isset($presentRolls[$rollKey])) {
                         $counts['skipped']++;
@@ -1160,7 +1179,7 @@ final class DatabaseSyncService
                 \App\Core\Cache::forgetPrefix('pending_students');
             }
             $lastId = (int) $rows[array_key_last($rows)]['id'];
-            return ['done' => !$hasMoreMissing, 'next_after_id' => $lastId, 'processed' => count($rows), 'skipped_details' => $skippedDetails] + $counts;
+            return ['done' => !$hasMoreMissing, 'next_after_id' => $lastId, 'processed' => count($rows), 'skipped_details' => $skippedDetails, 'already_present_details' => $alreadyPresentDetails] + $counts;
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
         }
