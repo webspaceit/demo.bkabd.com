@@ -211,14 +211,17 @@ final class DatabaseSyncService
                     $counts['already_synced']++;
                     continue;
                 }
-                $urls = $this->studentPhotoUrls($storedPath);
-                if ($urls === []) {
+                // On a shared VPS, read protected exam uploads directly from
+                // the configured local folder instead of requesting a login page.
+                $localBytes = $this->readLocalStudentPhoto($storedPath);
+                $urls = $localBytes === null ? $this->studentPhotoUrls($storedPath) : [];
+                if ($localBytes === null && $urls === []) {
                     $counts['unavailable']++;
                     continue;
                 }
                 $jobId = count($matched);
-                $matched[$jobId] = ['source' => $sourceRow, 'target' => $targetRow, 'urls' => $urls];
-                $primaryUrls[$jobId] = $urls[0];
+                $matched[$jobId] = ['source' => $sourceRow, 'target' => $targetRow, 'urls' => $urls, 'local_bytes' => $localBytes];
+                if ($urls !== []) { $primaryUrls[$jobId] = $urls[0]; }
             }
 
             // Fetch each chunk concurrently so latency is paid once per batch instead of once per photo.
@@ -236,7 +239,8 @@ final class DatabaseSyncService
             }
 
             foreach ($matched as $jobId => $job) {
-                $photo = $this->storeStudentPhoto($photoBytesByJob[$jobId] ?? null, (string) $job['source']['photo'], (int) $job['target']['id']);
+                $photoBytes = $job['local_bytes'] ?? ($photoBytesByJob[$jobId] ?? null);
+                $photo = $this->storeStudentPhoto($photoBytes, (string) $job['source']['photo'], (int) $job['target']['id']);
                 if ($photo === null) {
                     $counts['unavailable']++;
                     continue;
@@ -486,6 +490,33 @@ final class DatabaseSyncService
             $urls[] = $base . '/' . implode('/', array_map('rawurlencode', $segments));
         }
         return $urls;
+    }
+
+    /** Read a protected exam upload from the shared VPS filesystem, if configured. */
+    private function readLocalStudentPhoto(string $storedPath): ?string
+    {
+        $directory = trim((string) Config::get('SYNC_SOURCE_PHOTO_DIR', ''));
+        if ($directory === '') { return null; }
+        $root = realpath($directory);
+        if ($root === false || !is_dir($root)) {
+            throw new RuntimeException('SYNC_SOURCE_PHOTO_DIR is configured but is not a readable directory on this server.');
+        }
+
+        $normalized = trim(str_replace('\\', '/', $storedPath));
+        if (preg_match('#^https?://#i', $normalized)) {
+            $parts = parse_url($normalized);
+            $normalized = is_array($parts) ? (string) ($parts['path'] ?? '') : '';
+        }
+        $name = basename($normalized);
+        if ($name === '' || $name === '.' || $name === '..' || preg_match('/[\\x00-\\x1f]/', $name)) { return null; }
+        $candidate = realpath($root . DIRECTORY_SEPARATOR . $name);
+        if ($candidate === false || !is_file($candidate)
+            || !str_starts_with($candidate, $root . DIRECTORY_SEPARATOR)
+            || !is_readable($candidate)) { return null; }
+        $size = filesize($candidate);
+        if ($size === false || $size < 1 || $size > 2 * 1024 * 1024) { return null; }
+        $bytes = @file_get_contents($candidate);
+        return is_string($bytes) && $bytes !== '' ? $bytes : null;
     }
 
     /** @param array<int,string> $urls @return array<int,string|null> */

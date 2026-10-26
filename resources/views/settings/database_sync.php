@@ -22,7 +22,7 @@
                 <section class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
                     <h2 class="font-semibold text-emerald-900">Exam: read-only reference</h2>
                     <p class="mt-2 text-sm leading-6 text-slate-600">Use the database server host provided by your hosting provider. <code>localhost</code> works only if the exam database is on the same PC as this app. Schema comparison reads metadata; student preview and import read source rows through a read-only transaction.</p>
-                    <p class="mt-2 text-xs text-slate-500">Exam needs read-only SELECT access to students, centers, institutes, users, divisions, districts, upozilas, and unions, plus schema metadata. Student photo files must also be publicly reachable over HTTPS from the demo server. This app never inserts, updates, or deletes exam data.</p>
+                    <p class="mt-2 text-xs text-slate-500">Exam needs read-only SELECT access to students, centers, institutes, users, divisions, districts, upozilas, and unions, plus schema metadata. For photos, configure <code>SYNC_SOURCE_PHOTO_DIR</code> to the exam upload folder when both apps share a VPS; otherwise source photos must be reachable over HTTPS. This app never inserts, updates, or deletes exam data.</p>
                     <p id="db-sync-source" class="mt-2 text-xs text-slate-500"></p>
                 </section>
                 <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
