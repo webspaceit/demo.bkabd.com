@@ -360,6 +360,51 @@ final class DatabaseSyncService
         }
     }
 
+    /** Email a selected portion of a photo-attention run as a CSV attachment. */
+    public function emailPhotoAttentionCsv(string $runId, int $session, ?int $centerId, ?int $instituteId, string $recipient): array
+    {
+        if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('Enter a valid recipient email address.');
+        }
+        $details = $this->studentPhotoSyncRunDetails($runId, $session);
+        $candidates = array_values(array_filter($details['candidates'], static function (array $student) use ($centerId, $instituteId): bool {
+            return ($centerId === null || (int) ($student['center_id'] ?? 0) === $centerId)
+                && ($instituteId === null || (int) ($student['institute_id'] ?? 0) === $instituteId);
+        }));
+        if ($candidates === []) {
+            throw new RuntimeException('No students match the selected center and institute filters.');
+        }
+        usort($candidates, static fn(array $a, array $b): int => strcasecmp((string) $a['center'], (string) $b['center'])
+            ?: strcasecmp((string) $a['institute'], (string) $b['institute'])
+            ?: strcasecmp((string) $a['name'], (string) $b['name'])
+            ?: strcmp((string) $a['registration'], (string) $b['registration']));
+
+        $csvRows = [['Session', 'Registration', 'Student', 'Class', 'Center', 'Institute', 'Current status', 'Exam photo file']];
+        foreach ($candidates as $student) {
+            $csvRows[] = [$session, $student['registration'], $student['name'], $student['class'], $student['center'], $student['institute'], $student['reason'], $student['exam_photo_file']];
+        }
+        $csv = "\xEF\xBB\xBF";
+        foreach ($csvRows as $row) {
+            $cells = array_map(static function ($value): string {
+                $value = (string) ($value ?? '');
+                if (preg_match('/^[\\s]*[=+@\\-]/u', $value)) { $value = "'" . $value; }
+                return '"' . str_replace('"', '""', $value) . '"';
+            }, $row);
+            $csv .= implode(',', $cells) . "\r\n";
+        }
+
+        $filename = 'student-photo-attention-session-' . $session . '.csv';
+        $centerName = $centerId === null ? 'All centers' : (string) ($candidates[0]['center'] ?: 'Unassigned center');
+        $instituteName = $instituteId === null ? 'All institutes' : (string) ($candidates[0]['institute'] ?: 'Unassigned institute');
+        $subject = 'Student photo attention report - Session ' . $session;
+        $body = "Attached is the student photo attention report for session {$session}.\r\n"
+            . "Center: {$centerName}\r\nInstitute: {$instituteName}\r\nStudents: " . count($candidates) . "\r\n\r\n"
+            . 'The status is reconstructed from current exam records and demo photo paths; it is not the original per-student transfer error.';
+        (new SmtpMailer())->sendWithCsvAttachment($recipient, $subject, $body, $filename, $csv);
+
+        return ['sent' => true, 'recipient' => $recipient, 'count' => count($candidates)];
+    }
+
     /** Record an API failure without masking the original sync error. */
     public function failStudentPhotoSync(string $runId, string $reason): void
     {

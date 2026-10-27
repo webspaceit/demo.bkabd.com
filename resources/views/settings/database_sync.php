@@ -431,23 +431,66 @@ document.addEventListener('DOMContentLoaded', function () {
             exportControls.className = 'mb-3 flex flex-wrap items-end gap-2';
             const centerSelect = createPhotoExportSelect('Center', 'All centers', candidates, 'center_id', 'center');
             const instituteSelect = createPhotoExportSelect('Institute', 'All institutes', candidates, 'institute_id', 'institute');
+            const recipientLabel = document.createElement('label');
+            recipientLabel.className = 'flex flex-col gap-1 text-xs font-medium text-slate-700';
+            recipientLabel.style.minWidth = '16rem';
+            recipientLabel.textContent = 'Authority email';
+            const recipientInput = document.createElement('input');
+            recipientInput.type = 'email';
+            recipientInput.required = true;
+            recipientInput.autocomplete = 'email';
+            recipientInput.placeholder = 'authority@example.com';
+            recipientInput.className = 'rounded border border-slate-300 bg-white px-3 py-2 text-sm font-normal';
+            recipientLabel.appendChild(recipientInput);
             const exportButton = document.createElement('button');
             exportButton.type = 'button';
             exportButton.className = 'btn btn-primary whitespace-nowrap';
+            const emailButton = document.createElement('button');
+            emailButton.type = 'button';
+            emailButton.className = 'btn btn-light whitespace-nowrap';
             const updateExportLabel = function () {
                 const count = filterPhotoAttentionCandidates(candidates, centerSelect.value, instituteSelect.value).length;
                 exportButton.textContent = 'Download CSV (' + count + ')';
                 exportButton.disabled = count === 0;
+                emailButton.textContent = 'Email CSV (' + count + ')';
+                emailButton.disabled = count === 0;
             };
             centerSelect.addEventListener('change', updateExportLabel);
             instituteSelect.addEventListener('change', updateExportLabel);
             exportButton.addEventListener('click', function () {
                 downloadPhotoAttentionCsv(data.run, filterPhotoAttentionCandidates(candidates, centerSelect.value, instituteSelect.value));
             });
+            emailButton.addEventListener('click', async function () {
+                if (!recipientInput.reportValidity()) { return; }
+                emailButton.disabled = true;
+                emailButton.textContent = 'Sending…';
+                try {
+                    const result = await BK.post('/api/database-sync/email-photo-attention-csv', {
+                        run_id: runId,
+                        session: Number(data.run.session),
+                        center_id: centerSelect.value === '' ? null : Number(centerSelect.value),
+                        institute_id: instituteSelect.value === '' ? null : Number(instituteSelect.value),
+                        recipient: recipientInput.value.trim()
+                    });
+                    if (result.error) { throw new Error(result.error); }
+                    BK.toast('Emailed the CSV with ' + Number(result.count || 0).toLocaleString() + ' student(s) to ' + result.recipient + '.', 'success');
+                } catch (error) {
+                    BK.toast(error.message || 'Could not email the CSV report.', 'error');
+                } finally {
+                    updateExportLabel();
+                }
+            });
+            updateExportLabel();
             exportControls.appendChild(centerSelect.parentElement);
             exportControls.appendChild(instituteSelect.parentElement);
+            exportControls.appendChild(recipientLabel);
             exportControls.appendChild(exportButton);
+            exportControls.appendChild(emailButton);
             photoRunDetails.appendChild(exportControls);
+            const mailHint = document.createElement('p');
+            mailHint.className = 'mb-3 text-xs text-slate-500';
+            mailHint.textContent = 'Email sends from reports@bkabd.com. Configure its SMTP password in demo’s private .env; never put it in this page or Git.';
+            photoRunDetails.appendChild(mailHint);
             const columns = ['Registration', 'Student', 'Class', 'Center', 'Institute', 'Current status', 'Exam photo file', 'Exam photo'];
             const table = document.createElement('table');
             table.className = 'min-w-full border-collapse text-left';

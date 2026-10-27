@@ -165,6 +165,35 @@ final class DatabaseSyncController extends Controller
         }
     }
 
+    public function emailPhotoAttentionCsv(Request $request): array
+    {
+        if (!$this->isSyncHostAllowed($request)) {
+            return ['error' => 'Emailing photo reports can run only from demo.bkabd.com or an explicitly allowed local dashboard.'];
+        }
+        $session = (int) Auth::activeSession();
+        if ($session <= 0 || (int) $request->input('session', 0) !== $session) {
+            return ['error' => 'The active session changed. Reload the page and try again.'];
+        }
+        $centerInput = $request->input('center_id');
+        $instituteInput = $request->input('institute_id');
+        $centerId = $centerInput === null || $centerInput === '' ? null : (int) $centerInput;
+        $instituteId = $instituteInput === null || $instituteInput === '' ? null : (int) $instituteInput;
+        try {
+            return (new DatabaseSyncService())->emailPhotoAttentionCsv(
+                trim((string) $request->input('run_id', '')),
+                $session,
+                $centerId,
+                $instituteId,
+                trim((string) $request->input('recipient', ''))
+            );
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] photo attention email data lookup failed: ' . $e->getCode());
+            return ['error' => 'Could not prepare the selected photo report. Check source and demo read access.'];
+        }
+    }
+
     public function previewStudentPhotos(): array
     {
         try {
