@@ -428,12 +428,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             const exportControls = document.createElement('div');
-            exportControls.className = 'mb-3 flex flex-wrap items-end gap-2';
+            exportControls.className = 'photo-attention-export-controls mb-3';
             const centerSelect = createPhotoExportSelect('Center', 'All centers', candidates, 'center_id', 'center');
             const instituteSelect = createPhotoExportSelect('Institute', 'All institutes', candidates, 'institute_id', 'institute');
             const recipientLabel = document.createElement('label');
             recipientLabel.className = 'flex flex-col gap-1 text-xs font-medium text-slate-700';
-            recipientLabel.style.minWidth = '16rem';
             recipientLabel.textContent = 'Authority email';
             const recipientInput = document.createElement('input');
             recipientInput.type = 'email';
@@ -441,6 +440,7 @@ document.addEventListener('DOMContentLoaded', function () {
             recipientInput.autocomplete = 'email';
             recipientInput.placeholder = 'authority@example.com';
             recipientInput.className = 'rounded border border-slate-300 bg-white px-3 py-2 text-sm font-normal';
+            recipientInput.style.width = '100%';
             recipientLabel.appendChild(recipientInput);
             const exportButton = document.createElement('button');
             exportButton.type = 'button';
@@ -455,8 +455,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 emailButton.textContent = 'Email CSV (' + count + ')';
                 emailButton.disabled = count === 0;
             };
-            centerSelect.addEventListener('change', updateExportLabel);
             instituteSelect.addEventListener('change', updateExportLabel);
+            centerSelect.addEventListener('change', function () {
+                refreshPhotoInstituteChoices(instituteSelect, candidates, centerSelect.value);
+                updateExportLabel();
+            });
             exportButton.addEventListener('click', function () {
                 downloadPhotoAttentionCsv(data.run, filterPhotoAttentionCandidates(candidates, centerSelect.value, instituteSelect.value));
             });
@@ -543,10 +546,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function createPhotoExportSelect(label, allLabel, candidates, idKey, nameKey) {
         const wrapper = document.createElement('label');
         wrapper.className = 'flex flex-col gap-1 text-xs font-medium text-slate-700';
-        wrapper.style.minWidth = '12rem';
         wrapper.textContent = label;
         const select = document.createElement('select');
         select.className = 'rounded border border-slate-300 bg-white px-3 py-2 text-sm font-normal';
+        select.style.width = '100%';
         select.setAttribute('aria-label', label + ' filter for CSV export');
         const allOption = document.createElement('option');
         allOption.value = '';
@@ -575,6 +578,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         wrapper.appendChild(select);
         return select;
+    }
+
+    function refreshPhotoInstituteChoices(instituteSelect, candidates, centerId) {
+        const matchingCandidates = centerId === '' ? candidates : candidates.filter(function (student) {
+            return String(Number(student.center_id || 0)) === centerId;
+        });
+        const replacement = createPhotoExportSelect('Institute', 'All institutes', matchingCandidates, 'institute_id', 'institute');
+        instituteSelect.replaceChildren.apply(instituteSelect, Array.from(replacement.options));
+        instituteSelect.value = '';
     }
 
     function filterPhotoAttentionCandidates(candidates, centerId, instituteId) {

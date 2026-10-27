@@ -59,10 +59,13 @@ final class SmtpMailer
             $boundary = 'bkabd_' . bin2hex(random_bytes(16));
             $safeFilename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename) ?: 'report.csv';
             $encodedName = '=?UTF-8?B?' . base64_encode($fromName) . '?=';
+            $fromDomain = substr((string) strrchr($from, '@'), 1);
             $headers = [
                 'Date: ' . date(DATE_RFC2822),
+                'Message-ID: <' . bin2hex(random_bytes(16)) . '@' . $fromDomain . '>',
                 'From: ' . $encodedName . ' <' . $from . '>',
                 'To: <' . $recipient . '>',
+                'Reply-To: <' . $from . '>',
                 'Subject: ' . $subject,
                 'MIME-Version: 1.0',
                 'Content-Type: multipart/mixed; boundary="' . $boundary . '"',
