@@ -414,17 +414,28 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.error) { photoRunDetails.textContent = data.error; return; }
             const candidates = data.candidates || [];
             photoRunDetails.replaceChildren();
+            const heading = document.createElement('div');
+            heading.className = 'mb-2 flex flex-wrap items-center justify-between gap-3';
             const title = document.createElement('p');
-            title.className = 'mb-2 font-semibold text-slate-800';
+            title.className = 'font-semibold text-slate-800';
             title.textContent = candidates.length + ' processed student(s) currently need photo attention. This list is reconstructed from exam records and demo photo paths; the original run did not save per-student failure reasons.';
-            photoRunDetails.appendChild(title);
+            heading.appendChild(title);
+            if (candidates.length) {
+                const exportButton = document.createElement('button');
+                exportButton.type = 'button';
+                exportButton.className = 'btn btn-light whitespace-nowrap';
+                exportButton.textContent = 'Export CSV (center / institute wise)';
+                exportButton.addEventListener('click', function () { downloadPhotoAttentionCsv(data.run, candidates); });
+                heading.appendChild(exportButton);
+            }
+            photoRunDetails.appendChild(heading);
             if (!candidates.length) {
                 const empty = document.createElement('p');
                 empty.textContent = 'All processed students currently have their synced photo file in demo.';
                 photoRunDetails.appendChild(empty);
                 return;
             }
-            const columns = ['Registration', 'Student', 'Class', 'Center', 'Institute', 'Current status', 'Exam photo'];
+            const columns = ['Registration', 'Student', 'Class', 'Center', 'Institute', 'Current status', 'Exam photo file', 'Exam photo'];
             const table = document.createElement('table');
             table.className = 'min-w-full border-collapse text-left';
             const head = document.createElement('thead');
@@ -440,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const body = document.createElement('tbody');
             candidates.forEach(function (student) {
                 const row = document.createElement('tr');
-                [student.registration, student.name, student.class, student.center, student.institute, student.reason].forEach(function (value) {
+                [student.registration, student.name, student.class, student.center, student.institute, student.reason, student.exam_photo_file].forEach(function (value) {
                     const td = document.createElement('td');
                     td.className = 'border-b px-3 py-2';
                     td.textContent = value || '—';
@@ -471,6 +482,35 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             photoRunDetails.textContent = error.message || 'Could not load student details for this sync.';
         }
+    }
+
+    function downloadPhotoAttentionCsv(run, candidates) {
+        const rows = candidates.slice().sort(function (a, b) {
+            return String(a.center || '').localeCompare(String(b.center || ''))
+                || String(a.institute || '').localeCompare(String(b.institute || ''))
+                || String(a.name || '').localeCompare(String(b.name || ''))
+                || String(a.registration || '').localeCompare(String(b.registration || ''));
+        });
+        const csvRows = [
+            ['Session', 'Registration', 'Student', 'Class', 'Center', 'Institute', 'Current status', 'Exam photo file'],
+            ...rows.map(function (student) {
+                return [run.session, student.registration, student.name, student.class, student.center, student.institute, student.reason, student.exam_photo_file];
+            })
+        ];
+        const csv = '\uFEFF' + csvRows.map(function (row) {
+            return row.map(function (value) {
+                const text = value == null ? '' : String(value);
+                return '"' + text.replace(/"/g, '""') + '"';
+            }).join(',');
+        }).join('\r\n');
+        const blobUrl = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = 'student-photo-attention-session-' + Number(run.session || 0) + '.csv';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(blobUrl);
     }
 
     async function confirmPhotoSync() {

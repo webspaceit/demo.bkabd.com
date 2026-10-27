@@ -346,6 +346,7 @@ final class DatabaseSyncService
                         'class' => (string) $row['class'],
                         'center' => (string) ($row['center_name'] ?? ''),
                         'institute' => (string) ($row['institute_name'] ?? ''),
+                        'exam_photo_file' => basename(str_replace('\\', '/', $storedPath)),
                         'reason' => $targetRow === null ? 'No unique demo registration match' : ($pathMatches ? 'Synced photo file is missing on this server' : 'No matching synced photo is currently saved on demo'),
                         'source_photo_url' => $urls[0] ?? null,
                     ];
