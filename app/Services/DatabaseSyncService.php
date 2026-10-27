@@ -305,7 +305,7 @@ final class DatabaseSyncService
             if (!$run) { throw new RuntimeException('This photo-sync run could not be found.'); }
 
             $sourceStmt = $source->prepare(
-                'SELECT s.`id`, s.`registration`, s.`name`, s.`class`, s.`photo`, NULLIF(cu.`name`, \'\') AS `center_name`, i.`name` AS `institute_name` '
+                'SELECT s.`id`, s.`registration`, s.`name`, s.`class`, s.`photo`, s.`center_id`, s.`institute_id`, NULLIF(cu.`name`, \'\') AS `center_name`, i.`name` AS `institute_name` '
                 . 'FROM `students` s LEFT JOIN `centers` c ON c.`id` = s.`center_id` '
                 . 'LEFT JOIN `institutes` i ON i.`id` = s.`institute_id` '
                 . 'LEFT JOIN `users` cu ON cu.`id` = c.`user_id` '
@@ -344,6 +344,8 @@ final class DatabaseSyncService
                         'registration' => (string) $row['registration'],
                         'name' => (string) $row['name'],
                         'class' => (string) $row['class'],
+                        'center_id' => (int) ($row['center_id'] ?? 0),
+                        'institute_id' => (int) ($row['institute_id'] ?? 0),
                         'center' => (string) ($row['center_name'] ?? ''),
                         'institute' => (string) ($row['institute_name'] ?? ''),
                         'exam_photo_file' => basename(str_replace('\\', '/', $storedPath)),

@@ -420,14 +420,6 @@ document.addEventListener('DOMContentLoaded', function () {
             title.className = 'font-semibold text-slate-800';
             title.textContent = candidates.length + ' processed student(s) currently need photo attention. This list is reconstructed from exam records and demo photo paths; the original run did not save per-student failure reasons.';
             heading.appendChild(title);
-            if (candidates.length) {
-                const exportButton = document.createElement('button');
-                exportButton.type = 'button';
-                exportButton.className = 'btn btn-light whitespace-nowrap';
-                exportButton.textContent = 'Export CSV (center / institute wise)';
-                exportButton.addEventListener('click', function () { downloadPhotoAttentionCsv(data.run, candidates); });
-                heading.appendChild(exportButton);
-            }
             photoRunDetails.appendChild(heading);
             if (!candidates.length) {
                 const empty = document.createElement('p');
@@ -435,6 +427,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 photoRunDetails.appendChild(empty);
                 return;
             }
+            const exportControls = document.createElement('div');
+            exportControls.className = 'mb-3 flex flex-wrap items-end gap-2';
+            const centerSelect = createPhotoExportSelect('Center', 'All centers', candidates, 'center_id', 'center');
+            const instituteSelect = createPhotoExportSelect('Institute', 'All institutes', candidates, 'institute_id', 'institute');
+            const exportButton = document.createElement('button');
+            exportButton.type = 'button';
+            exportButton.className = 'btn btn-primary whitespace-nowrap';
+            const updateExportLabel = function () {
+                const count = filterPhotoAttentionCandidates(candidates, centerSelect.value, instituteSelect.value).length;
+                exportButton.textContent = 'Download CSV (' + count + ')';
+                exportButton.disabled = count === 0;
+            };
+            centerSelect.addEventListener('change', updateExportLabel);
+            instituteSelect.addEventListener('change', updateExportLabel);
+            exportButton.addEventListener('click', function () {
+                downloadPhotoAttentionCsv(data.run, filterPhotoAttentionCandidates(candidates, centerSelect.value, instituteSelect.value));
+            });
+            exportControls.appendChild(centerSelect.parentElement);
+            exportControls.appendChild(instituteSelect.parentElement);
+            exportControls.appendChild(exportButton);
+            photoRunDetails.appendChild(exportControls);
             const columns = ['Registration', 'Student', 'Class', 'Center', 'Institute', 'Current status', 'Exam photo file', 'Exam photo'];
             const table = document.createElement('table');
             table.className = 'min-w-full border-collapse text-left';
@@ -482,6 +495,50 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             photoRunDetails.textContent = error.message || 'Could not load student details for this sync.';
         }
+    }
+
+    function createPhotoExportSelect(label, allLabel, candidates, idKey, nameKey) {
+        const wrapper = document.createElement('label');
+        wrapper.className = 'flex flex-col gap-1 text-xs font-medium text-slate-700';
+        wrapper.style.minWidth = '12rem';
+        wrapper.textContent = label;
+        const select = document.createElement('select');
+        select.className = 'rounded border border-slate-300 bg-white px-3 py-2 text-sm font-normal';
+        select.setAttribute('aria-label', label + ' filter for CSV export');
+        const allOption = document.createElement('option');
+        allOption.value = '';
+        allOption.textContent = allLabel;
+        select.appendChild(allOption);
+        const choices = new Map();
+        candidates.forEach(function (student) {
+            const id = Number(student[idKey] || 0);
+            const key = String(id);
+            if (!choices.has(key)) {
+                choices.set(key, String(student[nameKey] || (id ? label + ' #' + id : 'Unassigned')));
+            }
+        });
+        const nameCounts = new Map();
+        choices.forEach(function (name) {
+            const key = name.toLocaleLowerCase();
+            nameCounts.set(key, (nameCounts.get(key) || 0) + 1);
+        });
+        Array.from(choices.entries()).sort(function (a, b) {
+            return a[1].localeCompare(b[1]) || Number(a[0]) - Number(b[0]);
+        }).forEach(function (choice) {
+            const option = document.createElement('option');
+            option.value = choice[0];
+            option.textContent = nameCounts.get(choice[1].toLocaleLowerCase()) > 1 ? choice[1] + ' (#' + choice[0] + ')' : choice[1];
+            select.appendChild(option);
+        });
+        wrapper.appendChild(select);
+        return select;
+    }
+
+    function filterPhotoAttentionCandidates(candidates, centerId, instituteId) {
+        return candidates.filter(function (student) {
+            return (!centerId || String(Number(student.center_id || 0)) === centerId)
+                && (!instituteId || String(Number(student.institute_id || 0)) === instituteId);
+        });
     }
 
     function downloadPhotoAttentionCsv(run, candidates) {
