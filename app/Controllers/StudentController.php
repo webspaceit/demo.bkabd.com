@@ -258,6 +258,50 @@ final class StudentController extends Controller
         return $this->sendResponse(['institutes' => $institutes], 'Institute filter options retrieved.');
     }
 
+    /** Student totals by center and institute for the selected session. */
+    public function filterStudentCounts(Request $request): array
+    {
+        $sessionInput = trim((string) $request->query('session', ''));
+        $session = $sessionInput !== '' && ctype_digit($sessionInput) ? (int) $sessionInput : null;
+        $scopeCenterId = !Auth::isAdmin() ? Auth::centerId() : null;
+        $cacheKey = 'filter:student_counts:' . ($session === null ? 'all' : (string) $session)
+            . ':center:' . (string) ($scopeCenterId ?? 0);
+
+        $counts = Cache::remember($cacheKey, 60, static function () use ($session, $scopeCenterId): array {
+            $sql = 'SELECT `center_id`, `institute_id`, COUNT(*) AS `student_count` FROM `students`';
+            $where = [];
+            $params = [];
+            if ($session !== null) {
+                $where[] = '`session` = ?';
+                $params[] = $session;
+            }
+            if ($scopeCenterId !== null) {
+                $where[] = '`center_id` = ?';
+                $params[] = (int) $scopeCenterId;
+            }
+            if ($where !== []) { $sql .= ' WHERE ' . implode(' AND ', $where); }
+            $sql .= ' GROUP BY `center_id`, `institute_id`';
+
+            $centerCounts = [];
+            $instituteCounts = [];
+            foreach (Database::select($sql, $params) as $row) {
+                $total = (int) $row['student_count'];
+                if ($row['center_id'] !== null) {
+                    $key = (string) $row['center_id'];
+                    $centerCounts[$key] = ($centerCounts[$key] ?? 0) + $total;
+                }
+                if ($row['institute_id'] !== null) {
+                    $key = (string) $row['institute_id'];
+                    $instituteCounts[$key] = ($instituteCounts[$key] ?? 0) + $total;
+                }
+            }
+
+            return ['center_counts' => $centerCounts, 'institute_counts' => $instituteCounts];
+        });
+
+        return $this->sendResponse($counts, 'Student filter counts retrieved.');
+    }
+
     // ---------------------------------------------------------------
     // Pending registrations (approval queue)
     // ---------------------------------------------------------------

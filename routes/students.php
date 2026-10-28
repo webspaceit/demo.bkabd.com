@@ -15,6 +15,7 @@ use App\Models\ExamSession;
 // Original: GET /api/students  ->  index
 Router::get('/api/students', [StudentController::class, 'index'], 'auth|permission:student-list');
 Router::get('/api/student-filter-institutes', [StudentController::class, 'filterInstitutes'], 'auth|permission:student-list');
+Router::get('/api/student-filter-counts', [StudentController::class, 'filterStudentCounts'], 'auth|permission:student-list|admit-card');
 Router::get('/api/students/duplicate-check', [StudentController::class, 'duplicateCheck'], 'auth|permission:student-registration');
 
 // Register form

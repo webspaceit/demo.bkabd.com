@@ -145,10 +145,36 @@ document.addEventListener('DOMContentLoaded', function () {
     let pageNum     = 1;
     let searchTimer = null;
     let centerCountRequest = 0;
+    let optionCountRequest = 0;
+    let studentCounts = {center_counts: {}, institute_counts: {}};
     let listRequest = 0;
     let listController = null;
     const val = el => el ? el.value : '';
     const initialSession = val(sessionEl);
+
+    function applyOptionStudentCounts() {
+        [centerEl, instituteEl].forEach(function (select, index) {
+            if (!select) return;
+            const counts = index === 0 ? studentCounts.center_counts : studentCounts.institute_counts;
+            Array.from(select.options).forEach(function (option) {
+                if (!option.value || option.disabled) return;
+                if (!option.dataset.baseLabel) option.dataset.baseLabel = option.textContent.trim();
+                const count = Number(counts[String(option.value)] || 0);
+                option.textContent = option.dataset.baseLabel + ' (' + count.toLocaleString('en-US') + ')';
+            });
+        });
+    }
+
+    function refreshOptionStudentCounts() {
+        const requestId = ++optionCountRequest;
+        BK.get(BK.qs('/api/student-filter-counts', {session: val(sessionEl)})).then(function (json) {
+            if (requestId !== optionCountRequest) return;
+            studentCounts = (json && json.data) || {center_counts: {}, institute_counts: {}};
+            applyOptionStudentCounts();
+        }).catch(function () {
+            // The admit-card filters remain usable if the optional counts fail.
+        });
+    }
 
     function syncInstituteRecordCount(count) {
         if (!instituteCountEl) return;
@@ -169,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!instituteId) return;
 
         const selectedInstitute = instituteEl.options[instituteEl.selectedIndex];
-        if (instituteSummaryNameEl) instituteSummaryNameEl.textContent = selectedInstitute ? selectedInstitute.textContent.trim() : '';
+        if (instituteSummaryNameEl) instituteSummaryNameEl.textContent = selectedInstitute ? (selectedInstitute.dataset.baseLabel || selectedInstitute.textContent.trim()) : '';
         if (instituteSummaryCountEl) instituteSummaryCountEl.textContent = '…';
 
         BK.get(BK.qs('/api/students', {
@@ -202,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (centerSummaryEl) {
             centerSummaryEl.classList.toggle('hidden', !cid);
-            if (cid && centerSummaryNameEl) centerSummaryNameEl.textContent = selectedCenter ? selectedCenter.textContent.trim() : '';
+            if (cid && centerSummaryNameEl) centerSummaryNameEl.textContent = selectedCenter ? (selectedCenter.dataset.baseLabel || selectedCenter.textContent.trim()) : '';
             if (cid && centerSummaryCountEl) centerSummaryCountEl.textContent = '…';
         }
         if (!cid) return;
@@ -320,8 +346,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     const o = document.createElement('option');
                     o.value = i.id;
                     o.textContent = i.name || '';
+                    o.dataset.baseLabel = o.textContent;
                     instituteEl.appendChild(o);
                 });
+                applyOptionStudentCounts();
                 syncInstituteRecordCount(instituteEl.options.length - 1);
             })
             .catch(() => BK.toast('Could not load institutes', 'error'));
@@ -392,6 +420,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Filter change triggers reload
     [sessionEl, centerEl, instituteEl, classEl].forEach(el => el.addEventListener('change', () => { pageNum = 1; reload(); syncPrintBtn(); syncInstitutePrintBtns(); syncInstituteSummary(); }));
+    sessionEl.addEventListener('change', refreshOptionStudentCounts);
 
     if (resetFiltersBtn) {
         resetFiltersBtn.addEventListener('click', function () {
@@ -424,5 +453,6 @@ document.addEventListener('DOMContentLoaded', function () {
     syncInstitutePrintBtns();
     syncInstituteRecordCount();
     syncInstituteSummary();
+    refreshOptionStudentCounts();
 });
 </script>

@@ -180,6 +180,30 @@ document.addEventListener('DOMContentLoaded', function () {
     let instituteOptionsLoaded = false;
     let centerSummaryRequest = 0;
     let instituteSummaryRequest = 0;
+    let optionCountRequest = 0;
+
+    function refreshOptionStudentCounts() {
+        const requestId = ++optionCountRequest;
+        BK.get(BK.qs('/api/student-filter-counts', {session: val(sessionEl)})).then(function (json) {
+            if (requestId !== optionCountRequest) return;
+            const data = (json && json.data) || {};
+            const centerCounts = data.center_counts || {};
+            const instituteCounts = data.institute_counts || {};
+            [centerEl, instituteEl].forEach(function (select, index) {
+                if (!select) return;
+                const counts = index === 0 ? centerCounts : instituteCounts;
+                Array.from(select.options).forEach(function (option) {
+                    if (!option.value || option.disabled) return;
+                    if (!option.dataset.baseLabel) option.dataset.baseLabel = option.textContent.trim();
+                    const count = Number(counts[String(option.value)] || 0);
+                    option.textContent = option.dataset.baseLabel + ' (' + count.toLocaleString('en-US') + ')';
+                });
+            });
+            syncSelectionSummaries();
+        }).catch(function () {
+            // Keep the names usable if the optional count request fails.
+        });
+    }
 
     function syncInstituteRecordCount() {
         if (!instituteCountEl || !instituteEl) return;
@@ -351,6 +375,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 option.value = String(institute.id);
                 option.setAttribute('data-center', String(institute.center_id || ''));
                 option.textContent = institute.name || '';
+                option.dataset.baseLabel = option.textContent;
                 if (String(institute.id) === initialInstituteId) { option.selected = true; }
                 fragment.appendChild(option);
             });
@@ -359,6 +384,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (loadingOption) { loadingOption.remove(); }
             instituteOptionsLoaded = true;
             syncInstitutes();
+            refreshOptionStudentCounts();
             if (initialInstituteId) { reload(); }
         }).catch(function () {
             const loadingOption = instituteEl.querySelector('option[disabled]');
@@ -371,6 +397,9 @@ document.addEventListener('DOMContentLoaded', function () {
             reloadFromFilters();
         });
         syncInstitutes();
+    }
+    if (sessionEl) {
+        sessionEl.addEventListener('change', refreshOptionStudentCounts);
     }
 
     if (resetFiltersBtn) {

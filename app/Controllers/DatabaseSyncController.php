@@ -209,19 +209,33 @@ final class DatabaseSyncController extends Controller
     private function isSyncHostAllowed(Request $request): bool
     {
         $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));
-        return $host === 'demo.bkabd.com'
-            || (in_array($host, ['localhost', '127.0.0.1', '[::1]'], true)
-                && \App\Core\Config::getBool('DB_SYNC_ALLOW_LOCAL', false));
+        return $this->isHostAllowedForSync($host);
+    }
+
+    private function isHostAllowedForSync(string $host): bool
+    {
+        if ($host === 'demo.bkabd.com') {
+            return true;
+        }
+
+        if (in_array($host, ['localhost', '127.0.0.1', '[::1]'], true)
+            && \App\Core\Config::getBool('DB_SYNC_ALLOW_LOCAL', false)) {
+            return true;
+        }
+
+        $allowedHosts = array_filter(array_map(
+            static fn (string $allowed): string => strtolower(trim($allowed)),
+            explode(',', (string) \App\Core\Config::get('DB_SYNC_ALLOWED_HOSTS', ''))
+        ));
+
+        return in_array($host, $allowedHosts, true);
     }
 
     public function importStudents(Request $request): array
     {
         $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));
-        $localHosts = ['localhost', '127.0.0.1', '[::1]'];
-        $isAllowedLocal = in_array($host, $localHosts, true)
-            && \App\Core\Config::getBool('DB_SYNC_ALLOW_LOCAL', false);
-        if ($host !== 'demo.bkabd.com' && !$isAllowedLocal) {
-            return ['error' => 'Student imports can run only from demo.bkabd.com or an explicitly allowed local dashboard.'];
+        if (!$this->isHostAllowedForSync($host)) {
+            return ['error' => 'Student imports are blocked on this host. Add this exact domain to DB_SYNC_ALLOWED_HOSTS in the private .env only after verifying the configured target database.'];
         }
         $afterId = max(0, (int) $request->input('after_id', 0));
         try {
@@ -237,11 +251,8 @@ final class DatabaseSyncController extends Controller
     public function apply(Request $request): array
     {
         $host = strtolower((string) preg_replace('/:\\d+$/', '', (string) $request->header('Host', '')));
-        $localHosts = ['localhost', '127.0.0.1', '[::1]'];
-        $isAllowedLocal = in_array($host, $localHosts, true)
-            && \App\Core\Config::getBool('DB_SYNC_ALLOW_LOCAL', false);
-        if ($host !== 'demo.bkabd.com' && !$isAllowedLocal) {
-            return ['error' => 'Run migrations from demo.bkabd.com, or explicitly allow the local dashboard in its private .env file.'];
+        if (!$this->isHostAllowedForSync($host)) {
+            return ['error' => 'Schema migrations are blocked on this host. Add this exact domain to DB_SYNC_ALLOWED_HOSTS in the private .env only after verifying the configured target database.'];
         }
         try {
             return (new DatabaseSyncService())->applyPending();

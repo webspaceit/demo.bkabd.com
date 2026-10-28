@@ -1271,7 +1271,21 @@ final class DatabaseSyncService
         foreach ($sourceColumns['students'] ?? [] as $column => $definition) {
             if ($column === 'id') { continue; }
             if (!isset($targetColumns['students'][$column]) || $targetColumns['students'][$column] !== $definition) {
-                throw new RuntimeException("Student import is paused: the `students.{$column}` column differs between exam and demo.");
+                $targetDefinition = $targetColumns['students'][$column] ?? '<missing>';
+                $sourceSettings = $this->sourceSettings();
+                $targetSettings = $this->targetSettings();
+                throw new RuntimeException(sprintf(
+                    'Student import is paused: students.%s differs. Exam source (%s:%d/%s): [%s]. Destination (%s:%d/%s): [%s].',
+                    $column,
+                    $sourceSettings['host'],
+                    $sourceSettings['port'],
+                    $sourceSettings['database'],
+                    $definition,
+                    $targetSettings['host'],
+                    $targetSettings['port'],
+                    $targetSettings['database'],
+                    $targetDefinition
+                ));
             }
         }
     }
@@ -1282,8 +1296,26 @@ final class DatabaseSyncService
         $stmt->execute([$schema]);
         $out = [];
         foreach ($stmt->fetchAll() as $row) {
+            $columnType = strtolower((string) $row['COLUMN_TYPE']);
+            // MySQL 8 omits the legacy display width for integer types, while
+            // older MySQL/MariaDB versions may report e.g. int(11). Width does
+            // not change the integer range; keep modifiers such as UNSIGNED.
+            if (!str_contains($columnType, 'zerofill')) {
+                $columnType = preg_replace('/\b(tinyint|smallint|mediumint|int|bigint)\(\d+\)/i', '$1', $columnType) ?? $columnType;
+            }
+            $columnDefault = $row['COLUMN_DEFAULT'];
+            // MySQL reports DEFAULT NULL for a nullable column as SQL NULL,
+            // while MariaDB may expose the same nullable default as the
+            // unquoted string "NULL". MariaDB quotes a literal string default
+            // as 'NULL', so normalize only its unquoted nullable form here.
+            if ($columnDefault === null
+                || (($row['IS_NULLABLE'] ?? '') === 'YES' && $columnDefault === 'NULL')) {
+                $columnDefault = '<NULL>';
+            } else {
+                $columnDefault = (string) $columnDefault;
+            }
             $out[$row['TABLE_NAME']][$row['COLUMN_NAME']] = implode('|', [
-                $row['COLUMN_TYPE'], $row['IS_NULLABLE'], $row['COLUMN_DEFAULT'] === null ? '<NULL>' : (string) $row['COLUMN_DEFAULT'],
+                $columnType, $row['IS_NULLABLE'], $columnDefault,
                 $row['EXTRA'], $row['CHARACTER_SET_NAME'] ?? '', $row['COLLATION_NAME'] ?? '',
             ]);
         }
