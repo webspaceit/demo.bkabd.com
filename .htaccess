@@ -1,0 +1,16 @@
+# StackCP / shared-hosting bridge: the repo root is the document root,
+# but the app lives under public/. Delegate everything there so the
+# existing public/.htaccess + front controller keep working unchanged.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Don't rewrite requests already targeting public/.
+    RewriteCond %{REQUEST_URI} !^/public/
+
+    # Don't rewrite real files/dirs that exist at the repo root.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
