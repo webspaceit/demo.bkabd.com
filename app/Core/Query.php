@@ -382,13 +382,17 @@ final class Query
      * current_page, data, first_page_url, from, last_page, last_page_url,
      * links, next_page_url, path, per_page, prev_page_url, to, total
      */
-    public function paginate(int $perPage = 20, ?int $page = null, string $path = '', ?self $countQuery = null): array
+    public function paginate(int $perPage = 20, ?int $page = null, string $path = '', ?self $countQuery = null, ?int $total = null): array
     {
         $req = Request::capture();
         $page = max(1, $page ?? (int) $req->query('page', 1));
         $perPage = max(1, min(200, $perPage));
 
-        $total = ($countQuery ?? clone $this)->count();
+        // Callers that already know the total (e.g. from a short-lived cache)
+        // pass it in and skip the second COUNT over the filtered set.
+        if ($total === null) {
+            $total = ($countQuery ?? clone $this)->count();
+        }
 
         $lastPage = max(1, (int) ceil($total / $perPage));
         $page = min($page, $lastPage);

@@ -122,17 +122,36 @@ final class StudentController extends Controller
         // center and institute names instead of repeating all display joins.
         $classTerms = ['kg', 'one', 'two', 'three', 'four', 'five'];
         $countQuery = null;
+        $substringSearch = false;
         if ($searchTerm === '' || ctype_digit($searchTerm) || in_array(strtolower($searchTerm), $classTerms, true)) {
             $countQuery = $q->withoutJoins();
         } elseif ($search !== null) {
+            $substringSearch = true;
             $countQuery = $countBase->withoutJoins();
             $like = '%' . $searchTerm . '%';
-            $countQuery->whereRaw(
-                '(`students`.`name` LIKE ? OR `students`.`registration` LIKE ? OR `students`.`roll` LIKE ?'
-                . ' OR `students`.`center_id` IN (SELECT c.`id` FROM `centers` c JOIN `users` u ON u.`id` = c.`user_id` WHERE u.`name` LIKE ?)'
-                . ' OR `students`.`institute_id` IN (SELECT i.`id` FROM `institutes` i WHERE i.`name` LIKE ?))',
-                [$like, $like, $like, $like, $like]
-            );
+            [$clause, $params] = $this->searchCountClause($like, $searchTerm);
+            $countQuery->whereRaw($clause, $params);
+        }
+
+        // A substring search has no usable index and scans the students table.
+        // The list page repeats the same filters (paging, the centre/institute
+        // summary chips), so hold that total briefly instead of re-scanning.
+        if ($substringSearch) {
+            $countKey = 'students:count:' . sha1((string) json_encode([
+                'search' => $searchTerm,
+                'session' => (string) $request->input('session', ''),
+                'class' => (string) $request->input('class', ''),
+                'status' => (string) $request->input('status', ''),
+                'roll' => (string) $request->input('roll', ''),
+                'registration' => (string) $request->input('registration', ''),
+                'center_id' => (string) $request->input('center_id', ''),
+                'institute_id' => (string) $request->input('institute_id', ''),
+                'scope_center' => (int) ($centerId ?? 0),
+                'admin' => Auth::isAdmin(),
+            ]));
+            $total = Cache::remember($countKey, 30, fn(): int => $countQuery->count());
+        } else {
+            $total = ($countQuery ?? clone $q)->count();
         }
 
         // Show the most recently registered students first. Use id as a stable
@@ -142,9 +161,91 @@ final class StudentController extends Controller
 
         // Pagination matching Laravel shape for frontend 1:1
         return $this->sendResponse(
-            $q->paginate((int) ($request->input('per_page', 20)), null, '/api/students', $countQuery),
+            $q->paginate((int) ($request->input('per_page', 20)), null, '/api/students', null, $total),
             'Student list retrieved.'
         );
+    }
+
+    /**
+     * `registration` is a 13-digit code and `roll` an int, so a search term
+     * without a digit can never match either column. Skipping those branches
+     * keeps the scan off the per-row int/string casts.
+     */
+    private function codeLikeClause(string $term): string
+    {
+        return preg_match('/\d/', $term) === 1
+            ? ' OR `students`.`registration` LIKE ? OR `students`.`roll` LIKE ?'
+            : '';
+    }
+
+    /** @return array<int,string> LIKE params in the order the clauses expect. */
+    private function likeParams(string $like, string $term): array
+    {
+        return preg_match('/\d/', $term) === 1
+            ? [$like, $like, $like, $like, $like]
+            : [$like, $like, $like];
+    }
+
+    /**
+     * Count predicate for a free-text search. The centre and institute branches
+     * are resolved once up front and inlined as id lists: over 169k students a
+     * per-row materialised-subquery lookup costs far more than the two small
+     * lookups that build the lists. Sets too large to inline fall back to the
+     * subquery, and an empty set drops the branch entirely.
+     *
+     * @return array{0:string,1:array<int,mixed>}
+     */
+    private function searchCountClause(string $like, string $term): array
+    {
+        $clause = '(`students`.`name` LIKE ?' . $this->codeLikeClause($term);
+        $params = preg_match('/\d/', $term) === 1
+            ? [$like, $like, $like]
+            : [$like];
+
+        // Branches: [inline ids, inline clause, subquery clause + its param].
+        $branches = [
+            [
+                $this->idsMatching(
+                    'SELECT c.`id` FROM `centers` c JOIN `users` u ON u.`id` = c.`user_id` WHERE u.`name` LIKE ?',
+                    $like
+                ),
+                ' OR `students`.`center_id` IN (',
+                ' OR `students`.`center_id` IN (SELECT c.`id` FROM `centers` c JOIN `users` u ON u.`id` = c.`user_id` WHERE u.`name` LIKE ?)',
+            ],
+            [
+                $this->idsMatching('SELECT `id` FROM `institutes` WHERE `name` LIKE ?', $like),
+                ' OR `students`.`institute_id` IN (',
+                ' OR `students`.`institute_id` IN (SELECT `id` FROM `institutes` WHERE `name` LIKE ?)',
+            ],
+        ];
+
+        foreach ($branches as [$ids, $inlinePrefix, $subquery]) {
+            if ($ids === null) {
+                $clause .= $subquery;
+                $params[] = $like;
+            } elseif ($ids !== []) {
+                $clause .= $inlinePrefix . implode(',', array_fill(0, count($ids), '?')) . ')';
+                $params = array_merge($params, $ids);
+            }
+        }
+
+        return [$clause . ')', $params];
+    }
+
+    /**
+     * Ids matched by a small lookup query. Returns null when the set is too
+     * large to inline (caller keeps the subquery form) and an empty array when
+     * nothing matched (caller drops the branch).
+     *
+     * @return array<int,int>|null
+     */
+    private function idsMatching(string $sql, string $like, int $cap = 400): ?array
+    {
+        $rows = Database::select($sql, [$like]);
+        if (count($rows) > $cap) {
+            return null;
+        }
+        return array_map(static fn(array $r): int => (int) array_values($r)[0], $rows);
     }
 
     /** Small, lazy-loaded institute options for student-list filters. */
@@ -458,12 +559,14 @@ final class StudentController extends Controller
         }
 
         $like = '%' . $search . '%';
-        // Search group; dotted columns quoted explicitly (see index()).
-        $q->whereRaw(
-            '(`students`.`name` LIKE ? OR `registration` LIKE ? OR `roll` LIKE ?'
-            . ' OR `users`.`name` LIKE ? OR `institutes`.`name` LIKE ?)',
-            [$like, $like, $like, $like, $like]
-        );
+        // Search group kept on `students` columns only. Filtering through the
+        // joined `users`/`institutes` aliases forces MySQL to build the display
+        // joins for every candidate row before it can reject it, which turns a
+        // no-match search into a full scan of the whole table (~1.2s). The
+        // centre/institute branches are resolved to id lists instead, so the
+        // (created_at, id) index can drive the scan and stop at LIMIT.
+        [$clause, $params] = $this->searchCountClause($like, $search);
+        $q->whereRaw($clause, $params);
     }
 
     /** Show registration form. GET /student-registration */
