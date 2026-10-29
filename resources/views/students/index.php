@@ -161,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const instituteSummaryNameEl = document.getElementById('selected-institute-name');
     const instituteSummaryCountEl = document.getElementById('selected-institute-student-count');
     const instituteCountEl = document.getElementById('institute-record-count');
+    const classCountEl = document.getElementById('class-record-count');
     const initialInstituteId = <?= json_encode((string) ($filters['institute_id'] ?? '')) ?>;
     const PER_PAGE = 20;
 
@@ -184,7 +185,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function refreshOptionStudentCounts() {
         const requestId = ++optionCountRequest;
-        BK.get(BK.qs('/api/student-filter-counts', {session: val(sessionEl)})).then(function (json) {
+        BK.get(BK.qs('/api/student-filter-counts', {
+            session: val(sessionEl),
+            center_id: val(centerEl),
+            institute_id: val(instituteEl)
+        })).then(function (json) {
             if (requestId !== optionCountRequest) return;
             const data = (json && json.data) || {};
             const centerCounts = data.center_counts || {};
@@ -199,6 +204,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     option.textContent = option.dataset.baseLabel + ' (' + count.toLocaleString('en-US') + ')';
                 });
             });
+            if (classCountEl) {
+                const availableClasses = Object.keys(data.class_counts || {}).filter(function (key) {
+                    return Number(data.class_counts[key] || 0) > 0;
+                }).length;
+                classCountEl.textContent = availableClasses.toLocaleString('en-US');
+                classCountEl.title = availableClasses + ' class(es) with students for the selected filters';
+            }
             syncSelectionSummaries();
         }).catch(function () {
             // Keep the names usable if the optional count request fails.
@@ -395,11 +407,15 @@ document.addEventListener('DOMContentLoaded', function () {
         centerEl.addEventListener('change', function () {
             syncInstitutes();
             reloadFromFilters();
+            refreshOptionStudentCounts();
         });
         syncInstitutes();
     }
     if (sessionEl) {
         sessionEl.addEventListener('change', refreshOptionStudentCounts);
+    }
+    if (instituteEl) {
+        instituteEl.addEventListener('change', refreshOptionStudentCounts);
     }
 
     if (resetFiltersBtn) {
@@ -414,6 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
             syncInstitutes();
             pageNum = 1;
             reloadFromFilters();
+            refreshOptionStudentCounts();
         });
     }
 

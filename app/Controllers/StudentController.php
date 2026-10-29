@@ -264,10 +264,16 @@ final class StudentController extends Controller
         $sessionInput = trim((string) $request->query('session', ''));
         $session = $sessionInput !== '' && ctype_digit($sessionInput) ? (int) $sessionInput : null;
         $scopeCenterId = !Auth::isAdmin() ? Auth::centerId() : null;
+        $requestedCenter = trim((string) $request->query('center_id', ''));
+        $requestedInstitute = trim((string) $request->query('institute_id', ''));
+        $selectedCenterId = $scopeCenterId ?? ($requestedCenter !== '' && ctype_digit($requestedCenter) ? (int) $requestedCenter : null);
+        $selectedInstituteId = $requestedInstitute !== '' && ctype_digit($requestedInstitute) ? (int) $requestedInstitute : null;
         $cacheKey = 'filter:student_counts_v2:' . ($session === null ? 'all' : (string) $session)
-            . ':center:' . (string) ($scopeCenterId ?? 0);
+            . ':scope:' . (string) ($scopeCenterId ?? 0)
+            . ':selected-center:' . (string) ($selectedCenterId ?? 0)
+            . ':selected-institute:' . (string) ($selectedInstituteId ?? 0);
 
-        $counts = Cache::remember($cacheKey, 60, static function () use ($session, $scopeCenterId): array {
+        $counts = Cache::remember($cacheKey, 60, static function () use ($session, $scopeCenterId, $selectedCenterId, $selectedInstituteId): array {
             $sql = 'SELECT `center_id`, `institute_id`, COUNT(*) AS `student_count` FROM `students`';
             $where = [];
             $params = [];
@@ -296,11 +302,21 @@ final class StudentController extends Controller
                 }
             }
 
+            $classWhere = $where;
+            $classParams = $params;
+            if ($selectedCenterId !== null && $scopeCenterId === null) {
+                $classWhere[] = '`center_id` = ?';
+                $classParams[] = $selectedCenterId;
+            }
+            if ($selectedInstituteId !== null) {
+                $classWhere[] = '`institute_id` = ?';
+                $classParams[] = $selectedInstituteId;
+            }
             $classSql = 'SELECT `class`, COUNT(*) AS `student_count` FROM `students`';
-            if ($where !== []) { $classSql .= ' WHERE ' . implode(' AND ', $where); }
+            if ($classWhere !== []) { $classSql .= ' WHERE ' . implode(' AND ', $classWhere); }
             $classSql .= ' GROUP BY `class`';
             $classCounts = [];
-            foreach (Database::select($classSql, $params) as $row) {
+            foreach (Database::select($classSql, $classParams) as $row) {
                 if ($row['class'] !== null && $row['class'] !== '') {
                     $classCounts[(string) $row['class']] = (int) $row['student_count'];
                 }
