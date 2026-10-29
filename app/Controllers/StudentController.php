@@ -263,23 +263,31 @@ final class StudentController extends Controller
     {
         $sessionInput = trim((string) $request->query('session', ''));
         $session = $sessionInput !== '' && ctype_digit($sessionInput) ? (int) $sessionInput : null;
+        $statusInput = trim((string) $request->query('status', ''));
+        $countStatus = in_array($statusInput, ['active', 'pending'], true) ? $statusInput : null;
         $scopeCenterId = !Auth::isAdmin() ? Auth::centerId() : null;
         $requestedCenter = trim((string) $request->query('center_id', ''));
         $requestedInstitute = trim((string) $request->query('institute_id', ''));
         $selectedCenterId = $scopeCenterId ?? ($requestedCenter !== '' && ctype_digit($requestedCenter) ? (int) $requestedCenter : null);
         $selectedInstituteId = $requestedInstitute !== '' && ctype_digit($requestedInstitute) ? (int) $requestedInstitute : null;
         $cacheKey = 'filter:student_counts_v2:' . ($session === null ? 'all' : (string) $session)
+            . ':status:' . (string) ($countStatus ?? 'all')
             . ':scope:' . (string) ($scopeCenterId ?? 0)
             . ':selected-center:' . (string) ($selectedCenterId ?? 0)
             . ':selected-institute:' . (string) ($selectedInstituteId ?? 0);
 
-        $counts = Cache::remember($cacheKey, 60, static function () use ($session, $scopeCenterId, $selectedCenterId, $selectedInstituteId): array {
+        $counts = Cache::remember($cacheKey, 60, static function () use ($session, $countStatus, $scopeCenterId, $selectedCenterId, $selectedInstituteId): array {
             $sql = 'SELECT `center_id`, `institute_id`, COUNT(*) AS `student_count` FROM `students`';
             $where = [];
             $params = [];
             if ($session !== null) {
                 $where[] = '`session` = ?';
                 $params[] = $session;
+            }
+            if ($countStatus === 'active') {
+                $where[] = '`active` = 1';
+            } elseif ($countStatus === 'pending') {
+                $where[] = '(`active` = 0 OR `active` IS NULL)';
             }
             if ($scopeCenterId !== null) {
                 $where[] = '`center_id` = ?';

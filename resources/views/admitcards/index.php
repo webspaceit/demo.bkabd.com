@@ -82,7 +82,7 @@ $instituteCount = (int) ($instituteCount ?? 0);
                             <option value="<?= (int) $c ?>"><?= e(ClassName($c)) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-class">Class</label>
+                    <label for="f-class">Class <span class="filter-record-count" id="class-record-count" title="Classes with active students"><?= count($classes) ?></span></label>
                 </div>
                 <div class="fl" style="display:flex;align-items:center;gap:.5rem">
                     <input type="search" id="f-search" class="w-full min-w-0" style="flex:1" placeholder="Name, reg. no, roll...">
@@ -133,6 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnPrintInstitute = document.getElementById('btn-print-institute');
     const btnPrintClass = document.getElementById('btn-print-class');
     const instituteCountEl = document.getElementById('institute-record-count');
+    const classCountEl = document.getElementById('class-record-count');
     const centerSummaryEl = document.getElementById('selected-center-summary');
     const centerSummaryNameEl = document.getElementById('selected-center-name');
     const centerSummaryCountEl = document.getElementById('selected-center-student-count');
@@ -146,16 +147,16 @@ document.addEventListener('DOMContentLoaded', function () {
     let searchTimer = null;
     let centerCountRequest = 0;
     let optionCountRequest = 0;
-    let studentCounts = {center_counts: {}, institute_counts: {}};
+    let studentCounts = {center_counts: {}, institute_counts: {}, class_counts: {}};
     let listRequest = 0;
     let listController = null;
     const val = el => el ? el.value : '';
     const initialSession = val(sessionEl);
 
     function applyOptionStudentCounts() {
-        [centerEl, instituteEl].forEach(function (select, index) {
+        [centerEl, instituteEl, classEl].forEach(function (select, index) {
             if (!select) return;
-            const counts = index === 0 ? studentCounts.center_counts : studentCounts.institute_counts;
+            const counts = index === 0 ? studentCounts.center_counts : (index === 1 ? studentCounts.institute_counts : studentCounts.class_counts);
             Array.from(select.options).forEach(function (option) {
                 if (!option.value || option.disabled) return;
                 if (!option.dataset.baseLabel) option.dataset.baseLabel = option.textContent.trim();
@@ -167,10 +168,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function refreshOptionStudentCounts() {
         const requestId = ++optionCountRequest;
-        BK.get(BK.qs('/api/student-filter-counts', {session: val(sessionEl)})).then(function (json) {
+        BK.get(BK.qs('/api/student-filter-counts', {
+            session: val(sessionEl),
+            center_id: val(centerEl),
+            institute_id: val(instituteEl),
+            status: 'active'
+        })).then(function (json) {
             if (requestId !== optionCountRequest) return;
-            studentCounts = (json && json.data) || {center_counts: {}, institute_counts: {}};
+            studentCounts = (json && json.data) || {center_counts: {}, institute_counts: {}, class_counts: {}};
             applyOptionStudentCounts();
+            if (classCountEl) {
+                const availableClasses = Object.keys(studentCounts.class_counts || {}).filter(function (key) {
+                    return Number(studentCounts.class_counts[key] || 0) > 0;
+                }).length;
+                classCountEl.textContent = availableClasses.toLocaleString('en-US');
+                classCountEl.title = availableClasses + ' class(es) with active students for the selected filters';
+            }
         }).catch(function () {
             // The admit-card filters remain usable if the optional counts fail.
         });
@@ -419,7 +432,14 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Filter change triggers reload
-    [sessionEl, centerEl, instituteEl, classEl].forEach(el => el.addEventListener('change', () => { pageNum = 1; reload(); syncPrintBtn(); syncInstitutePrintBtns(); syncInstituteSummary(); }));
+    [sessionEl, centerEl, instituteEl, classEl].forEach(el => el.addEventListener('change', () => {
+        pageNum = 1;
+        reload();
+        syncPrintBtn();
+        syncInstitutePrintBtns();
+        syncInstituteSummary();
+        if (el === centerEl || el === instituteEl) refreshOptionStudentCounts();
+    }));
     sessionEl.addEventListener('change', refreshOptionStudentCounts);
 
     if (resetFiltersBtn) {
@@ -436,6 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
             syncInstitutePrintBtns();
             syncInstituteRecordCount();
             syncInstituteSummary();
+            refreshOptionStudentCounts();
         });
     }
 
