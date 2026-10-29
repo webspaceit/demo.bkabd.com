@@ -178,10 +178,10 @@ final class DatabaseSyncService
 
             $registrations = array_values(array_unique(array_map(static fn(array $row): string => trim((string) $row['registration']), $sourceRows)));
             $targetStmt = $target->prepare(
-                'SELECT `id`, `registration`, `photo` FROM `students` WHERE `registration` IN ('
+                'SELECT `id`, `registration`, `photo` FROM `students` WHERE `session` = ? AND `registration` IN ('
                 . implode(',', array_fill(0, count($registrations), '?')) . ')'
             );
-            $targetStmt->execute($registrations);
+            $targetStmt->execute(array_merge([$session], $registrations));
             $targetByRegistration = [];
             foreach ($targetStmt->fetchAll(PDO::FETCH_ASSOC) as $targetRow) {
                 $key = mb_strtolower(trim((string) $targetRow['registration']), 'UTF-8');
@@ -443,62 +443,59 @@ final class DatabaseSyncService
         $source = $this->connectSource();
         $target = $this->connectTarget();
         try {
-            $totals = $source->prepare(
-                'SELECT COUNT(*) AS `source_photos`, SUM(CASE WHEN `registration` IS NULL OR TRIM(`registration`) = \'\' THEN 1 ELSE 0 END) AS `without_registration` '
-                . 'FROM `students` WHERE `session` = ? AND `photo` IS NOT NULL AND TRIM(`photo`) <> \'\''
+            // Read destination registrations once. Previously each 500-row
+            // source batch triggered another destination query, which caused
+            // many repeated scans on large student databases.
+            $targetStmt = $target->prepare(
+                'SELECT `registration`, `photo` FROM `students` WHERE `session` = ? '
+                . 'AND `registration` IS NOT NULL AND TRIM(`registration`) <> \'\''
             );
-            $totals->execute([$session]);
-            $totalRow = $totals->fetch(PDO::FETCH_ASSOC) ?: [];
+            $targetStmt->execute([$session]);
+            $targetByRegistration = [];
+            while ($targetRow = $targetStmt->fetch(PDO::FETCH_ASSOC)) {
+                $key = mb_strtolower(trim((string) $targetRow['registration']), 'UTF-8');
+                if (array_key_exists($key, $targetByRegistration)) {
+                    $targetByRegistration[$key] = null;
+                } else {
+                    $targetByRegistration[$key] = $targetRow;
+                }
+            }
+            $targetStmt->closeCursor();
 
+            // Stream the exam photo registrations and count them in one pass.
             $sourceRows = $source->prepare(
-                'SELECT `id`, `registration` FROM `students` WHERE `session` = ? '
-                . 'AND `photo` IS NOT NULL AND TRIM(`photo`) <> \'\' '
-                . 'AND `registration` IS NOT NULL AND TRIM(`registration`) <> \'\' '
-                . 'AND `id` > ? ORDER BY `id` ASC LIMIT 500'
+                'SELECT `registration` FROM `students` WHERE `session` = ? '
+                . 'AND `photo` IS NOT NULL AND TRIM(`photo`) <> \'\''
             );
-            $counts = ['matched' => 0, 'uploaded' => 0, 'pending' => 0, 'missing_demo' => 0];
-            $afterId = 0;
-            do {
-                $sourceRows->execute([$session, $afterId]);
-                $rows = $sourceRows->fetchAll(PDO::FETCH_ASSOC);
-                if ($rows === []) { break; }
-                $afterId = (int) $rows[array_key_last($rows)]['id'];
-                $registrations = array_values(array_unique(array_map(static fn(array $row): string => trim((string) $row['registration']), $rows)));
-                $targetStmt = $target->prepare(
-                    'SELECT `id`, `registration`, `photo` FROM `students` WHERE `registration` IN ('
-                    . implode(',', array_fill(0, count($registrations), '?')) . ')'
-                );
-                $targetStmt->execute($registrations);
-                $targetByRegistration = [];
-                foreach ($targetStmt->fetchAll(PDO::FETCH_ASSOC) as $targetRow) {
-                    $key = mb_strtolower(trim((string) $targetRow['registration']), 'UTF-8');
-                    if (array_key_exists($key, $targetByRegistration)) {
-                        $targetByRegistration[$key] = null;
-                    } else {
-                        $targetByRegistration[$key] = $targetRow;
-                    }
+            $sourceRows->execute([$session]);
+            $counts = ['source_photos' => 0, 'without_registration' => 0, 'matched' => 0, 'uploaded' => 0, 'pending' => 0, 'missing_demo' => 0];
+            while ($row = $sourceRows->fetch(PDO::FETCH_ASSOC)) {
+                $counts['source_photos']++;
+                $registration = trim((string) ($row['registration'] ?? ''));
+                if ($registration === '') {
+                    $counts['without_registration']++;
+                    continue;
                 }
-                foreach ($rows as $row) {
-                    $key = mb_strtolower(trim((string) $row['registration']), 'UTF-8');
-                    $targetRow = $targetByRegistration[$key] ?? null;
-                    if ($targetRow === null) {
-                        $counts['missing_demo']++;
-                    } else {
-                        $counts['matched']++;
-                        $photoPath = str_replace('\\', '/', (string) ($targetRow['photo'] ?? ''));
-                        if (preg_match('#(?:^|/)sync_[^/]+\.(?:jpe?g|png|gif)$#i', $photoPath)) {
-                            $counts['uploaded']++;
-                        } else {
-                            $counts['pending']++;
-                        }
-                    }
+                $key = mb_strtolower($registration, 'UTF-8');
+                $targetRow = $targetByRegistration[$key] ?? null;
+                if ($targetRow === null) {
+                    $counts['missing_demo']++;
+                    continue;
                 }
-            } while (count($rows) === 500);
+                $counts['matched']++;
+                $photoPath = str_replace('\\', '/', (string) ($targetRow['photo'] ?? ''));
+                if (preg_match('#(?:^|/)sync_[^/]+\.(?:jpe?g|png|gif)$#i', $photoPath)) {
+                    $counts['uploaded']++;
+                } else {
+                    $counts['pending']++;
+                }
+            }
+            $sourceRows->closeCursor();
 
             return [
                 'session' => $session,
-                'source_photos' => (int) ($totalRow['source_photos'] ?? 0),
-                'without_registration' => (int) ($totalRow['without_registration'] ?? 0),
+                'source_photos' => $counts['source_photos'],
+                'without_registration' => $counts['without_registration'],
             ] + $counts + [
                 'note' => 'Already synced counts demo photo paths created by this sync tool. Pending counts matched students whose demo photo has not been synced by this tool yet; sync replaces the current demo photo when an exam photo is available.',
             ];

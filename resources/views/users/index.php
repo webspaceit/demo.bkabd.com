@@ -11,6 +11,13 @@
             <a href="/create-user" class="btn btn-primary btn-sm">Add New User</a>
         </div>
         <div class="card-body space-y-4">
+            <div class="flex flex-wrap items-end gap-3">
+                <label class="block w-full max-w-md">
+                    <span class="mb-1 block text-sm font-medium text-slate-700">Search users</span>
+                    <input id="user-search" type="search" class="form-control w-full" placeholder="Name, email, or role…" autocomplete="off">
+                </label>
+                <button id="user-search-reset" type="button" class="btn btn-light">Reset</button>
+            </div>
             <div class="overflow-x-auto">
                 <table class="table">
                     <thead>

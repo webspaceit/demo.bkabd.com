@@ -46,6 +46,23 @@ final class Session
             'secure' => Config::getBool('SESSION_SECURE', false),
         ]);
         session_start();
+
+        // Use a sliding expiration. Long-running tasks such as photo sync make
+        // regular authenticated requests, so keep the browser cookie alive for
+        // the configured idle lifetime while the user remains active. Without
+        // this refresh, its expiry is measured from login and can interrupt a
+        // sync even though each batch has kept the server-side session active.
+        if (!headers_sent() && session_id() !== '') {
+            $cookie = session_get_cookie_params();
+            setcookie(session_name(), session_id(), [
+                'expires' => time() + ($lifetime * 60),
+                'path' => $cookie['path'],
+                'domain' => $cookie['domain'],
+                'secure' => (bool) $cookie['secure'],
+                'httponly' => (bool) $cookie['httponly'],
+                'samesite' => $cookie['samesite'] ?? 'Lax',
+            ]);
+        }
         self::$started = true;
     }
 

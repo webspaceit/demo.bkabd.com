@@ -46,9 +46,20 @@
         const rowsEl = document.getElementById('user-rows');
         const countEl = document.getElementById('user-count');
         const pagerEl = document.getElementById('user-pagination');
+        const searchInput = document.getElementById('user-search');
+        const searchReset = document.getElementById('user-search-reset');
         const PER_PAGE = 10;
         let allRows = [];
         let pageNum = 1;
+
+        function filteredRows() {
+            const term = (searchInput ? searchInput.value : '').trim().toLocaleLowerCase();
+            if (!term) { return allRows; }
+            return allRows.filter(function (user) {
+                return [user.name, user.email, user.role_name]
+                    .some(function (value) { return String(value || '').toLocaleLowerCase().includes(term); });
+            });
+        }
 
         function actionCell(id) {
             const safeId = BK.esc(String(id));
@@ -76,11 +87,12 @@
         }
 
         function renderRows() {
-            countEl.textContent = allRows.length;
-            const pages = Math.max(1, Math.ceil(allRows.length / PER_PAGE));
+            const matches = filteredRows();
+            countEl.textContent = matches.length;
+            const pages = Math.max(1, Math.ceil(matches.length / PER_PAGE));
             pageNum = Math.min(Math.max(1, pageNum), pages);
             const start = (pageNum - 1) * PER_PAGE;
-            const slice = allRows.slice(start, start + PER_PAGE);
+            const slice = matches.slice(start, start + PER_PAGE);
 
             rowsEl.innerHTML = slice.length
                 ? slice.map(function (user, i) {
@@ -114,6 +126,21 @@
             pageNum = Number(btn.getAttribute('data-page'));
             renderRows();
         });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                pageNum = 1;
+                renderRows();
+            });
+        }
+        if (searchReset) {
+            searchReset.addEventListener('click', function () {
+                if (searchInput) { searchInput.value = ''; }
+                pageNum = 1;
+                renderRows();
+                if (searchInput) { searchInput.focus(); }
+            });
+        }
 
         rowsEl.addEventListener('click', async function (event) {
             const btn = event.target.closest('[data-act="delete"]');
