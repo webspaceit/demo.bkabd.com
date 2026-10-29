@@ -258,13 +258,13 @@ final class StudentController extends Controller
         return $this->sendResponse(['institutes' => $institutes], 'Institute filter options retrieved.');
     }
 
-    /** Student totals by center and institute for the selected session. */
+    /** Student totals by center, institute, and class for the selected session. */
     public function filterStudentCounts(Request $request): array
     {
         $sessionInput = trim((string) $request->query('session', ''));
         $session = $sessionInput !== '' && ctype_digit($sessionInput) ? (int) $sessionInput : null;
         $scopeCenterId = !Auth::isAdmin() ? Auth::centerId() : null;
-        $cacheKey = 'filter:student_counts:' . ($session === null ? 'all' : (string) $session)
+        $cacheKey = 'filter:student_counts_v2:' . ($session === null ? 'all' : (string) $session)
             . ':center:' . (string) ($scopeCenterId ?? 0);
 
         $counts = Cache::remember($cacheKey, 60, static function () use ($session, $scopeCenterId): array {
@@ -296,7 +296,21 @@ final class StudentController extends Controller
                 }
             }
 
-            return ['center_counts' => $centerCounts, 'institute_counts' => $instituteCounts];
+            $classSql = 'SELECT `class`, COUNT(*) AS `student_count` FROM `students`';
+            if ($where !== []) { $classSql .= ' WHERE ' . implode(' AND ', $where); }
+            $classSql .= ' GROUP BY `class`';
+            $classCounts = [];
+            foreach (Database::select($classSql, $params) as $row) {
+                if ($row['class'] !== null && $row['class'] !== '') {
+                    $classCounts[(string) $row['class']] = (int) $row['student_count'];
+                }
+            }
+
+            return [
+                'center_counts' => $centerCounts,
+                'institute_counts' => $instituteCounts,
+                'class_counts' => $classCounts,
+            ];
         });
 
         return $this->sendResponse($counts, 'Student filter counts retrieved.');

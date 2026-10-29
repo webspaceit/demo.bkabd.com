@@ -189,9 +189,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = (json && json.data) || {};
             const centerCounts = data.center_counts || {};
             const instituteCounts = data.institute_counts || {};
-            [centerEl, instituteEl].forEach(function (select, index) {
+            [centerEl, instituteEl, classEl].forEach(function (select, index) {
                 if (!select) return;
-                const counts = index === 0 ? centerCounts : instituteCounts;
+                const counts = index === 0 ? centerCounts : (index === 1 ? instituteCounts : (data.class_counts || {}));
                 Array.from(select.options).forEach(function (option) {
                     if (!option.value || option.disabled) return;
                     if (!option.dataset.baseLabel) option.dataset.baseLabel = option.textContent.trim();
