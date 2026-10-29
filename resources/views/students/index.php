@@ -90,7 +90,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <label for="f-class">Class</label>
+                    <label for="f-class">Class <span class="filter-record-count" id="class-record-count" title="Available classes"><?= count((array) $classes) ?></span></label>
                 </div>
                 <div class="fl">
                     <select id="f-status" class="w-full">
