@@ -4,7 +4,7 @@
  * routes/users.php + routes/passchange.php (ported from original routes/api.php).
  *
  * The original list used DataTables (client-side paging) — reimplemented here
- * as a 10-per-page client-side pager over GET /api/userList (a plain array,
+ * as a configurable client-side pager over GET /api/userList (a plain array,
  * exactly like the original response).
  */
 (function () {
@@ -46,9 +46,10 @@
         const rowsEl = document.getElementById('user-rows');
         const countEl = document.getElementById('user-count');
         const pagerEl = document.getElementById('user-pagination');
+        const perPageEl = document.getElementById('user-per-page');
         const searchInput = document.getElementById('user-search');
         const searchReset = document.getElementById('user-search-reset');
-        const PER_PAGE = 10;
+        let perPage = 20;
         let allRows = [];
         let pageNum = 1;
 
@@ -70,29 +71,34 @@
         }
 
         function renderPager(pages) {
-            if (pages <= 1) {
-                pagerEl.innerHTML = '';
-                return;
+            const total = filteredRows().length;
+            const from = total ? ((pageNum - 1) * perPage) + 1 : 0;
+            const to = Math.min(pageNum * perPage, total);
+            let html = '<div class="flex flex-wrap items-center gap-1 text-sm">';
+            if (pages > 1) {
+                html += '<button type="button" class="px-3 py-1.5 rounded border bg-white border-slate-300 hover:bg-slate-100 disabled:opacity-50" data-page="' + Math.max(1, pageNum - 1) + '"' + (pageNum <= 1 ? ' disabled' : '') + '>Previous</button>';
+                const first = Math.max(1, Math.min(pageNum - 2, pages - 4));
+                const last = Math.min(pages, first + 4);
+                for (let p = first; p <= last; p++) {
+                    html += '<button type="button" class="px-3 py-1.5 rounded border ' +
+                        (p === pageNum
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'bg-white border-slate-300 hover:bg-slate-100') +
+                        '" data-page="' + p + '">' + p + '</button>';
+                }
+                html += '<button type="button" class="px-3 py-1.5 rounded border bg-white border-slate-300 hover:bg-slate-100 disabled:opacity-50" data-page="' + Math.min(pages, pageNum + 1) + '"' + (pageNum >= pages ? ' disabled' : '') + '>Next</button>';
             }
-            let html = '<nav class="flex flex-wrap items-center gap-1 text-sm">';
-            for (let p = 1; p <= pages; p++) {
-                html += '<button type="button" class="px-3 py-1.5 rounded border ' +
-                    (p === pageNum
-                        ? 'bg-emerald-600 border-emerald-600 text-white'
-                        : 'bg-white border-slate-300 hover:bg-slate-100') +
-                    '" data-page="' + p + '">' + p + '</button>';
-            }
-            html += '<span class="ml-3 text-slate-500">Page ' + pageNum + ' of ' + pages + '</span></nav>';
+            html += '<span class="ml-2 text-slate-500">Showing ' + from + '–' + to + ' of ' + total + '</span></div>';
             pagerEl.innerHTML = html;
         }
 
         function renderRows() {
             const matches = filteredRows();
             countEl.textContent = matches.length;
-            const pages = Math.max(1, Math.ceil(matches.length / PER_PAGE));
+            const pages = Math.max(1, Math.ceil(matches.length / perPage));
             pageNum = Math.min(Math.max(1, pageNum), pages);
-            const start = (pageNum - 1) * PER_PAGE;
-            const slice = matches.slice(start, start + PER_PAGE);
+            const start = (pageNum - 1) * perPage;
+            const slice = matches.slice(start, start + perPage);
 
             rowsEl.innerHTML = slice.length
                 ? slice.map(function (user, i) {
@@ -126,6 +132,14 @@
             pageNum = Number(btn.getAttribute('data-page'));
             renderRows();
         });
+
+        if (perPageEl) {
+            perPageEl.addEventListener('change', function () {
+                perPage = Math.max(1, Number(perPageEl.value) || 20);
+                pageNum = 1;
+                renderRows();
+            });
+        }
 
         if (searchInput) {
             searchInput.addEventListener('input', function () {

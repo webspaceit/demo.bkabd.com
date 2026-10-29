@@ -5,6 +5,10 @@
  */
 ?>
 <div class="space-y-4" id="users-page" data-users-page="index">
+    <style>
+        #user-pagination-footer { display:flex; width:100%; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; }
+        #user-per-page-control { margin-left:auto; }
+    </style>
     <div class="card">
         <div class="card-header">
             <h1 class="text-base font-semibold text-slate-800">List of All User's With Details Info (<span id="user-count">0</span>)</h1>
@@ -34,7 +38,18 @@
                     </tbody>
                 </table>
             </div>
-            <div id="user-pagination"></div>
+            <div id="user-pagination-footer" class="mt-4">
+                <div id="user-pagination" class="flex flex-wrap items-center gap-2"></div>
+                <label id="user-per-page-control" for="user-per-page" class="flex items-center gap-2 text-sm text-slate-500">
+                    Rows per page
+                    <select id="user-per-page" class="input" style="width:auto;min-width:5rem">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </label>
+            </div>
         </div>
     </div>
 </div>
