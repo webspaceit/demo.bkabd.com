@@ -7,14 +7,14 @@
         <div class="card-body space-y-5">
             <p class="text-sm leading-6 text-slate-600">
                 This page compares table structures and can import missing student registrations from <strong>exam.bkabd.com</strong> into <strong>demo.bkabd.com</strong>.
-                The exam connection is read-only. Student imports add rows only; photo sync is limited to the current session; center/institute references and center names/contact details are copied to demo only after preview and confirmation.
+                The exam connection is read-only. Student imports add rows only; photo sync is limited to the current session; center/institute references and center names, authority persons, and contact details are copied to demo only after preview and confirmation.
             </p>
 
             <div id="db-sync-setup" class="hidden rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
                 <strong>Server setup is required before this can connect.</strong>
                 <p class="mt-1">Add the settings below to the private <code>.env</code> file used by the app you are running (your local PC, in this case). Do not paste passwords here or commit them to Git.</p>
                 <ul id="db-sync-missing" class="mt-2 list-disc pl-5"></ul>
-                <p class="mt-2">The sync uses separate database connections, so your local app can keep its current <code>DB_*</code> settings. Set the <code>SYNC_SOURCE_*</code> connection to exam with a read-only user. Set <code>SYNC_TARGET_*</code> to demo with a user that can read demo, add student rows, and update center names/contact fields, and has no access to exam.</p>
+                <p class="mt-2">The sync uses separate database connections, so your local app can keep its current <code>DB_*</code> settings. Set the <code>SYNC_SOURCE_*</code> connection to exam with a read-only user. Set <code>SYNC_TARGET_*</code> to demo with a user that can read demo, add student rows, and update center details, and has no access to exam.</p>
                 <p class="mt-2">Set <code>DB_SYNC_ENABLED=true</code> and <code>DB_SYNC_ALLOW_LOCAL=true</code> in your local private configuration only after checking the target database name. Your host must allow remote MySQL connections from your PC to both databases.</p>
             </div>
 
@@ -59,6 +59,21 @@
                 <div id="db-sync-import-progress" class="mt-2 hidden text-sm text-slate-600" aria-live="polite"></div>
             </section>
 
+            <section class="rounded-xl border border-violet-200 bg-violet-50/50 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-semibold text-violet-950">Sync missing roll numbers from exam</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Matches students by registration number and session. Fills only blank roll numbers in demo; existing demo rolls are never overwritten. Class mismatches, duplicate registrations, and roll conflicts are skipped. Exam remains read-only.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="db-sync-preview-rolls" type="button" class="btn btn-light" disabled>Preview roll updates</button>
+                        <button id="db-sync-start-rolls" type="button" class="btn btn-primary hidden" disabled>Sync missing rolls</button>
+                    </div>
+                </div>
+                <div id="db-sync-rolls-preview" class="mt-3 hidden overflow-x-auto rounded-lg border border-violet-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
+                <div id="db-sync-rolls-progress" class="mt-2 hidden text-sm text-slate-600" aria-live="polite"></div>
+            </section>
+
             <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -85,12 +100,12 @@
             <section class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                <h2 class="font-semibold text-indigo-950">Sync center names and contact details from exam</h2>
-                        <p class="mt-1 text-sm leading-6 text-slate-700">Matches centers by a unique center code, with venue and location checks for duplicate codes. Apply the pending center display-name and contact schema migrations first. Preview shows the names, mobile numbers, and email addresses that would change. Only center metadata is copied; no accounts or passwords are created or copied, and exam stays read-only.</p>
+                <h2 class="font-semibold text-indigo-950">Sync center details from exam</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Matches centers by a unique center code, with venue and location checks for duplicate codes. Apply the pending center display-name and contact schema migrations first. Preview shows center names, authority persons, mobile numbers, and email addresses that would change. Blank exam values never erase existing demo values. No accounts or passwords are created or copied, and exam stays read-only.</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button id="db-sync-preview-centers" type="button" class="btn btn-light" disabled>Preview center updates</button>
-                        <button id="db-sync-start-centers" type="button" class="btn btn-primary hidden" disabled>Sync names and contacts</button>
+                        <button id="db-sync-start-centers" type="button" class="btn btn-primary hidden" disabled>Sync center details</button>
                     </div>
                 </div>
                 <div id="db-sync-centers-preview" class="mt-3 hidden overflow-x-auto rounded-lg border border-indigo-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
@@ -124,7 +139,7 @@
             <dialog id="db-sync-centers-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
                 <form method="dialog" class="p-6">
                     <h2 class="text-lg font-semibold text-slate-900">Sync center details?</h2>
-                    <p class="mt-3 text-sm leading-6 text-slate-600">Update the matched demo center’s display name and copy its exam mobile/email contact values? Matching uses unique center codes with venue/location checks. Blank exam contacts will not erase demo contacts. No accounts or passwords will be copied. Exam remains read-only.</p>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">Update the matched demo center’s name, authority person, and mobile/email contact values from exam? Matching uses unique center codes with venue/location checks. Blank exam values will not erase demo values. No accounts or passwords will be copied. Exam remains read-only.</p>
                     <div class="mt-6 flex justify-end gap-2">
                         <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
                         <button type="submit" value="confirm" class="btn btn-primary">Continue sync</button>
@@ -139,6 +154,17 @@
                     <div class="mt-6 flex justify-end gap-2">
                         <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
                         <button type="submit" value="confirm" class="btn btn-primary">Continue import</button>
+                    </div>
+                </form>
+            </dialog>
+
+            <dialog id="db-sync-rolls-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
+                <form method="dialog" class="p-6">
+                    <h2 class="text-lg font-semibold text-slate-900">Fill missing student rolls?</h2>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">This updates only blank roll numbers in demo for the active session, using matching exam registrations. Existing rolls are left unchanged; conflicting or unsafe matches are skipped. Exam remains read-only.</p>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
+                        <button type="submit" value="confirm" class="btn btn-primary">Continue sync</button>
                     </div>
                 </form>
             </dialog>
@@ -190,6 +216,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const importPreview = document.getElementById('db-sync-import-preview');
     const importProgress = document.getElementById('db-sync-import-progress');
     const importConfirmDialog = document.getElementById('db-sync-import-confirm');
+    const previewRollsButton = document.getElementById('db-sync-preview-rolls');
+    const syncRollsButton = document.getElementById('db-sync-start-rolls');
+    const rollsPreview = document.getElementById('db-sync-rolls-preview');
+    const rollsProgress = document.getElementById('db-sync-rolls-progress');
+    const rollsConfirmDialog = document.getElementById('db-sync-rolls-confirm');
     const syncPhotosButton = document.getElementById('db-sync-start-photos');
     const refreshPhotoCountsButton = document.getElementById('db-sync-refresh-photo-counts');
     const photoSummary = document.getElementById('db-sync-photo-summary');
@@ -228,6 +259,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function confirmStudentRollSync() {
+        return new Promise(function (resolve) {
+            rollsConfirmDialog.returnValue = '';
+            rollsConfirmDialog.addEventListener('close', function () {
+                resolve(rollsConfirmDialog.returnValue === 'confirm');
+            }, { once: true });
+            rollsConfirmDialog.showModal();
+        });
+    }
+
     async function loadStatus() {
         try {
             state = await BK.get('/api/database-sync/status');
@@ -240,6 +281,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 compareButton.disabled = false;
                 refreshStudents.disabled = false;
                 previewImportButton.disabled = false;
+                previewRollsButton.disabled = photoSession <= 0;
                 previewCentersButton.disabled = false;
                 previewReferencesButton.disabled = false;
                 syncPhotosButton.disabled = photoSession <= 0;
@@ -712,28 +754,28 @@ document.addEventListener('DOMContentLoaded', function () {
         previewCentersButton.disabled = true;
         syncCentersButton.classList.add('hidden');
         centersPreview.classList.remove('hidden');
-        centersPreview.textContent = 'Comparing center codes and names…';
+        centersPreview.textContent = 'Comparing center codes and details…';
         try {
             const data = await BK.get('/api/database-sync/center-name-preview');
             if (data.error) { centersPreview.textContent = data.error; return; }
             centersPreview.replaceChildren();
             const summary = document.createElement('p');
             summary.className = 'mb-3';
-            summary.textContent = data.changes + ' center row(s) would update, including ' + Number(data.contact_changes || 0) + ' with contact changes; ' + data.matched + ' unique code match(es), ' + data.ambiguous + ' ambiguous, ' + data.unmatched + ' unmatched. ' + (data.note || '');
+            summary.textContent = data.changes + ' center row(s) would update, including ' + Number(data.authority_changes || 0) + ' authority-person change(s) and ' + Number(data.contact_changes || 0) + ' contact change(s); ' + data.matched + ' unique code match(es), ' + data.ambiguous + ' ambiguous, ' + data.unmatched + ' unmatched. ' + (data.note || '');
             centersPreview.appendChild(summary);
             if ((data.examples || []).length) {
                 const table = document.createElement('table');
                 table.className = 'table w-full';
                 const thead = document.createElement('thead');
                 const header = document.createElement('tr');
-                ['Center code', 'Current demo name', 'Exam name', 'Mobile to save', 'Email to save'].forEach(function (label) {
+                ['Center code', 'Current demo name', 'Exam name', 'Current authority person', 'Exam authority person', 'Mobile to save', 'Email to save'].forEach(function (label) {
                     const th = document.createElement('th'); th.textContent = label; header.appendChild(th);
                 });
                 thead.appendChild(header); table.appendChild(thead);
                 const tbody = document.createElement('tbody');
                 data.examples.forEach(function (row) {
                     const tr = document.createElement('tr');
-                    [row.code || '—', row.from || '—', row.to || '—', row.phone || '—', row.email || '—'].forEach(function (value) {
+                    [row.code || '—', row.from || '—', row.to || '—', row.authority_from || '—', row.authority_to || '—', row.phone || '—', row.email || '—'].forEach(function (value) {
                         const td = document.createElement('td'); td.textContent = String(value); tr.appendChild(td);
                     });
                     tbody.appendChild(tr);
@@ -757,7 +799,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const data = await BK.post('/api/database-sync/sync-center-names', {});
             if (data.error) throw new Error(data.error);
-            message('Center sync complete. Updated ' + Number(data.updated || 0) + ' center record(s), including ' + Number(data.contact_updates || 0) + ' contact record(s). Exam was read-only.', false);
+            message('Center sync complete. Updated ' + Number(data.updated || 0) + ' center record(s), including ' + Number(data.authority_updates || 0) + ' authority-person change(s) and ' + Number(data.contact_updates || 0) + ' contact change(s). Exam was read-only.', false);
             BK.toast('Updated ' + Number(data.updated || 0) + ' center record(s).', 'success');
             await previewCenterNames();
         } catch (error) {
@@ -838,6 +880,74 @@ document.addEventListener('DOMContentLoaded', function () {
         } finally {
             previewImportButton.disabled = false;
         }
+    });
+
+    function renderRollsPreview(data) {
+        rollsPreview.replaceChildren();
+        const summary = document.createElement('p');
+        summary.textContent = 'Session ' + data.session + ': ' + Number(data.changes || 0) + ' blank roll number(s) can be filled; ' + Number(data.already_set || 0) + ' already have a demo roll, ' + Number(data.no_source_roll || 0) + ' have no exam roll, ' + Number(data.unmatched || 0) + ' have no demo match, ' + Number(data.ambiguous || 0) + ' are ambiguous, ' + Number(data.class_mismatch || 0) + ' have a class mismatch, and ' + Number(data.conflicts || 0) + ' have roll conflicts. ' + (data.note || '');
+        rollsPreview.appendChild(summary);
+        const examples = data.examples || [];
+        if (examples.length) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mt-3 overflow-x-auto';
+            const table = document.createElement('table');
+            table.className = 'min-w-full border-collapse text-left text-xs';
+            const headers = ['Registration', 'Student', 'Class', 'Demo roll', 'Exam roll'];
+            const head = document.createElement('thead');
+            const headRow = document.createElement('tr');
+            headers.forEach(function (label) {
+                const th = document.createElement('th'); th.className = 'border-b px-2 py-2 font-semibold'; th.textContent = label; headRow.appendChild(th);
+            });
+            head.appendChild(headRow); table.appendChild(head);
+            const body = document.createElement('tbody');
+            examples.forEach(function (item) {
+                const row = document.createElement('tr');
+                [item.registration, item.student, item.class, item.from || '—', item.to].forEach(function (value) {
+                    const td = document.createElement('td'); td.className = 'border-b px-2 py-2 align-top'; td.textContent = String(value ?? '—'); row.appendChild(td);
+                });
+                body.appendChild(row);
+            });
+            table.appendChild(body); wrapper.appendChild(table); rollsPreview.appendChild(wrapper);
+            if (Number(data.changes) > examples.length) {
+                const note = document.createElement('p'); note.className = 'mt-2 text-xs text-slate-500'; note.textContent = 'Showing the first ' + examples.length + ' proposed updates.'; rollsPreview.appendChild(note);
+            }
+        }
+        syncRollsButton.classList.toggle('hidden', Number(data.changes || 0) < 1);
+        syncRollsButton.disabled = Number(data.changes || 0) < 1;
+    }
+
+    async function previewStudentRolls() {
+        previewRollsButton.disabled = true;
+        syncRollsButton.classList.add('hidden');
+        rollsPreview.classList.remove('hidden');
+        rollsPreview.textContent = 'Comparing roll numbers for the active session…';
+        try {
+            const data = await BK.get('/api/database-sync/student-roll-preview');
+            if (data.error) throw new Error(data.error);
+            renderRollsPreview(data);
+        } catch (error) {
+            rollsPreview.textContent = error.message || 'Could not preview roll updates.';
+        } finally { previewRollsButton.disabled = photoSession <= 0; }
+    }
+    previewRollsButton.addEventListener('click', previewStudentRolls);
+    syncRollsButton.addEventListener('click', async function () {
+        if (!(await confirmStudentRollSync())) return;
+        syncRollsButton.disabled = true; previewRollsButton.disabled = true;
+        rollsProgress.classList.remove('hidden');
+        rollsProgress.textContent = 'Updating blank demo roll numbers…';
+        try {
+            const data = await BK.post('/api/database-sync/sync-student-rolls', { session: photoSession });
+            if (data.error) throw new Error(data.error);
+            const text = 'Roll sync complete. Filled ' + Number(data.updated || 0) + ' blank demo roll number(s); ' + Number(data.already_set || 0) + ' already had a roll and ' + (Number(data.ambiguous || 0) + Number(data.class_mismatch || 0) + Number(data.conflicts || 0) + Number(data.unmatched || 0)) + ' unsafe or unmatched record(s) were skipped. Exam was read-only.';
+            rollsProgress.textContent = text;
+            BK.toast('Roll sync complete. Filled ' + Number(data.updated || 0) + ' demo roll number(s).', 'success');
+            message(text, false);
+            await previewStudentRolls();
+        } catch (error) {
+            rollsProgress.textContent = error.message || 'Student roll sync failed.';
+            BK.toast(rollsProgress.textContent, 'error');
+        } finally { syncRollsButton.disabled = false; previewRollsButton.disabled = photoSession <= 0; }
     });
 
     function showImportResult(summary, skippedDetails, alreadyPresentDetails) {

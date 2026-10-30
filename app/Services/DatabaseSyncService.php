@@ -676,20 +676,22 @@ final class DatabaseSyncService
                 'matched' => $plan['matched'],
                 'changes' => count($plan['updates']),
                 'contact_changes' => count(array_filter($plan['updates'], static fn(array $row): bool => $row['old_phone'] !== $row['new_phone'] || $row['old_email'] !== $row['new_email'])),
+                'authority_changes' => count(array_filter($plan['updates'], static fn(array $row): bool => $row['old_authority'] !== $row['new_authority'])),
                 'ambiguous' => $plan['ambiguous'],
                 'unmatched' => $plan['unmatched'],
                 'examples' => array_slice(array_map(static fn(array $row): array => [
                     'code' => $row['code'], 'from' => $row['old_name'], 'to' => $row['new_name'],
+                    'authority_from' => $row['old_authority'], 'authority_to' => $row['new_authority'],
                     'phone' => $row['new_phone'], 'email' => $row['new_email'],
                 ], $plan['updates']), 0, 100),
-                'note' => 'Matches by a unique center code; duplicate codes are disambiguated by venue and geographic names. Applying updates center display names and phone/email contact fields in demo. It does not create accounts, copy passwords, or modify exam.',
+                'note' => 'Matches by a unique center code; duplicate codes are disambiguated by venue and geographic names. Applying updates center display names, authority person, and phone/email contact fields in demo. Blank exam values never erase existing demo values. It does not create accounts, copy passwords, or modify exam.',
             ];
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
         }
     }
 
-    /** Apply center display names and contact fields to matched demo centers. */
+    /** Apply center display names, authority person, and contact fields to matched demo centers. */
     public function syncCenterNames(): array
     {
         $this->assertReady();
@@ -700,10 +702,10 @@ final class DatabaseSyncService
             $plan = $this->centerNameSyncPlan($source, $target);
             $target->beginTransaction();
             try {
-                $update = $target->prepare('UPDATE `centers` SET `display_name` = ?, `contact_phone` = ?, `contact_email` = ?, `updated_at` = NOW() WHERE `id` = ? AND `display_name` <=> ? AND `contact_phone` <=> ? AND `contact_email` <=> ?');
+                $update = $target->prepare('UPDATE `centers` SET `display_name` = ?, `authority_person` = ?, `contact_phone` = ?, `contact_email` = ?, `updated_at` = NOW() WHERE `id` = ? AND `display_name` <=> ? AND `authority_person` <=> ? AND `contact_phone` <=> ? AND `contact_email` <=> ?');
                 $updated = 0;
                 foreach ($plan['updates'] as $row) {
-                    $update->execute([$row['new_name'], $row['new_phone'], $row['new_email'], $row['center_id'], $row['stored_name'], $row['old_phone'], $row['old_email']]);
+                    $update->execute([$row['new_name'], $row['new_authority'], $row['new_phone'], $row['new_email'], $row['center_id'], $row['stored_name'], $row['old_authority'], $row['old_phone'], $row['old_email']]);
                     $updated += $update->rowCount();
                 }
                 $target->commit();
@@ -715,7 +717,7 @@ final class DatabaseSyncService
                 if ($target->inTransaction()) { $target->rollBack(); }
                 throw $e;
             }
-            return ['updated' => $updated, 'matched' => $plan['matched'], 'ambiguous' => $plan['ambiguous'], 'unmatched' => $plan['unmatched'], 'contact_updates' => count(array_filter($plan['updates'], static fn(array $row): bool => $row['old_phone'] !== $row['new_phone'] || $row['old_email'] !== $row['new_email']))];
+            return ['updated' => $updated, 'matched' => $plan['matched'], 'ambiguous' => $plan['ambiguous'], 'unmatched' => $plan['unmatched'], 'contact_updates' => count(array_filter($plan['updates'], static fn(array $row): bool => $row['old_phone'] !== $row['new_phone'] || $row['old_email'] !== $row['new_email'])), 'authority_updates' => count(array_filter($plan['updates'], static fn(array $row): bool => $row['old_authority'] !== $row['new_authority']))];
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
         }
@@ -963,7 +965,7 @@ final class DatabaseSyncService
     /** @return array{updates:array<int,array<string,mixed>>,matched:int,ambiguous:int,unmatched:int} */
     private function centerNameSyncPlan(PDO $source, PDO $target): array
     {
-        $selectCenters = 'SELECT c.`id`, c.`code`, c.`institute_name`, c.`division_id`, c.`district_id`, c.`upazila_id`, c.`union_id`, '
+        $selectCenters = 'SELECT c.`id`, c.`code`, c.`institute_name`, c.`authority_person`, c.`division_id`, c.`district_id`, c.`upazila_id`, c.`union_id`, '
             . 'd.`name` AS `division_name`, di.`name` AS `district_name`, up.`name` AS `upazila_name`, un.`name` AS `union_name`';
         $joins = ' FROM `centers` c LEFT JOIN `divisions` d ON d.`id` = c.`division_id` '
             . 'LEFT JOIN `districts` di ON di.`id` = c.`district_id` '
@@ -1022,21 +1024,26 @@ final class DatabaseSyncService
                 $storedName = $targetRow['display_name'];
                 $oldPhone = $targetRow['contact_phone'];
                 $oldEmail = $targetRow['contact_email'];
+                $oldAuthority = $targetRow['authority_person'];
                 $sourcePhone = trim((string) ($sourceRow['source_phone'] ?? ''));
                 $sourceEmail = trim((string) ($sourceRow['source_email'] ?? ''));
+                $sourceAuthority = trim((string) ($sourceRow['authority_person'] ?? ''));
                 // Blank source values must never erase a contact already in demo.
                 $newPhone = $sourcePhone !== '' ? $sourcePhone : $oldPhone;
                 $newEmail = $sourceEmail !== '' ? $sourceEmail : $oldEmail;
+                $newAuthority = $sourceAuthority !== '' ? $sourceAuthority : $oldAuthority;
                 $oldName = trim((string) $storedName) !== ''
                     ? trim((string) $storedName)
                     : trim((string) ($targetRow['user_name'] ?? ''));
-                if ($oldName !== $sourceName || $oldPhone !== $newPhone || $oldEmail !== $newEmail) {
+                if ($oldName !== $sourceName || $oldAuthority !== $newAuthority || $oldPhone !== $newPhone || $oldEmail !== $newEmail) {
                     $updates[$targetCenterId] = [
                         'center_id' => $targetCenterId,
                         'code' => (string) $targetRow['code'],
                         'old_name' => $oldName,
                         'stored_name' => $storedName,
                         'new_name' => $sourceName,
+                        'old_authority' => $oldAuthority,
+                        'new_authority' => $newAuthority,
                         'old_phone' => $oldPhone,
                         'new_phone' => $newPhone,
                         'old_email' => $oldEmail,
@@ -1100,6 +1107,134 @@ final class DatabaseSyncService
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
         }
+    }
+
+    /** Preview roll numbers that can safely fill blank demo rows for one session. */
+    public function previewStudentRollSync(int $session): array
+    {
+        $this->assertReady();
+        if ($session <= 0) { throw new RuntimeException('Select a valid active exam session.'); }
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $plan = $this->studentRollSyncPlan($source, $target, $session);
+            return [
+                'session' => $session,
+                'changes' => count($plan['updates']),
+                'matched' => $plan['matched'],
+                'already_set' => $plan['already_set'],
+                'no_source_roll' => $plan['no_source_roll'],
+                'unmatched' => $plan['unmatched'],
+                'ambiguous' => $plan['ambiguous'],
+                'class_mismatch' => $plan['class_mismatch'],
+                'conflicts' => $plan['conflicts'],
+                'examples' => array_slice(array_map(static fn(array $row): array => [
+                    'registration' => $row['registration'], 'student' => $row['name'],
+                    'class' => $row['class'], 'from' => $row['old_roll'], 'to' => $row['new_roll'],
+                ], $plan['updates']), 0, 100),
+                'note' => 'Matches registration number and session. Only blank demo roll numbers are filled; existing rolls are never overwritten. Duplicate, ambiguous, unmatched, class-mismatched, or conflicting rolls are skipped. Exam remains read-only.',
+            ];
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
+    /** Fill only safe blank demo roll numbers for one session; never edit exam. */
+    public function syncStudentRolls(int $session): array
+    {
+        $this->assertReady();
+        if ($session <= 0) { throw new RuntimeException('Select a valid active exam session.'); }
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        $lockAcquired = false;
+        try {
+            $target->beginTransaction();
+            try {
+                $lockAcquired = (int) $target->query("SELECT GET_LOCK('codex_student_roll_sync', 10)")->fetchColumn() === 1;
+                if (!$lockAcquired) { throw new RuntimeException('Another student roll sync is running. Wait a moment and retry.'); }
+                $plan = $this->studentRollSyncPlan($source, $target, $session);
+                $update = $target->prepare("UPDATE `students` SET `roll` = ? WHERE `id` = ? AND `session` = ? AND `class` <=> ? AND TRIM(`registration`) = ? AND (`roll` IS NULL OR TRIM(CAST(`roll` AS CHAR)) = '')");
+                $updated = 0;
+                foreach ($plan['updates'] as $row) {
+                    $update->execute([$row['new_roll'], $row['target_id'], $session, $row['class'], $row['registration']]);
+                    $updated += $update->rowCount();
+                }
+                $target->commit();
+                return [
+                    'session' => $session, 'updated' => $updated, 'matched' => $plan['matched'],
+                    'already_set' => $plan['already_set'], 'no_source_roll' => $plan['no_source_roll'],
+                    'unmatched' => $plan['unmatched'], 'ambiguous' => $plan['ambiguous'],
+                    'class_mismatch' => $plan['class_mismatch'], 'conflicts' => $plan['conflicts'],
+                ];
+            } catch (\Throwable $e) {
+                if ($target->inTransaction()) { $target->rollBack(); }
+                throw $e;
+            }
+        } finally {
+            if ($lockAcquired) {
+                try { $target->query("SELECT RELEASE_LOCK('codex_student_roll_sync')"); } catch (\Throwable) {}
+            }
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
+    /** @return array{updates:array<int,array<string,mixed>>,matched:int,already_set:int,no_source_roll:int,unmatched:int,ambiguous:int,class_mismatch:int,conflicts:int} */
+    private function studentRollSyncPlan(PDO $source, PDO $target, int $session): array
+    {
+        $sourceStmt = $source->prepare("SELECT `id`,`registration`,`name`,`class`,`session`,`roll` FROM `students` WHERE `session` = ? AND `registration` IS NOT NULL AND TRIM(`registration`) <> ''");
+        $sourceStmt->execute([$session]);
+        $sourceRows = $sourceStmt->fetchAll(PDO::FETCH_ASSOC);
+        $targetStmt = $target->prepare("SELECT `id`,`registration`,`name`,`class`,`session`,`roll` FROM `students` WHERE `session` = ? AND `registration` IS NOT NULL AND TRIM(`registration`) <> ''");
+        $targetStmt->execute([$session]);
+        $targetRows = $targetStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $regKey = static fn(array $row): string => (int) $row['session'] . ':' . mb_strtolower(trim((string) $row['registration']), 'UTF-8');
+        $rollValue = static fn(array $row): string => trim((string) ($row['roll'] ?? ''));
+        $rollKey = static fn(array $row): ?string => $rollValue($row) === '' ? null : implode(':', [(int) $row['session'], trim((string) $row['class']), $rollValue($row)]);
+        $sourceByReg = $targetByReg = $sourceRollRegistrations = $targetRolls = [];
+        foreach ($sourceRows as $row) {
+            $sourceByReg[$regKey($row)][] = $row;
+            $key = $rollKey($row);
+            if ($key !== null) { $sourceRollRegistrations[$key][$regKey($row)] = true; }
+        }
+        foreach ($targetRows as $row) {
+            $targetByReg[$regKey($row)][] = $row;
+            $key = $rollKey($row);
+            if ($key !== null) { $targetRolls[$key] = true; }
+        }
+
+        $updates = []; $matched = $alreadySet = $noSourceRoll = $unmatched = $ambiguous = $classMismatch = $conflicts = 0;
+        foreach ($sourceByReg as $key => $sources) {
+            $sourceWithRoll = array_values(array_filter($sources, static fn(array $row): bool => $rollValue($row) !== ''));
+            $targets = $targetByReg[$key] ?? [];
+            if ($sourceWithRoll === []) {
+                if ($targets !== []) { $noSourceRoll += count($sources); }
+                continue;
+            }
+            if ($targets === []) { $unmatched += count($sourceWithRoll); continue; }
+            if (count($sources) !== 1 || count($targets) !== 1) { $ambiguous += count($sourceWithRoll); continue; }
+            $sourceRow = $sourceWithRoll[0];
+            $targetRow = $targets[0];
+            $matched++;
+            if ($rollValue($targetRow) !== '') { $alreadySet++; continue; }
+            if ((string) $sourceRow['class'] !== (string) $targetRow['class']) { $classMismatch++; continue; }
+            $keyRoll = $rollKey($sourceRow);
+            if ($keyRoll === null) { $noSourceRoll++; continue; }
+            $otherSourceRegistrations = array_diff(array_keys($sourceRollRegistrations[$keyRoll] ?? []), [$key]);
+            if ($otherSourceRegistrations !== [] || isset($targetRolls[$keyRoll])) { $conflicts++; continue; }
+            $updates[] = [
+                'target_id' => (int) $targetRow['id'], 'registration' => trim((string) $sourceRow['registration']),
+                'name' => (string) ($sourceRow['name'] ?? ''), 'class' => $sourceRow['class'],
+                'old_roll' => $targetRow['roll'], 'new_roll' => $sourceRow['roll'],
+            ];
+            $targetRolls[$keyRoll] = true;
+        }
+        return [
+            'updates' => $updates, 'matched' => $matched, 'already_set' => $alreadySet,
+            'no_source_roll' => $noSourceRoll, 'unmatched' => $unmatched,
+            'ambiguous' => $ambiguous, 'class_mismatch' => $classMismatch,
+            'conflicts' => $conflicts,
+        ];
     }
 
     /** Import only missing registrations; only the demo connection is written. */

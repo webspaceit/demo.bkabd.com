@@ -59,6 +59,39 @@ final class DatabaseSyncController extends Controller
         }
     }
 
+    public function previewStudentRollSync(): array
+    {
+        $session = (int) Auth::activeSession();
+        try {
+            return (new DatabaseSyncService())->previewStudentRollSync($session);
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] student roll preview failed: ' . $e->getCode());
+            return ['error' => 'Could not compare student roll numbers. Check read access to students on exam and demo.'];
+        }
+    }
+
+    public function syncStudentRolls(Request $request): array
+    {
+        if (!$this->isSyncHostAllowed($request)) {
+            return ['error' => 'Student roll sync can run only from demo.bkabd.com or an explicitly allowed local dashboard.'];
+        }
+        $activeSession = (int) Auth::activeSession();
+        $requestedSession = (int) $request->input('session', 0);
+        if ($activeSession <= 0 || $requestedSession !== $activeSession) {
+            return ['error' => 'The active session changed or is unavailable. Reload this page and preview the roll sync again.'];
+        }
+        try {
+            return (new DatabaseSyncService())->syncStudentRolls($activeSession);
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] student roll sync failed: ' . $e->getCode());
+            return ['error' => 'Student roll sync failed safely. Check UPDATE permission on demo students and review the server error log.'];
+        }
+    }
+
     public function previewCenterNameSync(): array
     {
         try {
@@ -66,8 +99,8 @@ final class DatabaseSyncController extends Controller
         } catch (RuntimeException $e) {
             return ['error' => $e->getMessage()];
         } catch (PDOException $e) {
-            error_log('[database-sync] center-name preview failed: ' . $e->getCode());
-            return ['error' => 'Could not compare center names. Check read access to centers and users on both databases.'];
+            error_log('[database-sync] center-details preview failed: ' . $e->getCode());
+            return ['error' => 'Could not compare center details. Check read access to centers and users on both databases.'];
         }
     }
 
@@ -81,8 +114,8 @@ final class DatabaseSyncController extends Controller
         } catch (RuntimeException $e) {
             return ['error' => $e->getMessage()];
         } catch (PDOException $e) {
-            error_log('[database-sync] center-name sync failed: ' . $e->getCode());
-            return ['error' => 'Center-name sync failed safely. Check UPDATE permission on demo centers.display_name and review the server log.'];
+            error_log('[database-sync] center-details sync failed: ' . $e->getCode());
+            return ['error' => 'Center-details sync failed safely. Check UPDATE permission on the demo centers table and review the server log.'];
         }
     }
 

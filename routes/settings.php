@@ -33,6 +33,8 @@ Router::get('/api/database-sync/student-photo-history', [DatabaseSyncController:
 Router::get('/api/database-sync/student-photo-run-details', [DatabaseSyncController::class, 'studentPhotoSyncRunDetails'], 'auth|permission:settings');
 Router::post('/api/database-sync/email-photo-attention-csv', [DatabaseSyncController::class, 'emailPhotoAttentionCsv'], 'auth|permission:settings');
 Router::get('/api/database-sync/student-import-preview', [DatabaseSyncController::class, 'previewStudentImport'], 'auth|permission:settings');
+Router::get('/api/database-sync/student-roll-preview', [DatabaseSyncController::class, 'previewStudentRollSync'], 'auth|permission:settings');
+Router::post('/api/database-sync/sync-student-rolls', [DatabaseSyncController::class, 'syncStudentRolls'], 'auth|permission:settings');
 Router::post('/api/database-sync/import-students', [DatabaseSyncController::class, 'importStudents'], 'auth|permission:settings');
 Router::post('/api/database-sync/sync-student-photos', [DatabaseSyncController::class, 'syncStudentPhotos'], 'auth|permission:settings');
 Router::get('/api/database-sync/center-name-preview', [DatabaseSyncController::class, 'previewCenterNameSync'], 'auth|permission:settings');
