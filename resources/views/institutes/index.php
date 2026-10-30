@@ -38,18 +38,17 @@
                     <thead>
                         <tr>
                             <th style="width:8px">Sl.</th>
-                            <th>Institute</th>
-                            <th>Center</th>
-                            <th>Director</th>
-                            <th>Phone</th>
-                            <th>Certificate No</th>
+                            <th>Membership No.</th>
+                            <th>Institute Name</th>
+                            <th>Representative Name</th>
+                            <th>Phone No.</th>
+                            <th>Center Name</th>
                             <th>Status</th>
-                            <th>Validity</th>
                             <th style="width:200px;text-align:center">Action</th>
                         </tr>
                     </thead>
                     <tbody id="institute-rows">
-                        <tr><td colspan="9" class="text-center py-8 text-slate-400">Loading...</td></tr>
+                        <tr><td colspan="8" class="text-center py-8 text-slate-400">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -120,20 +119,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderRow(no, row) {
-        const validity = row.validity_date ? BK.esc(row.validity_date) : '—';
         const approved = Number(row.active) === 1;
         const centerCell = Number(row.linked_center_id) > 0
             ? BK.esc(row.center_name || '—')
             : '<span class="badge badge-red">Unassigned</span>';
         return '<tr>' +
             '<td>' + no + '</td>' +
+            '<td>' + (approved ? BK.esc(row.certificate_no || '—') : '—') + '</td>' +
             '<td>' + BK.esc(row.name) + '</td>' +
-            '<td>' + centerCell + '</td>' +
             '<td>' + BK.esc(row.director_name || '—') + '</td>' +
             '<td>' + BK.esc(row.phone || '—') + '</td>' +
-            '<td>' + (approved ? BK.esc(row.certificate_no || '—') : '—') + '</td>' +
+            '<td>' + centerCell + '</td>' +
             '<td><span class="badge ' + (approved ? 'badge-green' : 'badge-amber') + '">' + (approved ? 'Approved' : 'Pending') + '</span></td>' +
-            '<td>' + validity + '</td>' +
             '<td class="text-center">' + actionCell(row) + '</td>' +
             '</tr>';
     }
@@ -145,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const start = (pager.from || 1) - 1;
             rowsEl.innerHTML = rows.length
                 ? rows.map(function (row, i) { return renderRow(start + i + 1, row); }).join('')
-                : '<tr><td colspan="9" class="text-center py-8 text-slate-400">No records found</td></tr>';
+                : '<tr><td colspan="8" class="text-center py-8 text-slate-400">No records found</td></tr>';
             countEl.textContent = pager.total;
             BK.renderPagination(pagerEl, pager);
             if (centerId && filterEl) {
@@ -153,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 filterTextEl.textContent = (rows[0] && rows[0].center_name) ? rows[0].center_name : ('#' + centerId);
             }
         } catch (err) {
-            rowsEl.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-red-500">Could not load the list</td></tr>';
+            rowsEl.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">Could not load the list</td></tr>';
             BK.toast(err.message || 'Could not load the list', 'error');
         }
     }
