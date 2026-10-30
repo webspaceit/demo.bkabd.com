@@ -675,19 +675,21 @@ final class DatabaseSyncService
             return [
                 'matched' => $plan['matched'],
                 'changes' => count($plan['updates']),
+                'contact_changes' => count(array_filter($plan['updates'], static fn(array $row): bool => $row['old_phone'] !== $row['new_phone'] || $row['old_email'] !== $row['new_email'])),
                 'ambiguous' => $plan['ambiguous'],
                 'unmatched' => $plan['unmatched'],
                 'examples' => array_slice(array_map(static fn(array $row): array => [
                     'code' => $row['code'], 'from' => $row['old_name'], 'to' => $row['new_name'],
+                    'phone' => $row['new_phone'], 'email' => $row['new_email'],
                 ], $plan['updates']), 0, 100),
-                'note' => 'Matches by a unique center code; duplicate codes are disambiguated by venue and geographic names. Applying stores the exam center name on the matching demo center record; it does not copy accounts, passwords, or modify exam.',
+                'note' => 'Matches by a unique center code; duplicate codes are disambiguated by venue and geographic names. Applying updates center display names and phone/email contact fields in demo. It does not create accounts, copy passwords, or modify exam.',
             ];
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
         }
     }
 
-    /** Apply center display names to matched demo center accounts only. */
+    /** Apply center display names and contact fields to matched demo centers. */
     public function syncCenterNames(): array
     {
         $this->assertReady();
@@ -698,20 +700,22 @@ final class DatabaseSyncService
             $plan = $this->centerNameSyncPlan($source, $target);
             $target->beginTransaction();
             try {
-                $update = $target->prepare('UPDATE `centers` SET `display_name` = ?, `updated_at` = NOW() WHERE `id` = ? AND `display_name` <=> ?');
+                $update = $target->prepare('UPDATE `centers` SET `display_name` = ?, `contact_phone` = ?, `contact_email` = ?, `updated_at` = NOW() WHERE `id` = ? AND `display_name` <=> ? AND `contact_phone` <=> ? AND `contact_email` <=> ?');
                 $updated = 0;
                 foreach ($plan['updates'] as $row) {
-                    $update->execute([$row['new_name'], $row['center_id'], $row['stored_name']]);
+                    $update->execute([$row['new_name'], $row['new_phone'], $row['new_email'], $row['center_id'], $row['stored_name'], $row['old_phone'], $row['old_email']]);
                     $updated += $update->rowCount();
                 }
                 $target->commit();
                 \App\Core\Cache::forget('schema:centers.display_name');
+                \App\Core\Cache::forget('schema:centers.contact_phone');
+                \App\Core\Cache::forget('schema:centers.contact_email');
                 \App\Core\Cache::forget('filter:active_centers_named_v2');
             } catch (\Throwable $e) {
                 if ($target->inTransaction()) { $target->rollBack(); }
                 throw $e;
             }
-            return ['updated' => $updated, 'matched' => $plan['matched'], 'ambiguous' => $plan['ambiguous'], 'unmatched' => $plan['unmatched']];
+            return ['updated' => $updated, 'matched' => $plan['matched'], 'ambiguous' => $plan['ambiguous'], 'unmatched' => $plan['unmatched'], 'contact_updates' => count(array_filter($plan['updates'], static fn(array $row): bool => $row['old_phone'] !== $row['new_phone'] || $row['old_email'] !== $row['new_email']))];
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
         }
@@ -949,6 +953,11 @@ final class DatabaseSyncService
         if ((int) $check->fetchColumn() === 0) {
             throw new RuntimeException('Apply the pending `center_display_name` demo schema migration first, then preview center names again.');
         }
+        $check = $target->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = \'centers\' AND COLUMN_NAME IN (\'contact_phone\', \'contact_email\')');
+        $check->execute([(string) $this->targetSettings()['database']]);
+        if ((int) $check->fetchColumn() !== 2) {
+            throw new RuntimeException('Apply the pending center contact sync migration on demo first, then preview center updates again.');
+        }
     }
 
     /** @return array{updates:array<int,array<string,mixed>>,matched:int,ambiguous:int,unmatched:int} */
@@ -960,8 +969,8 @@ final class DatabaseSyncService
             . 'LEFT JOIN `districts` di ON di.`id` = c.`district_id` '
             . 'LEFT JOIN `upozilas` up ON up.`id` = c.`upazila_id` '
             . 'LEFT JOIN `unions` un ON un.`id` = c.`union_id` ';
-        $sourceRows = $source->query($selectCenters . ', u.`name` AS `source_name`, u.`type`' . $joins . 'LEFT JOIN `users` u ON u.`id` = c.`user_id`')->fetchAll(PDO::FETCH_ASSOC);
-        $targetRows = $target->query($selectCenters . ', c.`display_name`, u.`name` AS `user_name`' . $joins . 'LEFT JOIN `users` u ON u.`id` = c.`user_id`')->fetchAll(PDO::FETCH_ASSOC);
+        $sourceRows = $source->query($selectCenters . ', u.`name` AS `source_name`, u.`type`, u.`phone` AS `source_phone`, u.`email` AS `source_email`' . $joins . 'LEFT JOIN `users` u ON u.`id` = c.`user_id`')->fetchAll(PDO::FETCH_ASSOC);
+        $targetRows = $target->query($selectCenters . ', c.`display_name`, c.`contact_phone`, c.`contact_email`, u.`name` AS `user_name`' . $joins . 'LEFT JOIN `users` u ON u.`id` = c.`user_id`')->fetchAll(PDO::FETCH_ASSOC);
         $byCode = static function (array $rows): array {
             $grouped = [];
             foreach ($rows as $row) {
@@ -1011,16 +1020,27 @@ final class DatabaseSyncService
                 $matched++;
                 $targetCenterId = (int) $targetRow['id'];
                 $storedName = $targetRow['display_name'];
+                $oldPhone = $targetRow['contact_phone'];
+                $oldEmail = $targetRow['contact_email'];
+                $sourcePhone = trim((string) ($sourceRow['source_phone'] ?? ''));
+                $sourceEmail = trim((string) ($sourceRow['source_email'] ?? ''));
+                // Blank source values must never erase a contact already in demo.
+                $newPhone = $sourcePhone !== '' ? $sourcePhone : $oldPhone;
+                $newEmail = $sourceEmail !== '' ? $sourceEmail : $oldEmail;
                 $oldName = trim((string) $storedName) !== ''
                     ? trim((string) $storedName)
                     : trim((string) ($targetRow['user_name'] ?? ''));
-                if ($oldName !== $sourceName) {
+                if ($oldName !== $sourceName || $oldPhone !== $newPhone || $oldEmail !== $newEmail) {
                     $updates[$targetCenterId] = [
                         'center_id' => $targetCenterId,
                         'code' => (string) $targetRow['code'],
                         'old_name' => $oldName,
                         'stored_name' => $storedName,
                         'new_name' => $sourceName,
+                        'old_phone' => $oldPhone,
+                        'new_phone' => $newPhone,
+                        'old_email' => $oldEmail,
+                        'new_email' => $newEmail,
                     ];
                 }
             }
@@ -1660,8 +1680,10 @@ final class DatabaseSyncService
             $stmt = $pdo->prepare('INSERT INTO `codex_schema_migrations` (`migration`, `applied_at`) VALUES (?, NOW())');
             $stmt->execute([$name]);
             $done[] = $name;
-            if (in_array($name, ['2026_10_24_center_display_name', '2026_10_26_center_reference_sync'], true)) {
+            if (in_array($name, ['2026_10_24_center_display_name', '2026_10_26_center_reference_sync', '2026_10_30_center_contact_sync'], true)) {
                 \App\Core\Cache::forget('schema:centers.display_name');
+                \App\Core\Cache::forget('schema:centers.contact_phone');
+                \App\Core\Cache::forget('schema:centers.contact_email');
                 \App\Core\Cache::forget('filter:active_centers_named_v2');
             }
         }

@@ -37,6 +37,8 @@ class CenterController extends Controller
     {
         $this->requirePermission('center-list');
         $label = $this->centerDisplayExpression();
+        $phone = $this->centerContactExpression('phone');
+        $email = $this->centerContactExpression('email');
         $query = (new Query('centers'))
             ->leftJoin('users', 'users.id', '=', 'centers.user_id')
             ->leftJoin('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
@@ -45,8 +47,6 @@ class CenterController extends Controller
             ->leftJoin('upozilas', 'upozilas.id', '=', 'centers.upazila_id')
             ->select(
                 'users.name',
-                'users.email',
-                'users.phone',
                 'centers.id',
                 'centers.authority_person',
                 'centers.institute_name',
@@ -57,6 +57,8 @@ class CenterController extends Controller
                 'districts.name AS district',
                 'upozilas.name AS upazila'
             )
+            ->selectRaw($phone . ' AS `phone`')
+            ->selectRaw($email . ' AS `email`')
             ->selectRaw($label . ' AS `name`')
             ->whereRaw('(`users`.`id` IS NULL OR `model_has_roles`.`role_id` = ?)', [4])
             ->orderByRaw('`centers`.`id` DESC');
@@ -77,8 +79,8 @@ class CenterController extends Controller
                 $query->whereRaw(
                     '(' . $label . ' LIKE ? OR `centers`.`authority_person` LIKE ?'
                     . ' OR `divisions`.`name` LIKE ? OR `districts`.`name` LIKE ?'
-                    . ' OR `upozilas`.`name` LIKE ? OR `users`.`phone` LIKE ?'
-                    . ' OR `centers`.`code` LIKE ? OR `users`.`email` LIKE ?)',
+                    . ' OR `upozilas`.`name` LIKE ? OR (' . $phone . ') LIKE ?'
+                    . ' OR `centers`.`code` LIKE ? OR (' . $email . ') LIKE ?)',
                     array_fill(0, 8, $like)
                 );
             }
@@ -169,6 +171,18 @@ class CenterController extends Controller
             return (int) Database::scalar('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', ['centers', 'display_name']) > 0;
         });
         return $hasDisplayName ? "COALESCE(NULLIF(centers.display_name, ''), NULLIF(users.name, ''))" : "NULLIF(users.name, '')";
+    }
+
+    private function centerContactExpression(string $field): string
+    {
+        $column = $field === 'phone' ? 'contact_phone' : 'contact_email';
+        $hasSyncedContact = Cache::remember('schema:centers.' . $column, 300, static function () use ($column): bool {
+            return (int) Database::scalar('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', ['centers', $column]) > 0;
+        });
+        $userColumn = $field === 'phone' ? 'phone' : 'email';
+        return $hasSyncedContact
+            ? "COALESCE(NULLIF(users.`{$userColumn}`, ''), NULLIF(centers.`{$column}`, ''))"
+            : "NULLIF(users.`{$userColumn}`, '')";
     }
 
     /** POST /api/centers — user (type 4 + role 4) + center row in ONE transaction. */

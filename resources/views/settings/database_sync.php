@@ -7,14 +7,14 @@
         <div class="card-body space-y-5">
             <p class="text-sm leading-6 text-slate-600">
                 This page compares table structures and can import missing student registrations from <strong>exam.bkabd.com</strong> into <strong>demo.bkabd.com</strong>.
-                The exam connection is read-only. Student imports add rows only; photo sync is limited to the current session; center/institute references and center display names are copied to demo only after preview and confirmation.
+                The exam connection is read-only. Student imports add rows only; photo sync is limited to the current session; center/institute references and center names/contact details are copied to demo only after preview and confirmation.
             </p>
 
             <div id="db-sync-setup" class="hidden rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
                 <strong>Server setup is required before this can connect.</strong>
                 <p class="mt-1">Add the settings below to the private <code>.env</code> file used by the app you are running (your local PC, in this case). Do not paste passwords here or commit them to Git.</p>
                 <ul id="db-sync-missing" class="mt-2 list-disc pl-5"></ul>
-                <p class="mt-2">The sync uses separate database connections, so your local app can keep its current <code>DB_*</code> settings. Set the <code>SYNC_SOURCE_*</code> connection to exam with a read-only user. Set <code>SYNC_TARGET_*</code> to demo with a user that can read demo, add student rows, and update center display names, and has no access to exam.</p>
+                <p class="mt-2">The sync uses separate database connections, so your local app can keep its current <code>DB_*</code> settings. Set the <code>SYNC_SOURCE_*</code> connection to exam with a read-only user. Set <code>SYNC_TARGET_*</code> to demo with a user that can read demo, add student rows, and update center names/contact fields, and has no access to exam.</p>
                 <p class="mt-2">Set <code>DB_SYNC_ENABLED=true</code> and <code>DB_SYNC_ALLOW_LOCAL=true</code> in your local private configuration only after checking the target database name. Your host must allow remote MySQL connections from your PC to both databases.</p>
             </div>
 
@@ -27,7 +27,7 @@
                 </section>
                 <section class="rounded-xl border border-sky-200 bg-sky-50/60 p-4">
                     <h2 class="font-semibold text-sky-900">Demo: migration destination</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables, INSERT and UPDATE on <code>students</code> for imports and photo paths, INSERT on <code>student_duplicate_keys</code> when present, and permission to apply the reviewed reference migrations plus INSERT on center, institute, and location tables. It also needs UPDATE on <code>centers</code> for center-name sync and write access to <code>public/uploads/students</code>. It does not need write access to exam.</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Imports use a separate demo connection. The demo account needs SELECT on student/reference tables, INSERT and UPDATE on <code>students</code> for imports and photo paths, INSERT on <code>student_duplicate_keys</code> when present, and permission to apply the reviewed reference migrations plus INSERT on center, institute, and location tables. It also needs UPDATE on <code>centers</code> for center name/contact sync and write access to <code>public/uploads/students</code>. It does not need write access to exam.</p>
                     <p id="db-sync-target" class="mt-2 text-xs text-slate-500"></p>
                 </section>
             </div>
@@ -85,12 +85,12 @@
             <section class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h2 class="font-semibold text-indigo-950">Sync center display names from exam</h2>
-                        <p class="mt-1 text-sm leading-6 text-slate-700">Matches centers only by a unique center code. Apply the pending center display-name schema migration first. Preview then shows exact changes; sync stores names on the matching demo center record, even if its linked account is missing. Accounts and passwords are not copied, and exam stays read-only.</p>
+                <h2 class="font-semibold text-indigo-950">Sync center names and contact details from exam</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Matches centers by a unique center code, with venue and location checks for duplicate codes. Apply the pending center display-name and contact schema migrations first. Preview shows the names, mobile numbers, and email addresses that would change. Only center metadata is copied; no accounts or passwords are created or copied, and exam stays read-only.</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <button id="db-sync-preview-centers" type="button" class="btn btn-light" disabled>Preview center names</button>
-                        <button id="db-sync-start-centers" type="button" class="btn btn-primary hidden" disabled>Sync center names</button>
+                        <button id="db-sync-preview-centers" type="button" class="btn btn-light" disabled>Preview center updates</button>
+                        <button id="db-sync-start-centers" type="button" class="btn btn-primary hidden" disabled>Sync names and contacts</button>
                     </div>
                 </div>
                 <div id="db-sync-centers-preview" class="mt-3 hidden overflow-x-auto rounded-lg border border-indigo-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
@@ -123,8 +123,8 @@
 
             <dialog id="db-sync-centers-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
                 <form method="dialog" class="p-6">
-                    <h2 class="text-lg font-semibold text-slate-900">Sync center names?</h2>
-                    <p class="mt-3 text-sm leading-6 text-slate-600">Update center display names in demo to match exam for centers matched by a unique code? No accounts or passwords will be copied. Exam remains read-only.</p>
+                    <h2 class="text-lg font-semibold text-slate-900">Sync center details?</h2>
+                    <p class="mt-3 text-sm leading-6 text-slate-600">Update the matched demo center’s display name and copy its exam mobile/email contact values? Matching uses unique center codes with venue/location checks. Blank exam contacts will not erase demo contacts. No accounts or passwords will be copied. Exam remains read-only.</p>
                     <div class="mt-6 flex justify-end gap-2">
                         <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
                         <button type="submit" value="confirm" class="btn btn-primary">Continue sync</button>
@@ -719,21 +719,21 @@ document.addEventListener('DOMContentLoaded', function () {
             centersPreview.replaceChildren();
             const summary = document.createElement('p');
             summary.className = 'mb-3';
-            summary.textContent = data.changes + ' center name(s) would change; ' + data.matched + ' unique code match(es), ' + data.ambiguous + ' ambiguous, ' + data.unmatched + ' unmatched. ' + (data.note || '');
+            summary.textContent = data.changes + ' center row(s) would update, including ' + Number(data.contact_changes || 0) + ' with contact changes; ' + data.matched + ' unique code match(es), ' + data.ambiguous + ' ambiguous, ' + data.unmatched + ' unmatched. ' + (data.note || '');
             centersPreview.appendChild(summary);
             if ((data.examples || []).length) {
                 const table = document.createElement('table');
                 table.className = 'table w-full';
                 const thead = document.createElement('thead');
                 const header = document.createElement('tr');
-                ['Center code', 'Current demo name', 'Exam name'].forEach(function (label) {
+                ['Center code', 'Current demo name', 'Exam name', 'Mobile to save', 'Email to save'].forEach(function (label) {
                     const th = document.createElement('th'); th.textContent = label; header.appendChild(th);
                 });
                 thead.appendChild(header); table.appendChild(thead);
                 const tbody = document.createElement('tbody');
                 data.examples.forEach(function (row) {
                     const tr = document.createElement('tr');
-                    [row.code || '—', row.from || '—', row.to || '—'].forEach(function (value) {
+                    [row.code || '—', row.from || '—', row.to || '—', row.phone || '—', row.email || '—'].forEach(function (value) {
                         const td = document.createElement('td'); td.textContent = String(value); tr.appendChild(td);
                     });
                     tbody.appendChild(tr);
@@ -757,8 +757,8 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const data = await BK.post('/api/database-sync/sync-center-names', {});
             if (data.error) throw new Error(data.error);
-            message('Center-name sync complete. Updated ' + Number(data.updated || 0) + ' linked demo center name(s). Exam was read-only.', false);
-            BK.toast('Updated ' + Number(data.updated || 0) + ' center name(s).', 'success');
+            message('Center sync complete. Updated ' + Number(data.updated || 0) + ' center record(s), including ' + Number(data.contact_updates || 0) + ' contact record(s). Exam was read-only.', false);
+            BK.toast('Updated ' + Number(data.updated || 0) + ' center record(s).', 'success');
             await previewCenterNames();
         } catch (error) {
             message(error.message || 'Could not sync center names.', true);
