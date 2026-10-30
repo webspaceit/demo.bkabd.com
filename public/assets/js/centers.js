@@ -33,6 +33,8 @@
         let pageNum = 1;
         let searchTerm = '';
         let searchTimer = null;
+        let listRequest = 0;
+        let listAbort = null;
 
         const can = (name) => !!permBox && permBox.getAttribute('data-perm-' + name) === '1';
 
@@ -72,16 +74,24 @@
         }
 
         async function reload() {
+            const requestId = ++listRequest;
+            if (listAbort) { listAbort.abort(); }
+            listAbort = new AbortController();
             try {
-                const pager = await BK.loadList(
+                const pager = await BK.get(
                     BK.qs('/api/centers', { page: pageNum, per_page: perPage(), search: searchTerm, status: statusFilter }),
-                    rowHtml,
-                    rowsEl,
-                    pagerEl
+                    { signal: listAbort.signal }
                 );
+                if (requestId !== listRequest) { return; }
+                const rows = pager.data || [];
+                rowsEl.innerHTML = rows.length
+                    ? rows.map(rowHtml).join('')
+                    : '<tr><td colspan="10" class="px-4 py-8 text-center text-slate-400">No records found</td></tr>';
+                if (pagerEl) { BK.renderPagination(pagerEl, pager); }
                 if (pager.current_page) { pageNum = pager.current_page; }
                 if (totalEl) { totalEl.textContent = pager.total || 0; }
             } catch (err) {
+                if (requestId !== listRequest || err.name === 'AbortError') { return; }
                 rowsEl.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-red-500">Could not load the list</td></tr>';
                 BK.toast(err.message || 'Could not load the list', 'error');
             }

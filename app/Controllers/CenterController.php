@@ -84,14 +84,26 @@ class CenterController extends Controller
             $query->whereRaw('`centers`.`active` = ?', [$status]);
         }
         if ($term !== '' && $termStatus === null) {
-            $like = '%' . $term . '%';
-            $query->whereRaw(
-                '(' . $label . ' LIKE ? OR `centers`.`authority_person` LIKE ?'
-                . ' OR `divisions`.`name` LIKE ? OR `districts`.`name` LIKE ?'
-                . ' OR `upozilas`.`name` LIKE ? OR (' . $phone . ') LIKE ?'
-                . ' OR `centers`.`code` LIKE ? OR (' . $email . ') LIKE ?)',
-                array_fill(0, 8, $like)
-            );
+            $searchFields = [
+                $label,
+                '`centers`.`authority_person`',
+                '`centers`.`institute_name`',
+                '`divisions`.`name`',
+                '`districts`.`name`',
+                '`upozilas`.`name`',
+                '(' . $phone . ')',
+                '`centers`.`code`',
+                '(' . $email . ')',
+            ];
+            $terms = preg_split('/\\s+/u', $term, -1, PREG_SPLIT_NO_EMPTY) ?: [$term];
+            $conditions = [];
+            $bindings = [];
+            foreach ($terms as $word) {
+                $conditions[] = '(' . implode(' LIKE ? OR ', $searchFields) . ' LIKE ?)';
+                $like = '%' . $word . '%';
+                array_push($bindings, ...array_fill(0, count($searchFields), $like));
+            }
+            $query->whereRaw('(' . implode(' AND ', $conditions) . ')', $bindings);
         }
 
         // The default and status-only totals need roles and centers to retain
