@@ -54,8 +54,7 @@ $declaration = "I here by declare that, If this/My educational institution recog
     <div class="inner">
         <?php if (brand('header_image_path') !== ''): ?><img src="<?= e(brand_asset('header_image_path', '')) ?>" alt="" style="display:block;max-width:100%;height:auto;margin:0 auto 8px"><?php endif; ?>
         <div class="date">Date of Registration : <?= e(DateFormat($institute['created_at'] ?? '', 'd-m-Y')) ?><br><br>
-            <span>Thank You, Your Membership Registration has been completed successfully.<br>
-            You must print and save the Membership Registration Card.</span>
+            <span><?php if ((int) ($institute['active'] ?? 0) === 1): ?>Your membership registration has been approved. You may print and save this card.<?php else: ?>Your institute registration was received and is awaiting authority approval. The certificate number will appear after approval.<?php endif; ?></span>
         </div>
         <img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>" style="display:block;width:70px;height:70px;object-fit:contain;margin:0 auto">
         <h1><?= e(brand('authority_name')) ?></h1>
@@ -63,7 +62,11 @@ $declaration = "I here by declare that, If this/My educational institution recog
         <p class="contact"><?= e(brand('address')) ?><?= brand('phone') !== '' ? ', Mobile: ' . e(brand('phone')) : '' ?><br>
             <?= brand('email') !== '' ? 'Email: ' . e(brand('email')) : '' ?><?= brand('website') !== '' ? ', Web: ' . e(brand('website')) : '' ?></p>
         <div class="banner">Membership/Institute Registration Card</div>
-        <div class="certno">Membership Certificate No. - <?= e($institute['certificate_no'] ?? '') ?></div>
+        <?php if ((int) ($institute['active'] ?? 0) === 1): ?>
+            <div class="certno">Membership Certificate No. - <?= e($institute['certificate_no'] ?? '') ?></div>
+        <?php else: ?>
+            <div class="certno">Pending approval</div>
+        <?php endif; ?>
         <table>
             <?= $row('Name of Institute', $institute['name'] ?? '') ?>
             <?= $row('Name of Center', $institute['center_name'] ?? '') ?>
@@ -81,7 +84,7 @@ $declaration = "I here by declare that, If this/My educational institution recog
             <tr><th>My Declaration</th><td>:</td><td><?= e($declaration) ?></td></tr>
         </table>
         <hr>
-        <p class="note"><b>Note:</b> <?= e($validityNote) ?></p>
+        <?php if ((int) ($institute['active'] ?? 0) === 1): ?><p class="note"><b>Note:</b> <?= e($validityNote) ?></p><?php endif; ?>
         <?php if (brand('footer_image_path') !== ''): ?><img src="<?= e(brand_asset('footer_image_path', '')) ?>" alt="" style="display:block;max-width:100%;height:auto;margin:8px auto 0"><?php endif; ?>
         <span class="copy">&copy; <?= e(date('Y')) ?> <?= e(brand('authority_name')) ?>. <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?></span>
     </div>

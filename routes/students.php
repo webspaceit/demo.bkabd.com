@@ -111,6 +111,7 @@ Router::get('/students', function (Request $request) {
 // hold student-edit, so existing admins keep working).
 // ---------------------------------------------------------------
 Router::get('/pending-students', [StudentController::class, 'pagePending'], ['auth', 'permission:student-list|student-approve']);
+Router::get('/api/pending-students/count', [StudentController::class, 'pendingCount'], ['auth', 'permission:student-list|student-approve']);
 Router::get('/api/pending-students', [StudentController::class, 'pending'], ['auth', 'permission:student-list|student-approve']);
 Router::post('/api/pending-students/approve-bulk', [StudentController::class, 'bulkApprove'], 'auth|permission:student-approve');
 Router::post('/api/pending-students/{id}/approve', [StudentController::class, 'approve'], 'auth|permission:student-approve');

@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\Cache;
 use App\Core\Database;
 use App\Core\Query;
 use App\Models\Center;
@@ -32,6 +33,17 @@ final class DashboardController extends Controller
         $session  = (int) Auth::activeSession();
         $centerUser = !Auth::isAdmin();
         $userId   = (int) Auth::id();
+
+        // Dashboard totals are read-only and can be shared briefly between
+        // page loads. Scope the cache by session and user to avoid mixing
+        // center-specific totals with admin or another center's results.
+        $cacheKey = 'dashboard_stats:' . $session . ':' . ($centerUser ? 'center:' . $userId : 'admin');
+        return Cache::remember($cacheKey, 30, fn(): array => $this->buildDashboardStats($session, $centerUser, $userId));
+    }
+
+    /** Calculate the dashboard totals on a cache miss. */
+    private function buildDashboardStats(int $session, bool $centerUser, int $userId): array
+    {
 
         if ($centerUser) {
             // Center user: students of their centers in the active session.

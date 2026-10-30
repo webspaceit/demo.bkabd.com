@@ -443,6 +443,20 @@ final class StudentController extends Controller
         );
     }
 
+    /** Lightweight sidebar badge endpoint; avoids running the joined queue query. */
+    public function pendingCount(Request $request): array
+    {
+        if (!Auth::check()) {
+            Response::json(['status' => 'errors'], 401);
+        }
+
+        $centerId = Auth::isAdmin() ? null : Auth::centerId();
+        return $this->sendResponse(
+            ['total' => Student::pendingCount($centerId)],
+            'Pending registration count retrieved.'
+        );
+    }
+
     /**
      * Approve a pending registration. POST /api/pending-students/{id}/approve
      * Idempotent: approving an already-approved registration still succeeds.

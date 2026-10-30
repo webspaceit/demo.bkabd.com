@@ -72,6 +72,13 @@ final class InstituteController extends Controller
             $q->where('institutes.center_id', $centerId);
         }
 
+        $status = strtolower(trim((string) $request->input('status', '')));
+        if ($status === 'pending') {
+            $q->whereRaw('(institutes.active = 0 OR institutes.active IS NULL)');
+        } elseif ($status === 'approved') {
+            $q->where('institutes.active', 1);
+        }
+
         $term = trim((string) $request->input('search', ''));
         if ($term !== '') {
             $like = '%' . $term . '%';
@@ -84,12 +91,21 @@ final class InstituteController extends Controller
         // The filters above only reference institutes columns. Counting the
         // total through the center and user display joins adds work without
         // affecting the result, so keep those joins only for the page rows.
-        return $q->paginate(
+        $result = $q->paginate(
             max(1, (int) $request->input('per_page', 20)),
             null,
             '/api/institutes',
             $q->withoutJoins()
         );
+        // A certificate number is not issued/displayed until approval.
+        foreach ($result['data'] as &$institute) {
+            if ((int) ($institute['active'] ?? 0) !== 1) {
+                $institute['certificate_no'] = null;
+            }
+        }
+        unset($institute);
+
+        return $result;
     }
 
     /** GET /api/institutes/{id} — single institute (edit form / detail). */
@@ -278,6 +294,9 @@ final class InstituteController extends Controller
         RateLimiter::hit('institute-registration-pdf', 30, 60);
 
         $institute = (new InstituteService())->registrationCard((int) $request->params['id']);
+        if ((int) ($institute['active'] ?? 0) !== 1) {
+            $institute['certificate_no'] = null;
+        }
 
         return View::render('institutes.registration_card', [
             'institute' => $institute,

@@ -150,7 +150,7 @@ $activeSession = Auth::activeSession();
     <link rel="icon" href="<?= e(brand_asset('favicon_path', '/assets/img/result/logo.png')) ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
     <title><?= e($title ?? 'Dashboard') ?> | <?= e(brand('app_name', \App\Core\Config::get('APP_NAME', 'BKABD'))) ?></title>
@@ -391,13 +391,16 @@ window.updatePendingBadges = function (total) {
     });
 };
 (function () {
-    var url = '/api/pending-students?per_page=1';
+    // The full pending-list endpoint joins several reference tables and counts
+    // the queue. Use its cached count-only endpoint for the sidebar instead.
+    var url = '/api/pending-students/count';
     function refresh() {
         BK.get(url, {cache: 'no-store'}).then(function (json) {
             window.updatePendingBadges((json && json.data && json.data.total) || 0);
         }).catch(function () { /* transient failure keeps the last count */ });
     }
-    setInterval(refresh, 1000);
+    refresh();
+    setInterval(refresh, 30000);
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden) { refresh(); }
     });
