@@ -18,6 +18,10 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
     ? (string) $filters['session']
     : $activeSession;
 ?>
+<style>
+    #student-pagination-footer { display:flex; width:100%; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; }
+    #student-per-page-control { margin-left:auto; }
+</style>
 <div class="space-y-4">
     <div class="card" id="students-list"
          data-perm-edit="<?= can('student-edit') ? '1' : '0' ?>"
@@ -128,7 +132,18 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                 </table>
             </div>
 
-            <div id="student-pagination"></div>
+            <div id="student-pagination-footer" class="mt-4">
+                <div id="student-pagination" class="flex flex-wrap items-center gap-2"></div>
+                <label id="student-per-page-control" for="student-per-page" class="flex items-center gap-2 text-sm text-slate-500">
+                    Rows per page
+                    <select id="student-per-page" class="input" style="width:auto;min-width:5rem">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </label>
+            </div>
         </div>
     </div>
 </div>
@@ -146,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const totalEl = document.getElementById('student-total');
     const pagerEl = document.getElementById('student-pagination');
+    const perPageEl = document.getElementById('student-per-page');
     const sessionEl = document.getElementById('f-session');
     const classEl = document.getElementById('f-class');
     const statusEl = document.getElementById('f-status');
@@ -163,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const instituteCountEl = document.getElementById('institute-record-count');
     const classCountEl = document.getElementById('class-record-count');
     const initialInstituteId = <?= json_encode((string) ($filters['institute_id'] ?? '')) ?>;
-    const PER_PAGE = 20;
+    let rowsPerPage = Number(perPageEl && perPageEl.value) || 20;
 
     const can = function (name) { return listBox.getAttribute('data-perm-' + name) === '1'; };
     const val = function (el) { return el ? el.value : ''; };
@@ -303,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         actions += '</div>';
 
-        return '<tr><td class="text-center">' + ((pageNum - 1) * PER_PAGE + i + 1) + '</td>' +
+        return '<tr><td class="text-center">' + ((pageNum - 1) * rowsPerPage + i + 1) + '</td>' +
             '<td>' + BK.esc(rec.registration) + '</td>' +
             '<td class="text-center">' + BK.esc(rec.roll) + '</td>' +
             '<td>' + BK.esc(rec.name) + '</td>' +
@@ -320,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function () {
         studentListAbort = new AbortController();
         const url = BK.qs('/api/students', {
             page: pageNum,
-            per_page: PER_PAGE,
+            per_page: rowsPerPage,
             session: val(sessionEl),
             class: val(classEl),
             status: val(statusEl),
@@ -360,6 +376,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const reloadFromFilters = function () { pageNum = 1; reload(); syncSelectionSummaries(); };
+
+    if (perPageEl) {
+        perPageEl.addEventListener('change', function () {
+            rowsPerPage = Number(perPageEl.value) || 20;
+            reloadFromFilters();
+        });
+    }
 
     [sessionEl, classEl, statusEl, instituteEl].forEach(function (el) {
         if (el) { el.addEventListener('change', reloadFromFilters); }
