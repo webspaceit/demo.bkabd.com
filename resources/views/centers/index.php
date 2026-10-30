@@ -33,10 +33,8 @@ $flag = fn(string $p): string => !empty($perms[$p]) ? '1' : '0';
                             <th>Sl.</th>
                             <th>Code</th>
                             <th>Center Name</th>
-                            <th>Institute</th>
                             <th>Division</th>
                             <th>District</th>
-                            <th>Upazila</th>
                             <th>Authority Person</th>
                             <th>Mobile</th>
                             <th>Email Address</th>
@@ -45,7 +43,7 @@ $flag = fn(string $p): string => !empty($perms[$p]) ? '1' : '0';
                         </tr>
                     </thead>
                     <tbody id="center-rows">
-                        <tr><td colspan="12" class="text-center py-8 text-slate-400">Loading…</td></tr>
+                        <tr><td colspan="10" class="text-center py-8 text-slate-400">Loading…</td></tr>
                     </tbody>
                 </table>
             </div>

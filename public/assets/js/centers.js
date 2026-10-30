@@ -56,10 +56,8 @@
             return '<tr><td>' + sl + '</td>' +
                 '<td>' + BK.esc(rec.code) + '</td>' +
                 '<td>' + BK.esc(rec.name) + '</td>' +
-                '<td>' + BK.esc(rec.institute_name) + '</td>' +
                 '<td>' + BK.esc(rec.division) + '</td>' +
                 '<td>' + BK.esc(rec.district) + '</td>' +
-                '<td>' + BK.esc(rec.upazila) + '</td>' +
                 '<td>' + BK.esc(rec.authority_person) + '</td>' +
                 '<td>' + BK.esc(rec.phone) + '</td>' +
                 '<td>' + BK.esc(rec.email) + '</td>' +
@@ -78,7 +76,7 @@
                 if (pager.current_page) { pageNum = pager.current_page; }
                 if (totalEl) { totalEl.textContent = pager.total || 0; }
             } catch (err) {
-                rowsEl.innerHTML = '<tr><td colspan="12" class="px-4 py-8 text-center text-red-500">Could not load the list</td></tr>';
+                rowsEl.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-red-500">Could not load the list</td></tr>';
                 BK.toast(err.message || 'Could not load the list', 'error');
             }
         }
