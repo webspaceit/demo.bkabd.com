@@ -30,5 +30,7 @@ Router::get('/api/center', [CenterController::class, 'index2'], 'auth');
 // Pages
 // ---------------------------------------------------------------
 Router::get('/centers', [CenterController::class, 'pageIndex'], 'auth');
+Router::get('/pending-centers', [CenterController::class, 'pagePending'], 'auth');
+Router::get('/api/pending-centers/count', [CenterController::class, 'pendingCount'], 'auth');
 Router::get('/create-center', [CenterController::class, 'pageCreate'], 'auth');
 Router::get('/edit-center/{id}', [CenterController::class, 'pageEdit'], 'auth');

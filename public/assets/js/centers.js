@@ -22,7 +22,13 @@
         const pagerEl = document.getElementById('center-pagination');
         const totalEl = document.getElementById('center-total');
         const searchEl = document.getElementById('center-search');
-        const PER_PAGE = 20;
+        const perPageEl = document.getElementById('center-per-page');
+        const perPagePicker = document.getElementById('center-per-page-picker');
+        const perPageToggle = document.getElementById('center-per-page-toggle');
+        const perPageMenu = document.getElementById('center-per-page-menu');
+        const perPageValue = document.getElementById('center-per-page-value');
+        const perPage = () => Number(perPageEl && perPageEl.value) || 20;
+        const statusFilter = permBox ? (permBox.getAttribute('data-status-filter') || '') : '';
 
         let pageNum = 1;
         let searchTerm = '';
@@ -32,7 +38,7 @@
 
         function rowHtml(rec, i) {
             const id = BK.esc(String(rec.id));
-            const sl = (pageNum - 1) * PER_PAGE + i + 1;
+            const sl = (pageNum - 1) * perPage() + i + 1;
             const approved = String(rec.active) === '1';
             const referenceOnly = String(rec.has_account) === '0' || rec.has_account === false;
             const badge = referenceOnly
@@ -68,7 +74,7 @@
         async function reload() {
             try {
                 const pager = await BK.loadList(
-                    BK.qs('/api/centers', { page: pageNum, per_page: PER_PAGE, search: searchTerm }),
+                    BK.qs('/api/centers', { page: pageNum, per_page: perPage(), search: searchTerm, status: statusFilter }),
                     rowHtml,
                     rowsEl,
                     pagerEl
@@ -89,6 +95,49 @@
                 event.preventDefault();
                 pageNum = Number(new URL(link.href).searchParams.get('page') || 1);
                 reload();
+            });
+        }
+
+        if (perPageEl) {
+            perPageEl.addEventListener('change', function () {
+                if (perPageValue) { perPageValue.textContent = String(perPage()); }
+                if (perPageToggle) { perPageToggle.setAttribute('aria-label', 'Rows per page: ' + perPage()); }
+                if (perPageMenu) {
+                    perPageMenu.querySelectorAll('[data-per-page-option]').forEach(function (option) {
+                        option.setAttribute('aria-pressed', option.getAttribute('data-per-page-option') === String(perPage()));
+                    });
+                }
+                pageNum = 1;
+                reload();
+            });
+        }
+
+        if (perPagePicker && perPageToggle && perPageMenu && perPageEl) {
+            perPageToggle.addEventListener('click', function () {
+                const open = perPageMenu.classList.toggle('hidden') === false;
+                perPageToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+            perPageMenu.addEventListener('click', function (event) {
+                const option = event.target.closest('[data-per-page-option]');
+                if (!option) { return; }
+                perPageEl.value = option.getAttribute('data-per-page-option');
+                perPageEl.dispatchEvent(new Event('change', { bubbles: true }));
+                perPageMenu.classList.add('hidden');
+                perPageToggle.setAttribute('aria-expanded', 'false');
+                perPageToggle.focus();
+            });
+            document.addEventListener('click', function (event) {
+                if (!perPagePicker.contains(event.target)) {
+                    perPageMenu.classList.add('hidden');
+                    perPageToggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+            perPagePicker.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    perPageMenu.classList.add('hidden');
+                    perPageToggle.setAttribute('aria-expanded', 'false');
+                    perPageToggle.focus();
+                }
             });
         }
 

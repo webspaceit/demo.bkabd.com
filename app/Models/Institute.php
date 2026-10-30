@@ -21,4 +21,14 @@ class Institute extends Model
         'membership_type' => 'int', 'member_type' => 'int', 'paid' => 'int', 'active' => 'int',
         'user_id' => 'int',
     ];
+
+    /** Number of institutes waiting for approval. Kept uncached for live badges. */
+    public static function pendingCount(?int $centerId = null): int
+    {
+        $query = static::query()->whereRaw('(`active` = 0 OR `active` IS NULL)');
+        if ($centerId !== null && $centerId > 0) {
+            $query->where('center_id', $centerId);
+        }
+        return $query->count();
+    }
 }

@@ -7,6 +7,7 @@ use App\Core\Router;
 // Institutes API (original routes/api.php: apiResource 'institutes' + extras)
 // ---------------------------------------------------------------
 Router::get('/api/institutes', [InstituteController::class, 'index'], 'auth|permission:institute-list');
+Router::get('/api/pending-institutes/count', [InstituteController::class, 'pendingCount'], 'auth');
 Router::post('/api/institutes', [InstituteController::class, 'store'], 'auth|permission:institute-create');
 Router::get('/api/institutes/{id}', [InstituteController::class, 'show'], 'auth|permission:institute-list');
 Router::put('/api/institutes/{id}', [InstituteController::class, 'update'], 'auth|permission:institute-edit');
@@ -35,6 +36,7 @@ Router::get('/api/institute-registration/{id}', [InstituteController::class, 'in
 // Pages
 // ---------------------------------------------------------------
 Router::get('/institutes', [InstituteController::class, 'pageIndex'], 'auth|permission:institute-list');
+Router::get('/pending-institutes', [InstituteController::class, 'pagePending'], 'auth|permission:institute-list');
 Router::get('/institute-registration', [InstituteController::class, 'pageCreate'], 'auth|permission:institute-create');
 Router::get('/edit-institute/{id}', [InstituteController::class, 'pageEdit'], 'auth|permission:institute-edit');
 Router::get('/validityinstitute/{id}', [InstituteController::class, 'pageValidity'], 'auth|permission:institute-validity');

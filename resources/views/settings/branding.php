@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!root) return;
     const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const headers = {'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest'};
-    const showError = (message) => window.BK?.toast ? BK.toast(message, 'error') : alert(message);
+    const showError = (message) => window.BK ? BK.alert(message, 'Could not complete action', 'error') : window.alert(message);
     const jsonRequest = async (url, options) => {
         const response = await fetch(url, options);
         const result = await response.json().catch(() => ({}));
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = Object.fromEntries(new FormData(form).entries());
         try {
             await jsonRequest('/api/branding', {method: 'PUT', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify(data)});
-            if (window.BK?.toast) BK.toast('Branding details saved.', 'success'); else alert('Branding details saved.');
+            if (window.BK) BK.alert('Branding details saved.', 'Success', 'success'); else window.alert('Branding details saved.');
         } catch (error) { showError(error.message); }
     });
     root.querySelectorAll('[data-brand-upload]').forEach((uploadForm) => {
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const preview = root.querySelector('[data-brand-preview="' + uploadForm.dataset.asset + '"]');
                     preview.src = path + '?v=' + Date.now();
                 }
-                if (window.BK?.toast) BK.toast('Image uploaded.', 'success'); else alert('Image uploaded.');
+                if (window.BK) BK.alert('Image uploaded.', 'Success', 'success'); else window.alert('Image uploaded.');
             } catch (error) { showError(error.message); }
         });
     });

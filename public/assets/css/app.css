@@ -3486,6 +3486,58 @@ textarea:focus {
     gap: .5rem;
 }
 
+/* Shared centered popup used by BK.confirm() and BK.alert(). */
+.bk-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgb(15 23 42 / 58%);
+    animation: bk-dialog-fade-in .14s ease-out;
+}
+.bk-dialog-backdrop.bk-dialog-closing { opacity: 0; transition: opacity .13s ease-in; }
+.bk-dialog {
+    width: min(100%, 26rem);
+    padding: 1.25rem 1.4rem 1.15rem;
+    border: 1px solid #e2e8f0;
+    border-radius: .45rem;
+    background: #fff;
+    color: #334155;
+    text-align: center;
+    box-shadow: 0 1rem 3rem rgb(15 23 42 / 28%);
+    animation: bk-dialog-pop-in .18s ease-out;
+}
+.bk-dialog-icon {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    margin: 0 auto .55rem;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    font-size: 2.25rem;
+    font-weight: 300;
+    line-height: 1;
+}
+.bk-dialog-icon-error { color: #f27474; }
+.bk-dialog-icon-warning { color: #f8bb86; }
+.bk-dialog-icon-success { color: #a5dc86; }
+.bk-dialog-icon-info { color: #3fc3ee; }
+.bk-dialog-title { margin: 0 0 .35rem; color: #575757; font-size: 1.25rem; font-weight: 600; }
+.bk-dialog-message { margin: 0; color: #545454; font-size: .9rem; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+.bk-dialog-link { display: inline-block; margin-top: .35rem; color: #3085d6; font-weight: 600; text-decoration: underline; }
+.bk-dialog-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: .55rem; margin-top: 1rem; }
+.bk-dialog-button { min-width: 3.2rem; padding: .5rem 1rem; border: 0; border-radius: .2rem; color: #fff; font-size: .875rem; font-weight: 600; cursor: pointer; }
+.bk-dialog-button:focus-visible { outline: 3px solid rgb(59 130 246 / 35%); outline-offset: 2px; }
+.bk-dialog-button-primary { background: #3085d6; }
+.bk-dialog-button-primary:hover { background: #2875bd; }
+.bk-dialog-button-secondary { background: #aaa; }
+.bk-dialog-button-secondary:hover { background: #929292; }
+@keyframes bk-dialog-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bk-dialog-pop-in { from { transform: scale(.94); opacity: .7; } to { transform: scale(1); opacity: 1; } }
+
 @media (max-width: 1100px) {
     .photo-attention-export-controls {
         grid-template-columns: repeat(2, minmax(0, 1fr));

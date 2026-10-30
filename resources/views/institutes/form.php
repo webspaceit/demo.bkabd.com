@@ -74,8 +74,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         if(!document.getElementById('f-declaration').checked){BK.toast('Please check the declaration before submitting.','error');return;}
         BK.submit(form,async function(){
             await BK.request(isEdit?'/api/institutes/'+id:'/api/institutes',{method:'POST',body:new FormData(form)});
-            BK.toast(isEdit?'Institute updated successfully':'Institute registered successfully. Please wait for authority approval.','success');
-            window.location.href='/institutes';
+            BK.toast(isEdit?'Institute updated and sent back for approval.':'Institute registered successfully. Please wait for authority approval.','success');
+            window.location.href=isEdit?'/pending-institutes':'/institutes';
         });
     });
 });

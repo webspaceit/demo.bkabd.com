@@ -4,14 +4,14 @@
  * Original Vue page: resources/js/components/institutes/index.vue.
  */
 ?>
-<div class="space-y-4" id="institutes-page" data-perm-edit="<?= can('institute-edit') ? '1' : '0' ?>" data-perm-delete="<?= can('institute-delete') ? '1' : '0' ?>" data-perm-validity="<?= can('institute-validity') ? '1' : '0' ?>">
+<div class="space-y-4" id="institutes-page" data-pending-only="<?= !empty($pendingOnly) ? '1' : '0' ?>" data-perm-edit="<?= can('institute-edit') ? '1' : '0' ?>" data-perm-delete="<?= can('institute-delete') ? '1' : '0' ?>" data-perm-validity="<?= can('institute-validity') ? '1' : '0' ?>">
     <style>
         #institute-pagination-footer { display:flex; width:100%; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; }
         #institute-per-page-control { margin-left:auto; }
     </style>
     <div class="card">
         <div class="card-header">
-            <h1 class="text-base font-semibold text-slate-800">List of All Institutes (<span id="institute-count">0</span>)</h1>
+            <h1 class="text-base font-semibold text-slate-800"><?= !empty($pendingOnly) ? 'Pending Institutes' : 'List of All Institutes' ?> (<span id="institute-count">0</span>)</h1>
             <?php if (can('institute-create')): ?>
                 <a href="/institute-registration" class="btn btn-primary btn-sm">Add New Institute</a>
             <?php endif; ?>
@@ -24,13 +24,6 @@
                 </div>
                 <div class="ml-auto">
                     <input type="search" id="institute-search" placeholder="Search Here..." autocomplete="off">
-                </div>
-                <div>
-                    <select id="institute-status-filter" class="form-control" aria-label="Institute approval status">
-                        <option value="">All institutes</option>
-                        <option value="pending">Pending approval</option>
-                        <option value="approved">Approved</option>
-                    </select>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -76,13 +69,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const countEl = document.getElementById('institute-count');
     const pagerEl = document.getElementById('institute-pagination');
     const searchEl = document.getElementById('institute-search');
-    const statusEl = document.getElementById('institute-status-filter');
     const perPageEl = document.getElementById('institute-per-page');
     const filterEl = document.getElementById('institute-center-filter');
     const filterTextEl = document.getElementById('institute-center-filter-text');
     const canEdit = root.getAttribute('data-perm-edit') === '1';
     const canDelete = root.getAttribute('data-perm-delete') === '1';
     const canValidity = root.getAttribute('data-perm-validity') === '1';
+    const pendingOnly = root.getAttribute('data-pending-only') === '1';
+    const status = pendingOnly ? 'pending' : 'approved';
 
     // Optional ?center_id=N filter (linked from the /centers delete guard).
     const centerId = new URLSearchParams(window.location.search).get('center_id') || '';
@@ -171,10 +165,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const approveBtn = event.target.closest('[data-approve]');
         if (approveBtn) {
             approveBtn.disabled = true;
+            const confirmed = await BK.confirm('Are you sure? You want to change the Institute status.');
+            if (!confirmed) {
+                approveBtn.disabled = false;
+                return;
+            }
             try {
-                const result = await BK.post('/api/institutes/changestatus/' + encodeURIComponent(approveBtn.getAttribute('data-approve')) + '/1');
-                BK.toast('Institute approved. Certificate number: ' + (result.certificate_no || 'assigned'), 'success');
-                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+                const response = await BK.post('/api/institutes/changestatus/' + encodeURIComponent(approveBtn.getAttribute('data-approve')) + '/1');
+                const result = (response && response.data) || response || {};
+                const instituteName = approveBtn.closest('tr')?.children[2]?.textContent?.trim() || 'Institute';
+                BK.toast(instituteName + ' approved successfully. Certificate No: ' + (result.certificate_no || 'assigned'), 'success');
+                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
             } catch (err) {
                 approveBtn.disabled = false;
                 BK.toast(err.message || 'Could not approve institute', 'error');
@@ -187,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const result = await BK.post('/api/institutes/' + encodeURIComponent(assignBtn.getAttribute('data-assign-certificate')) + '/assign-certificate-number');
                 BK.toast('Certificate number assigned: ' + result.certificate_no, 'success');
-                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
             } catch (err) {
                 assignBtn.disabled = false;
                 BK.toast(err.message || 'Could not assign certificate number', 'error');
@@ -195,11 +196,11 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         const btn = event.target.closest('[data-delete]');
-        if (!btn || !window.confirm('Delete this institute?')) { return; }
+        if (!btn || !(await BK.confirm('Delete this institute?', 'Delete institute?'))) { return; }
         try {
             await BK.del('/api/institutes/' + btn.getAttribute('data-delete'));
             BK.toast('Institute deleted', 'success');
-            load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
         } catch (err) {
             BK.toast(err.message || 'Could not delete', 'error');
         }
@@ -209,19 +210,35 @@ document.addEventListener('DOMContentLoaded', function () {
     searchEl.addEventListener('input', function () {
         clearTimeout(timer);
         timer = setTimeout(function () {
-            load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+            load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
         }, 200);
     });
 
-    statusEl.addEventListener('change', function () {
-        load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
-    });
-
     perPageEl.addEventListener('change', function () {
-        load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+        load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
     });
 
-    statusEl.value = new URLSearchParams(window.location.search).get('status') || '';
-    load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), center_id: centerId, status: statusEl.value }));
+    load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), center_id: centerId, status: status }));
+
+    if (pendingOnly) {
+        function refreshPendingTotal() {
+            if (document.hidden) { return; }
+            BK.get(BK.qs('/api/pending-institutes/count', {
+                center_id: centerId,
+                search: searchEl.value.trim()
+            }), {cache: 'no-store'}).then(function (json) {
+                const payload = (json && json.data) || {};
+                countEl.textContent = Number(payload.total || 0).toLocaleString('en-US');
+                if (window.updatePendingInstituteBadge) {
+                    window.updatePendingInstituteBadge(payload.overall_total ?? payload.total ?? 0);
+                }
+            }).catch(function () { /* retain the last displayed total */ });
+        }
+        refreshPendingTotal();
+        setInterval(refreshPendingTotal, 1000);
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) { refreshPendingTotal(); }
+        });
+    }
 });
 </script>

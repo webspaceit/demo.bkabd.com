@@ -65,25 +65,33 @@ class CenterController extends Controller
 
         $term = trim((string) $request->input('search', ''));
         $countQuery = null;
-        $status = null;
+        $requestedStatus = strtolower(trim((string) $request->input('status', '')));
+        $status = match ($requestedStatus) {
+            'approved', 'active' => 1,
+            'pending' => 0,
+            default => null,
+        };
+        $termStatus = null;
         if ($term !== '') {
-            $status = match (strtolower($term)) {
+            $termStatus = match (strtolower($term)) {
                 'approved' => 1,
                 'pending' => 0,
                 default => null,
             };
-            if ($status !== null) {
-                $query->whereRaw('`centers`.`active` = ?', [$status]);
-            } else {
-                $like = '%' . $term . '%';
-                $query->whereRaw(
-                    '(' . $label . ' LIKE ? OR `centers`.`authority_person` LIKE ?'
-                    . ' OR `divisions`.`name` LIKE ? OR `districts`.`name` LIKE ?'
-                    . ' OR `upozilas`.`name` LIKE ? OR (' . $phone . ') LIKE ?'
-                    . ' OR `centers`.`code` LIKE ? OR (' . $email . ') LIKE ?)',
-                    array_fill(0, 8, $like)
-                );
-            }
+            $status ??= $termStatus;
+        }
+        if ($status !== null) {
+            $query->whereRaw('`centers`.`active` = ?', [$status]);
+        }
+        if ($term !== '' && $termStatus === null) {
+            $like = '%' . $term . '%';
+            $query->whereRaw(
+                '(' . $label . ' LIKE ? OR `centers`.`authority_person` LIKE ?'
+                . ' OR `divisions`.`name` LIKE ? OR `districts`.`name` LIKE ?'
+                . ' OR `upozilas`.`name` LIKE ? OR (' . $phone . ') LIKE ?'
+                . ' OR `centers`.`code` LIKE ? OR (' . $email . ') LIKE ?)',
+                array_fill(0, 8, $like)
+            );
         }
 
         // The default and status-only totals need roles and centers to retain
@@ -99,6 +107,16 @@ class CenterController extends Controller
         }
 
         return $query->paginate(max(1, (int) $request->input('per_page', 20)), null, '/api/centers', $countQuery);
+    }
+
+    /** GET /api/pending-centers/count — live sidebar badge count. */
+    public function pendingCount(Request $request): array
+    {
+        $this->requirePermission('center-list');
+        return $this->sendResponse(
+            ['total' => Center::pendingCount()],
+            'Pending center count retrieved.'
+        );
     }
 
     /**
@@ -256,6 +274,7 @@ class CenterController extends Controller
 
         Cache::forget('filter:active_centers');
         Cache::forget('filter:active_centers_named_v2');
+        Cache::forget('pending_centers:all');
 
         $msg = 'Dear ' . $data['authority_person'] . ', Congratulations from BKABD. From now on you will fulfill all the duties of this center with devotion, for any consultation regarding BKABD please contact this number 01711168094. Thanks';
         send_sms((string) $data['phone'], $msg);
@@ -349,6 +368,7 @@ class CenterController extends Controller
 
         Cache::forget('filter:active_centers');
         Cache::forget('filter:active_centers_named_v2');
+        Cache::forget('pending_centers:all');
 
         return ['status' => 'success'];
     }
@@ -385,6 +405,7 @@ class CenterController extends Controller
         $this->dropUpload('authority_signature', $center['authority_signature'] ?? null);
         Cache::forget('filter:active_centers');
         Cache::forget('filter:active_centers_named_v2');
+        Cache::forget('pending_centers:all');
 
         return ['status' => 'success'];
     }
@@ -409,6 +430,7 @@ class CenterController extends Controller
             throw new HttpException(404, 'Record not found');
         }
         Center::updateRow($id, ['active' => (int) $sta]);
+        Cache::forget('pending_centers:all');
         Cache::forget('filter:active_centers');
         Cache::forget('filter:active_centers_named_v2');
         Cache::forgetPrefix('center_id'); // Auth::centerId() memo may be stale
@@ -423,10 +445,22 @@ class CenterController extends Controller
     /** GET /centers — list page (permission flags feed data-perm-* in the view). */
     public function pageIndex(Request $request): string
     {
+        return $this->pageList($request, false);
+    }
+
+    /** GET /pending-centers — centers awaiting approval. */
+    public function pagePending(Request $request): string
+    {
+        return $this->pageList($request, true);
+    }
+
+    private function pageList(Request $request, bool $pendingOnly): string
+    {
         $this->requirePermission('center-list');
 
         return View::render('centers.index', [
-            'title' => 'Manage Center',
+            'title' => $pendingOnly ? 'Pending Centers' : 'Manage Center',
+            'pendingOnly' => $pendingOnly,
             'pageScripts' => ['/assets/js/centers.js'],
             'perms' => $this->permissionMap(['center-list', 'center-create', 'center-edit', 'center-delete', 'center-status', 'institute-list']),
         ], 'layouts.dashboard');

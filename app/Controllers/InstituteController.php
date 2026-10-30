@@ -13,6 +13,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Core\View;
+use App\Models\Institute;
 use App\Services\InstituteService;
 
 /**
@@ -32,6 +33,8 @@ use App\Services\InstituteService;
  */
 final class InstituteController extends Controller
 {
+    private const MODEL_TYPE = 'App\\Models\\User';
+
     /** Columns a create/update may set (mass-assignment whitelist). */
     private const FIELDS = [
         'center_id', 'name', 'director_name', 'phone', 'email', 'website',
@@ -109,6 +112,41 @@ final class InstituteController extends Controller
         return $result;
     }
 
+    /** GET /api/pending-institutes/count — live sidebar badge count. */
+    public function pendingCount(Request $request): array
+    {
+        $this->requirePendingInstitutePermission();
+        $centerId = Auth::isAdmin() ? null : Auth::centerId();
+        $search = trim((string) $request->input('search', ''));
+        $filterCenterId = (int) $request->input('center_id', 0);
+        if ($search !== '' || $filterCenterId > 0) {
+            $query = (new Query('institutes'))->whereRaw('(`institutes`.`active` = 0 OR `institutes`.`active` IS NULL)');
+            if ($centerId !== null && $centerId > 0) {
+                $query->where('institutes.center_id', $centerId);
+            }
+            if ($filterCenterId > 0) {
+                $query->where('institutes.center_id', $filterCenterId);
+            }
+            if ($search !== '') {
+                $like = '%' . $search . '%';
+                $query->whereRaw(
+                    '(`institutes`.`name` LIKE ? OR `institutes`.`director_name` LIKE ? OR `institutes`.`certificate_no` LIKE ?)',
+                    [$like, $like, $like]
+                );
+            }
+            $total = $query->count();
+        } else {
+            $total = Institute::pendingCount($centerId);
+        }
+        return $this->sendResponse(
+            [
+                'total' => $total,
+                'overall_total' => Institute::pendingCount($centerId),
+            ],
+            'Pending institute count retrieved.'
+        );
+    }
+
     /** GET /api/institutes/{id} — single institute (edit form / detail). */
     public function show(Request $request): array
     {
@@ -183,6 +221,9 @@ final class InstituteController extends Controller
             Auth::assertCenterAccess((int) $data['center_id']); // must not move center
         }
         $row = $this->pick($data);
+        // Any saved edit must be reviewed again before the institute remains
+        // active in official lists and workflows.
+        $row['active'] = 0;
         $service = new InstituteService();
         $old = $this->findOrFail($id);
         $newFiles = [];
@@ -496,8 +537,20 @@ final class InstituteController extends Controller
     /** GET /institutes — list page. */
     public function pageIndex(Request $request): string
     {
+        return $this->pageList(false);
+    }
+
+    /** GET /pending-institutes — institutes awaiting approval. */
+    public function pagePending(Request $request): string
+    {
+        return $this->pageList(true);
+    }
+
+    private function pageList(bool $pendingOnly): string
+    {
         return View::render('institutes.index', [
-            'title' => 'Manage Institute',
+            'title' => $pendingOnly ? 'Pending Institutes' : 'Manage Institute',
+            'pendingOnly' => $pendingOnly,
         ], 'layouts.dashboard');
     }
 
@@ -572,6 +625,30 @@ final class InstituteController extends Controller
         $centerId = Auth::centerId();
         if ($centerId !== null && !Auth::isAdmin()) {
             $q->where('institutes.center_id', (int) $centerId);
+        }
+    }
+
+    /** Mirrors the reliable controller-level permission gate used by Pending Center. */
+    private function requirePendingInstitutePermission(): void
+    {
+        $userId = Auth::id();
+        if ($userId === null) {
+            throw new HttpException(401, 'Unauthenticated.');
+        }
+        $row = Database::selectOne(
+            "SELECT 1 AS allowed FROM `permissions` p
+              JOIN `role_has_permissions` rp ON rp.`permission_id` = p.`id`
+              JOIN `model_has_roles` mr ON mr.`role_id` = rp.`role_id`
+             WHERE mr.`model_type` = ? AND mr.`model_id` = ? AND p.`name` = ?
+             UNION
+             SELECT 1 AS allowed FROM `permissions` p
+              JOIN `model_has_permissions` mp ON mp.`permission_id` = p.`id`
+             WHERE mp.`model_type` = ? AND mp.`model_id` = ? AND p.`name` = ?
+             LIMIT 1",
+            [self::MODEL_TYPE, $userId, 'institute-list', self::MODEL_TYPE, $userId, 'institute-list']
+        );
+        if ($row === null) {
+            throw new HttpException(403, 'This action is unauthorized.');
         }
     }
 

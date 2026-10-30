@@ -173,12 +173,95 @@ window.BK = (function () {
     }
 
     // -----------------------------------------------------------------
-    // Confirm dialog (promise-based)
+    // Shared SweetAlert-style dialogs. All confirmation/message dialogs use
+    // one accessible, consistent UI instead of browser-native popups.
     // -----------------------------------------------------------------
-    function confirm(message, title) {
+    function dialog(message, options) {
+        options = options || {};
         return new Promise(function (resolve) {
-            resolve(window.confirm(message || 'Are you sure?'));
+            const backdrop = document.createElement('div');
+            backdrop.className = 'bk-dialog-backdrop';
+            backdrop.setAttribute('role', 'presentation');
+
+            const panel = document.createElement('section');
+            panel.className = 'bk-dialog';
+            panel.setAttribute('role', options.confirm ? 'alertdialog' : 'dialog');
+            panel.setAttribute('aria-modal', 'true');
+            panel.setAttribute('aria-labelledby', 'bk-dialog-title');
+            panel.setAttribute('aria-describedby', 'bk-dialog-message');
+
+            const icon = document.createElement('div');
+            const type = options.type || (options.confirm ? 'warning' : 'error');
+            const iconContent = { error: '×', warning: '!', success: '✓', info: 'i' };
+            icon.className = 'bk-dialog-icon bk-dialog-icon-' + type;
+            icon.setAttribute('aria-hidden', 'true');
+            icon.textContent = iconContent[type] || iconContent.info;
+
+            const title = document.createElement('h2');
+            title.className = 'bk-dialog-title';
+            title.id = 'bk-dialog-title';
+            title.textContent = options.title || (options.confirm ? 'Are you sure?' : 'Wait!!');
+
+            const body = document.createElement('p');
+            body.className = 'bk-dialog-message';
+            body.id = 'bk-dialog-message';
+            body.textContent = message || (options.confirm ? 'Please confirm this action.' : '');
+            if (options.link && options.link.href) {
+                const actionLink = document.createElement('a');
+                actionLink.className = 'bk-dialog-link';
+                actionLink.href = options.link.href;
+                actionLink.textContent = options.link.label || 'Open';
+                if (options.link.target) actionLink.target = options.link.target;
+                if (options.link.target === '_blank') actionLink.rel = 'noopener';
+                body.appendChild(document.createElement('br'));
+                body.appendChild(actionLink);
+            }
+
+            const actions = document.createElement('div');
+            actions.className = 'bk-dialog-actions';
+            let settled = false;
+            const finish = function (value) {
+                if (settled) return;
+                settled = true;
+                document.removeEventListener('keydown', onKeyDown);
+                backdrop.classList.add('bk-dialog-closing');
+                window.setTimeout(function () { backdrop.remove(); }, 130);
+                resolve(value);
+            };
+            const ok = document.createElement('button');
+            ok.type = 'button';
+            ok.className = 'bk-dialog-button bk-dialog-button-primary';
+            ok.textContent = options.confirm ? (options.confirmText || 'Yes, continue') : (options.okText || 'OK');
+            ok.addEventListener('click', function () { finish(true); });
+            if (options.confirm) {
+                const cancel = document.createElement('button');
+                cancel.type = 'button';
+                cancel.className = 'bk-dialog-button bk-dialog-button-secondary';
+                cancel.textContent = options.cancelText || 'Cancel';
+                cancel.addEventListener('click', function () { finish(false); });
+                actions.appendChild(cancel);
+            }
+            actions.appendChild(ok);
+            panel.append(icon, title, body, actions);
+            backdrop.appendChild(panel);
+            backdrop.addEventListener('click', function (event) {
+                if (event.target === backdrop) finish(false);
+            });
+            const onKeyDown = function (event) {
+                if (event.key === 'Escape') finish(false);
+            };
+            document.addEventListener('keydown', onKeyDown);
+            document.body.appendChild(backdrop);
+            ok.focus();
         });
+    }
+
+    function confirm(message, title) {
+        return dialog(message || 'Are you sure?', { confirm: true, title: title || 'Are you sure?', type: 'warning' });
+    }
+
+    function alertDialog(message, title, type, link) {
+        return dialog(message, { title: title || 'Wait!!', type: type || 'error', link: link || null });
     }
 
     // -----------------------------------------------------------------
@@ -260,7 +343,7 @@ window.BK = (function () {
 
     return {
         request, get, post, put, del, upload,
-        toast, clearErrors, showErrors, submit, confirm,
+        toast, clearErrors, showErrors, submit, confirm, alert: alertDialog,
         renderPagination, loadList, esc, query, qs, csrf
     };
 })();

@@ -978,8 +978,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     applyButton.addEventListener('click', async function () {
-        const names = (state.pending_migrations || []).join(', ');
-        if (!window.confirm('Apply these reviewed schema migrations to the configured demo database only?\n\n' + names + '\n\nExam database will not be modified. Back up demo first.')) return;
+        const descriptions = {
+            '2026_10_25_student_photo_sync_history': 'Adds photo-sync history tracking',
+            '2026_10_26_center_reference_sync': 'Supports syncing center references',
+            '2026_10_26_location_reference_sync': 'Supports syncing location references',
+            '2026_10_30_center_contact_sync': 'Supports syncing center contact details'
+        };
+        const changes = (state.pending_migrations || []).map(function (name) {
+            return '• ' + (descriptions[name] || name.replace(/^\d{4}_\d{2}_\d{2}_/, '').replace(/_/g, ' '));
+        }).join('\n');
+        if (!(await BK.confirm('Apply these reviewed schema changes to the configured demo database only?\n\n' + changes + '\n\nExam database will not be modified. Back up demo first.', 'Apply schema changes?'))) return;
         applyButton.disabled = true;
         try {
             const data = await BK.post('/api/database-sync/apply', {});

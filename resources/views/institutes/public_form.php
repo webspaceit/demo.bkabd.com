@@ -253,7 +253,11 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
         });
     }
 
-    function alertMsg(text, kind) {
+    function alertMsg(text, kind, link) {
+        if (window.BK && BK.alert) {
+            BK.alert(text, kind === 'success' ? 'Success' : 'Wait!!', kind || 'error', link);
+            return;
+        }
         alertBox.textContent = text;
         alertBox.className = 'mb-4 rounded border px-3 py-2 text-sm ' +
             (kind === 'error' ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700');
@@ -303,13 +307,11 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                 document.getElementById('logo-preview').classList.add('hidden');
                 alertMsg('Congratulations! Your membership registration has been completed successfully. ' +
                     'Please wait for authority approval or contact (+88 01711168094). ' +
-                    'You can print your card: ', 'success');
-                const a = document.createElement('a');
-                a.href = '/api/institute-registration/' + body.id;
-                a.target = '_blank';
-                a.className = 'font-semibold underline';
-                a.textContent = 'Print Registration Card';
-                alertBox.appendChild(a);
+                    'You can print your card below.', 'success', {
+                        href: '/api/institute-registration/' + encodeURIComponent(body.id),
+                        target: '_blank',
+                        label: 'Print Registration Card'
+                    });
             } else if (r.status === 401) {
                 alertMsg('This institute is already registered.', 'error');
             } else if (r.status === 422 && body.errors) {

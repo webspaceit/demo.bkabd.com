@@ -20,13 +20,18 @@ $nav = [
 
     ['group:Students', '#', null, 'arrow', [
         ['Student Registration', '/student-registration', 'student-registration', 'userplus'],
-        ['Student Details', '/students', 'student-list', 'users'],
+        ['List of Students', '/students', 'student-list', 'users'],
         ['Pending Registration', '/pending-students', 'student-list|student-approve', 'clock'],
     ]],
     ['group:Institutes', '#', null, 'arrow', [
         ['Institute Registration', '/institute-registration', 'institute-create', 'building-plus'],
-        ['Institute Details', '/institutes', 'institute-list', 'building'],
-        ['Manage Center', '/centers', 'center-list', 'layers'],
+        ['List of Institutes', '/institutes', 'institute-list', 'building'],
+        ['Pending Institute', '/pending-institutes', 'institute-list', 'clock'],
+    ]],
+    ['group:Centers', '#', null, 'arrow', [
+        ['Add New Center', '/create-center', 'center-create', 'building-plus'],
+        ['List of Centers', '/centers', 'center-list', 'layers'],
+        ['Pending Center', '/pending-centers', 'center-list', 'clock'],
     ]],
     ['group:Manage Area', '#', null, 'arrow', [
         ['Divisions Info', '/divisions', 'division-list', 'map'],
@@ -125,6 +130,14 @@ $isActive = function (string $path) use ($current): bool {
 $navBadges = [];
 if ($canSee('student-list|student-approve')) {
     $navBadges['/pending-students'] = \App\Models\Student::pendingCount(
+        Auth::isAdmin() ? null : Auth::centerId()
+    );
+}
+if ($canSee('center-list')) {
+    $navBadges['/pending-centers'] = \App\Models\Center::pendingCount();
+}
+if ($canSee('institute-list')) {
+    $navBadges['/pending-institutes'] = \App\Models\Institute::pendingCount(
         Auth::isAdmin() ? null : Auth::centerId()
     );
 }
@@ -401,6 +414,86 @@ window.updatePendingBadges = function (total) {
     }
     refresh();
     setInterval(refresh, 30000);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) { refresh(); }
+    });
+})();
+</script>
+<?php endif; ?>
+<?php if ($canSee('center-list')): ?>
+<script>
+window.updatePendingCenterBadge = function (total) {
+    total = Math.max(0, parseInt(total, 10) || 0);
+    var selector = '[data-nav-badge="/pending-centers"]';
+    if (total > 0 && !document.querySelector(selector)) {
+        var item = document.querySelector('a[href="/pending-centers"]');
+        if (item) {
+            var badge = document.createElement('span');
+            badge.setAttribute('data-nav-badge', '/pending-centers');
+            badge.className = 'ml-auto shrink-0 nav-notification-bubble';
+            badge.title = 'Pending centers';
+            item.appendChild(badge);
+        }
+    }
+    document.querySelectorAll(selector).forEach(function (badge) {
+        if (total > 0) {
+            badge.textContent = total.toLocaleString('en-US');
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    });
+};
+(function () {
+    function refresh() {
+        if (document.hidden) { return; }
+        BK.get('/api/pending-centers/count', {cache: 'no-store'}).then(function (json) {
+            var payload = json && json.data ? json.data : json;
+            window.updatePendingCenterBadge((payload && payload.total) || 0);
+        }).catch(function () { /* keep the last count on transient failures */ });
+    }
+    refresh();
+    setInterval(refresh, 1000);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) { refresh(); }
+    });
+})();
+</script>
+<?php endif; ?>
+<?php if ($canSee('institute-list')): ?>
+<script>
+window.updatePendingInstituteBadge = function (total) {
+    total = Math.max(0, parseInt(total, 10) || 0);
+    var selector = '[data-nav-badge="/pending-institutes"]';
+    if (total > 0 && !document.querySelector(selector)) {
+        var item = document.querySelector('a[href="/pending-institutes"]');
+        if (item) {
+            var badge = document.createElement('span');
+            badge.setAttribute('data-nav-badge', '/pending-institutes');
+            badge.className = 'ml-auto shrink-0 nav-notification-bubble';
+            badge.title = 'Pending institutes';
+            item.appendChild(badge);
+        }
+    }
+    document.querySelectorAll(selector).forEach(function (badge) {
+        if (total > 0) {
+            badge.textContent = total.toLocaleString('en-US');
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    });
+};
+(function () {
+    function refresh() {
+        if (document.hidden) { return; }
+        BK.get('/api/pending-institutes/count', {cache: 'no-store'}).then(function (json) {
+            var payload = json && json.data ? json.data : json;
+            window.updatePendingInstituteBadge((payload && payload.total) || 0);
+        }).catch(function () { /* keep the last count on transient failures */ });
+    }
+    refresh();
+    setInterval(refresh, 1000);
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden) { refresh(); }
     });
