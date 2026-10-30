@@ -773,6 +773,16 @@ input[type=radio]:focus {
     color: rgb(71 85 105/var(--tw-text-opacity, 1))
 }
 
+.badge-red {
+    background-color: rgb(254 226 226/var(--tw-bg-opacity, 1));
+    color: rgb(185 28 28/var(--tw-text-opacity, 1))
+}
+
+.badge-amber {
+    background-color: rgb(254 243 199/var(--tw-bg-opacity, 1));
+    color: rgb(146 64 14/var(--tw-text-opacity, 1))
+}
+
 .field-error {
     margin-top: .25rem;
     display: block;

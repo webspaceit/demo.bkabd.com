@@ -52,12 +52,13 @@ final class InstituteController extends Controller
             ) > 0;
         });
         $centerName = $hasSyncedDisplayName
-            ? "COALESCE(NULLIF(centers.display_name, ''), NULLIF(users.name, ''), CASE WHEN institutes.center_id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END)"
-            : "COALESCE(NULLIF(users.name, ''), CASE WHEN institutes.center_id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END)";
+            ? "COALESCE(NULLIF(centers.display_name, ''), NULLIF(users.name, ''), CASE WHEN centers.id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END)"
+            : "COALESCE(NULLIF(users.name, ''), CASE WHEN centers.id IS NOT NULL THEN CONCAT('Center #', institutes.center_id) ELSE 'Unassigned' END)";
         $q = (new Query('institutes'))
             ->leftJoin('centers', 'centers.id', '=', 'institutes.center_id')
             ->leftJoin('users', 'users.id', '=', 'centers.user_id')
             ->select('institutes.*')
+            ->selectRaw('centers.id AS linked_center_id')
             // The synced center label is independent of the linked account so
             // it still displays when historical centers have a missing user.
             ->selectRaw($centerName . ' AS center_name')
@@ -228,12 +229,81 @@ final class InstituteController extends Controller
     {
         $id = (int) $request->params['id'];
         $sta = (int) $request->params['sta'];
+        if (!in_array($sta, [0, 1], true)) {
+            throw new HttpException(422, 'Institute status must be 0 or 1.');
+        }
         Auth::assertInstituteAccess($id); // RLS/BOLA
-        $this->findOrFail($id);
-        (new Query('institutes'))->where('id', $id)->update(['active' => $sta === 1 ? 1 : 0]);
+
+        $certificateNo = null;
+        if ($sta === 1) {
+            $certificateNo = $this->approveAndAssignCertificate($id);
+        } else {
+            $this->findOrFail($id);
+            (new Query('institutes'))->where('id', $id)->update(['active' => 0]);
+        }
         Cache::forget('filter:active_institutes');
 
-        return ['status' => 'success'];
+        return ['status' => 'success', 'certificate_no' => $certificateNo];
+    }
+
+    /** Assign a number to an already approved legacy institute with no number. */
+    public function assignCertificateNumber(Request $request): array
+    {
+        $id = (int) ($request->params['id'] ?? 0);
+        Auth::assertInstituteAccess($id); // RLS/BOLA
+        $certificateNo = $this->approveAndAssignCertificate($id, false);
+        Cache::forget('filter:active_institutes');
+
+        return ['status' => 'success', 'certificate_no' => $certificateNo];
+    }
+
+    /**
+     * Approve an institute and issue the next available numeric certificate
+     * when it has none. The last institute row is locked so concurrent
+     * approvals serialize before calculating MAX(certificate_no) + 1.
+     */
+    private function approveAndAssignCertificate(int $id, bool $approve = true): string
+    {
+        return Database::transaction(function () use ($id, $approve): string {
+            Database::selectOne('SELECT `id` FROM `institutes` ORDER BY `id` DESC LIMIT 1 FOR UPDATE');
+            $institute = Database::selectOne(
+                'SELECT `id`, `center_id`, `active`, `certificate_no` FROM `institutes` WHERE `id` = ? FOR UPDATE',
+                [$id]
+            );
+            if ($institute === null) {
+                throw new HttpException(404, 'Institute not found');
+            }
+            $centerId = (int) ($institute['center_id'] ?? 0);
+            if ($centerId <= 0 || Database::selectOne('SELECT `id` FROM `centers` WHERE `id` = ? LIMIT 1', [$centerId]) === null) {
+                throw new HttpException(422, 'Assign a center first, then approve the institute.');
+            }
+            if (!$approve && (int) ($institute['active'] ?? 0) !== 1) {
+                throw new HttpException(422, 'Approve the institute before assigning its certificate number.');
+            }
+
+            $certificateNo = trim((string) ($institute['certificate_no'] ?? ''));
+            if ($certificateNo === '') {
+                $row = Database::selectOne(
+                    "SELECT MAX(CAST(`certificate_no` AS UNSIGNED)) AS max_no FROM `institutes` WHERE `certificate_no` REGEXP '^[0-9]+$'"
+                );
+                $next = (int) ($row['max_no'] ?? 0) + 1;
+                do {
+                    $candidate = (string) $next++;
+                    $exists = Database::selectOne(
+                        'SELECT `id` FROM `institutes` WHERE `certificate_no` = ? LIMIT 1',
+                        [$candidate]
+                    );
+                } while ($exists !== null);
+                $certificateNo = $candidate;
+            }
+
+            Database::statement(
+                'UPDATE `institutes` SET `active` = ?, `certificate_no` = ?, `updated_at` = ? WHERE `id` = ?',
+                [$approve ? 1 : (int) $institute['active'], $certificateNo, date('Y-m-d H:i:s'), $id]
+            );
+
+            return $certificateNo;
+        });
     }
 
     /**

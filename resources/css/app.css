@@ -114,6 +114,10 @@
         @apply bg-red-100 text-red-700;
     }
 
+    .badge-amber {
+        @apply bg-amber-100 text-amber-800;
+    }
+
     .badge-gray {
         @apply bg-slate-100 text-slate-600;
     }

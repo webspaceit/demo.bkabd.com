@@ -5,6 +5,10 @@
  */
 ?>
 <div class="space-y-4" id="institutes-page" data-perm-edit="<?= can('institute-edit') ? '1' : '0' ?>" data-perm-delete="<?= can('institute-delete') ? '1' : '0' ?>" data-perm-validity="<?= can('institute-validity') ? '1' : '0' ?>">
+    <style>
+        #institute-pagination-footer { display:flex; width:100%; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; }
+        #institute-per-page-control { margin-left:auto; }
+    </style>
     <div class="card">
         <div class="card-header">
             <h1 class="text-base font-semibold text-slate-800">List of All Institutes (<span id="institute-count">0</span>)</h1>
@@ -49,7 +53,18 @@
                     </tbody>
                 </table>
             </div>
-            <div id="institute-pagination" class="flex flex-wrap items-center gap-1 text-sm"></div>
+            <div id="institute-pagination-footer" class="mt-4">
+                <div id="institute-pagination" class="flex flex-wrap items-center gap-2"></div>
+                <label id="institute-per-page-control" for="institute-per-page" class="flex items-center gap-2 text-sm text-slate-500">
+                    Rows per page
+                    <select id="institute-per-page" class="input" style="width:auto;min-width:5rem">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </label>
+            </div>
         </div>
     </div>
 </div>
@@ -63,6 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const pagerEl = document.getElementById('institute-pagination');
     const searchEl = document.getElementById('institute-search');
     const statusEl = document.getElementById('institute-status-filter');
+    const perPageEl = document.getElementById('institute-per-page');
     const filterEl = document.getElementById('institute-center-filter');
     const filterTextEl = document.getElementById('institute-center-filter-text');
     const canEdit = root.getAttribute('data-perm-edit') === '1';
@@ -71,12 +87,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Optional ?center_id=N filter (linked from the /centers delete guard).
     const centerId = new URLSearchParams(window.location.search).get('center_id') || '';
+    const perPage = function () { return Number(perPageEl.value) || 20; };
 
     function actionCell(row) {
         const id = row.id;
+        const hasCenter = Number(row.linked_center_id) > 0;
         let html = '';
         if (canEdit && Number(row.active) !== 1) {
-            html += '<button type="button" class="btn btn-sm btn-primary" data-approve="' + BK.esc(String(id)) + '" title="Approve institute" aria-label="Approve institute">&#10003;</button>';
+            if (hasCenter) {
+                html += '<button type="button" class="btn btn-sm btn-primary" data-approve="' + BK.esc(String(id)) + '" title="Approve institute" aria-label="Approve institute">&#10003;</button>';
+            } else {
+                html += '<button type="button" class="btn btn-sm btn-light" data-center-required title="Assign a center before approval" aria-label="Assign a center before approval"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><path d="M12 7v6M9 10h6"/></svg></button>';
+            }
+        }
+        if (canEdit && Number(row.active) === 1 && !String(row.certificate_no || '').trim()) {
+            if (hasCenter) {
+                html += '<button type="button" class="btn btn-sm btn-light" data-assign-certificate="' + BK.esc(String(id)) + '" title="Assign next certificate number" aria-label="Assign certificate number">#</button>';
+            } else {
+                html += '<button type="button" class="btn btn-sm btn-light" data-center-required title="Assign a center before issuing a certificate" aria-label="Assign a center before issuing a certificate"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><path d="M12 7v6M9 10h6"/></svg></button>';
+            }
         }
         if (canEdit) {
             html += '<a class="btn btn-sm btn-light" href="/edit-institute/' + encodeURIComponent(id) + '" title="Edit">✎</a>';
@@ -93,14 +122,17 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderRow(no, row) {
         const validity = row.validity_date ? BK.esc(row.validity_date) : '—';
         const approved = Number(row.active) === 1;
+        const centerCell = Number(row.linked_center_id) > 0
+            ? BK.esc(row.center_name || '—')
+            : '<span class="badge badge-red">Unassigned</span>';
         return '<tr>' +
             '<td>' + no + '</td>' +
             '<td>' + BK.esc(row.name) + '</td>' +
-            '<td>' + BK.esc(row.center_name || '—') + '</td>' +
+            '<td>' + centerCell + '</td>' +
             '<td>' + BK.esc(row.director_name || '—') + '</td>' +
             '<td>' + BK.esc(row.phone || '—') + '</td>' +
             '<td>' + (approved ? BK.esc(row.certificate_no || '—') : '—') + '</td>' +
-            '<td><span class="badge ' + (approved ? 'badge-green' : 'badge-gray') + '">' + (approved ? 'Approved' : 'Pending') + '</span></td>' +
+            '<td><span class="badge ' + (approved ? 'badge-green' : 'badge-amber') + '">' + (approved ? 'Approved' : 'Pending') + '</span></td>' +
             '<td>' + validity + '</td>' +
             '<td class="text-center">' + actionCell(row) + '</td>' +
             '</tr>';
@@ -134,16 +166,34 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     rowsEl.addEventListener('click', async function (event) {
+        const centerRequiredBtn = event.target.closest('[data-center-required]');
+        if (centerRequiredBtn) {
+            BK.toast('Assign a center first, then approve the institute.', 'error');
+            return;
+        }
         const approveBtn = event.target.closest('[data-approve]');
         if (approveBtn) {
             approveBtn.disabled = true;
             try {
-                await BK.post('/api/institutes/changestatus/' + encodeURIComponent(approveBtn.getAttribute('data-approve')) + '/1');
-                BK.toast('Institute approved. Its certificate number is now visible.', 'success');
-                load(BK.qs('/api/institutes', { page: 1, search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+                const result = await BK.post('/api/institutes/changestatus/' + encodeURIComponent(approveBtn.getAttribute('data-approve')) + '/1');
+                BK.toast('Institute approved. Certificate number: ' + (result.certificate_no || 'assigned'), 'success');
+                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
             } catch (err) {
                 approveBtn.disabled = false;
                 BK.toast(err.message || 'Could not approve institute', 'error');
+            }
+            return;
+        }
+        const assignBtn = event.target.closest('[data-assign-certificate]');
+        if (assignBtn) {
+            assignBtn.disabled = true;
+            try {
+                const result = await BK.post('/api/institutes/' + encodeURIComponent(assignBtn.getAttribute('data-assign-certificate')) + '/assign-certificate-number');
+                BK.toast('Certificate number assigned: ' + result.certificate_no, 'success');
+                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+            } catch (err) {
+                assignBtn.disabled = false;
+                BK.toast(err.message || 'Could not assign certificate number', 'error');
             }
             return;
         }
@@ -152,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             await BK.del('/api/institutes/' + btn.getAttribute('data-delete'));
             BK.toast('Institute deleted', 'success');
-            load(BK.qs('/api/institutes', { page: 1, search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+            load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
         } catch (err) {
             BK.toast(err.message || 'Could not delete', 'error');
         }
@@ -162,15 +212,19 @@ document.addEventListener('DOMContentLoaded', function () {
     searchEl.addEventListener('input', function () {
         clearTimeout(timer);
         timer = setTimeout(function () {
-            load(BK.qs('/api/institutes', { page: 1, search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+            load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
         }, 200);
     });
 
     statusEl.addEventListener('change', function () {
-        load(BK.qs('/api/institutes', { page: 1, search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+        load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
+    });
+
+    perPageEl.addEventListener('change', function () {
+        load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: statusEl.value }));
     });
 
     statusEl.value = new URLSearchParams(window.location.search).get('status') || '';
-    load(BK.qs('/api/institutes', { page: 1, center_id: centerId, status: statusEl.value }));
+    load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), center_id: centerId, status: statusEl.value }));
 });
 </script>

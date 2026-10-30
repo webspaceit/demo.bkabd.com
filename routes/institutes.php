@@ -16,6 +16,7 @@ Router::delete('/api/institutes/{id}', [InstituteController::class, 'destroy'], 
 // Original: list of a center's active institutes (NOT a single institute).
 Router::get('/api/instituteById/{id}', [InstituteController::class, 'instituteById'], 'auth|permission:institute-list');
 Router::post('/api/institutes/changestatus/{id}/{sta}', [InstituteController::class, 'changestatus'], 'auth|permission:institute-edit');
+Router::post('/api/institutes/{id}/assign-certificate-number', [InstituteController::class, 'assignCertificateNumber'], 'auth|permission:institute-edit');
 Router::put('/api/institutevalidity/{id}', [InstituteController::class, 'updateValidity'], 'auth|permission:institute-validity');
 // Total institutes (original: GET /api/totalInstitute)
 Router::get('/api/totalInstitute', [InstituteController::class, 'totalInstitute'], 'auth');
