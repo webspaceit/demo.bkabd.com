@@ -75,8 +75,8 @@ $patUrl = str_replace('\\', '/', $img(brand('pattern_path') !== '' ? brand('patt
     table.marks td.fill { background: #EEF7EA; }
     table.sig { margin-top: 18px; }
     table.sig td { border: 0; text-align: center; font-size: 10px; vertical-align: bottom; padding: 0 18px; }
-    .sig-img { height: 34px; }
-    .sig-img img { height: 34px; }
+    .sig-img { height: auto; }
+    .sig-img img { width: auto; height: auto; max-width: none; max-height: none; display: block; margin: 0 auto; }
     .sig-line { border-top: 1px solid #000; margin-top: 4px; padding-top: 3px; }
     .sig-name { font-weight: bold; font-size: 11.55px; }
     .sig-role { color: #000; font-size: 9.9px; }

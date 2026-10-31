@@ -254,7 +254,8 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .overflow-x-auto { margin-top: 0; }
 .cp-slot .sig-tbl { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .cp-slot .overflow-x-auto { width: 100%; }
-.cp-slot .sig-img img { max-width: 90px; height: auto; margin: 0 auto; display: block; }
+.cp-slot .sig-img { height: auto; }
+.cp-slot .sig-img img { width: auto; height: auto; max-width: none; max-height: none; margin: 0 auto; display: block; }
 .cp-slot .sig-name { font-size: .82rem; }
 .cp-slot .sig-role { font-size: .68rem; }
 .cp-slot .rc-note { font-size: .75rem; padding: .12rem .7rem 0; line-height: 1.15; }

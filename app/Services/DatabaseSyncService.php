@@ -1422,8 +1422,9 @@ final class DatabaseSyncService
         $targetColumns = $this->columnDefinitions($target, (string) $this->targetSettings()['database']);
         foreach ($sourceColumns['students'] ?? [] as $column => $definition) {
             if ($column === 'id') { continue; }
-            if (!isset($targetColumns['students'][$column]) || $targetColumns['students'][$column] !== $definition) {
-                $targetDefinition = $targetColumns['students'][$column] ?? '<missing>';
+            $targetDefinition = $targetColumns['students'][$column] ?? '<missing>';
+            if ($targetDefinition !== $definition
+                && !$this->isSafeStudentReferenceWidening($column, $definition, $targetDefinition)) {
                 $sourceSettings = $this->sourceSettings();
                 $targetSettings = $this->targetSettings();
                 throw new RuntimeException(sprintf(
@@ -1440,6 +1441,28 @@ final class DatabaseSyncService
                 ));
             }
         }
+    }
+
+    /**
+     * Student reference IDs are remapped to destination IDs before insertion,
+     * so a source INT can safely fit a destination BIGINT UNSIGNED column.
+     * Keep every other part of the column definition identical.
+     */
+    private function isSafeStudentReferenceWidening(string $column, string $sourceDefinition, string $targetDefinition): bool
+    {
+        $referenceColumns = ['center_id', 'institute_id', 'division_id', 'district_id', 'upazila_id', 'union_id'];
+        if (!in_array($column, $referenceColumns, true)) { return false; }
+
+        $sourceParts = explode('|', $sourceDefinition);
+        $targetParts = explode('|', $targetDefinition);
+        if (count($sourceParts) !== count($targetParts) || count($sourceParts) < 2) { return false; }
+
+        $sourceType = strtolower($sourceParts[0]);
+        $targetType = strtolower($targetParts[0]);
+        $safeIntegerWidening = in_array($sourceType, ['int', 'int unsigned'], true)
+            && $targetType === 'bigint unsigned';
+
+        return $safeIntegerWidening && array_slice($sourceParts, 1) === array_slice($targetParts, 1);
     }
 
     private function columnDefinitions(PDO $pdo, string $schema): array

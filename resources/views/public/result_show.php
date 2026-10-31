@@ -81,8 +81,8 @@ $mTh = 'border border-black px-0.5 py-0.5 sm:px-2 sm:py-1';
 
     /* Signature block */
     .sig-tbl td { vertical-align: bottom; text-align: center; padding: 0 1rem; }
-    .sig-img { height: 2.5rem; }
-    .sig-img img { height: 2.5rem; width: auto; margin: 0 auto; }
+    .sig-img { height: auto; }
+    .sig-img img { width: auto; height: auto; max-width: none; max-height: none; margin: 0 auto; display: block; }
     .sig-line { border-top: 1px solid #000; margin-top: .25rem; padding-top: .25rem; }
     .sig-name { font-weight: 600; font-size: 1.1em; line-height: 1.2; color: #000; }
     .sig-role { color: #000; font-size: 99%; line-height: 1.2; }

@@ -385,7 +385,8 @@ $qrContentEscaped = e($qrContent);
 
     /* ---- Signature block (natural image size, same signatories as the result sheet) ---- */
     .sig-tbl td { vertical-align: bottom; text-align: center; padding: 0 .75rem; }
-    .sig-img img { max-width: 90px; height: auto; margin: 0 auto; display: block; }
+    .sig-img { height: auto; }
+    .sig-img img { width: auto; height: auto; max-width: none; max-height: none; margin: 0 auto; display: block; }
     .sig-line { border-top: 1px solid #000; margin-top: .25rem; padding-top: .25rem; width: 82%; margin-left: auto; margin-right: auto; }
     .sig-name { font-weight: 600; font-size: 1.05em; line-height: 1.2; color: #000; }
     .sig-role { color: #000; font-size: 95%; line-height: 1.2; }
