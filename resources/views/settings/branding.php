@@ -75,14 +75,25 @@ $textFields = [
                             <img data-brand-preview="<?= e($asset) ?>" src="<?= e(brand_asset($field, $fallback)) ?>" alt="<?= e($label) ?> preview" class="max-h-full max-w-full object-contain">
                         </div>
                         <?php if ($canEdit): ?>
-                            <form data-brand-upload data-asset="<?= e($asset) ?>" class="space-y-2">
-                                <input type="file" name="image" accept="image/png,image/jpeg" required class="block w-full text-xs text-slate-600">
-                                <button class="btn btn-light btn-sm" type="submit">Upload <?= e(strtolower($label)) ?></button>
-                            </form>
+                            <div data-brand-upload data-asset="<?= e($asset) ?>" class="space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <label class="btn btn-light btn-sm cursor-pointer">
+                                        Choose image
+                                        <input type="file" name="image" accept="image/png,image/jpeg" class="sr-only" data-brand-file>
+                                    </label>
+                                    <span class="min-w-0 truncate text-xs text-slate-500" data-brand-filename>No image selected</span>
+                                </div>
+                            </div>
                         <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             </div>
+            <?php if ($canEdit): ?>
+                <div class="mt-5 flex items-center gap-3">
+                    <button class="btn btn-primary" type="button" id="submit-brand-images" disabled>Submit brand images</button>
+                    <span class="text-sm text-slate-500" id="brand-images-status" aria-live="polite"></span>
+                </div>
+            <?php endif; ?>
         </div>
     </section>
 </div>
@@ -109,21 +120,49 @@ document.addEventListener('DOMContentLoaded', function () {
             if (window.BK) BK.alert('Branding details saved.', 'Success', 'success'); else window.alert('Branding details saved.');
         } catch (error) { showError(error.message); }
     });
-    root.querySelectorAll('[data-brand-upload]').forEach((uploadForm) => {
-        uploadForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const data = new FormData(uploadForm);
-            data.append('asset', uploadForm.dataset.asset);
-            try {
+    const imageSubmit = document.getElementById('submit-brand-images');
+    const imageStatus = document.getElementById('brand-images-status');
+    const imageTiles = Array.from(root.querySelectorAll('[data-brand-upload]'));
+    imageTiles.forEach((tile) => {
+        const fileInput = tile.querySelector('[data-brand-file]');
+        const filename = tile.querySelector('[data-brand-filename]');
+        fileInput?.addEventListener('change', () => {
+            const file = fileInput.files?.[0];
+            if (filename) filename.textContent = file?.name || 'No image selected';
+            if (imageSubmit) imageSubmit.disabled = !imageTiles.some((item) => item.querySelector('[data-brand-file]')?.files?.length);
+        });
+    });
+    imageSubmit?.addEventListener('click', async () => {
+        const selectedTiles = imageTiles.filter((tile) => tile.querySelector('[data-brand-file]')?.files?.length);
+        if (selectedTiles.length === 0) return;
+        imageSubmit.disabled = true;
+        let uploaded = 0;
+        try {
+            for (const tile of selectedTiles) {
+                const fileInput = tile.querySelector('[data-brand-file]');
+                const filename = tile.querySelector('[data-brand-filename]');
+                const data = new FormData();
+                data.append('image', fileInput.files[0]);
+                data.append('asset', tile.dataset.asset);
                 const result = await jsonRequest('/api/branding/assets', {method: 'POST', headers, body: data});
-                const path = result.branding?.[uploadForm.dataset.asset + '_path'];
+                const path = result.branding?.[tile.dataset.asset + '_path'];
                 if (path) {
-                    const preview = root.querySelector('[data-brand-preview="' + uploadForm.dataset.asset + '"]');
+                    const preview = root.querySelector('[data-brand-preview="' + tile.dataset.asset + '"]');
                     preview.src = path + '?v=' + Date.now();
                 }
-                if (window.BK) BK.alert('Image uploaded.', 'Success', 'success'); else window.alert('Image uploaded.');
-            } catch (error) { showError(error.message); }
-        });
+                filename.textContent = 'Uploaded: ' + fileInput.files[0].name;
+                fileInput.value = '';
+                uploaded++;
+                if (imageStatus) imageStatus.textContent = 'Uploaded ' + uploaded + ' of ' + selectedTiles.length + ' image(s)…';
+            }
+            if (imageStatus) imageStatus.textContent = 'Uploaded ' + uploaded + ' brand image(s).';
+            if (window.BK) BK.alert('Brand images uploaded.', 'Success', 'success'); else window.alert('Brand images uploaded.');
+        } catch (error) {
+            if (imageStatus) imageStatus.textContent = uploaded ? 'Uploaded ' + uploaded + ' image(s); remaining images were not uploaded.' : '';
+            showError(error.message);
+        } finally {
+            imageSubmit.disabled = !imageTiles.some((item) => item.querySelector('[data-brand-file]')?.files?.length);
+        }
     });
 });
 </script>
