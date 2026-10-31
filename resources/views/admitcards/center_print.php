@@ -245,7 +245,10 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-routine-table th,
 .cp-slot .rc-routine-table td { padding: .15rem .3rem; }
 .cp-slot .rc-rules { width: auto; margin: .25rem 0 .25rem .7rem !important; font-size: 1rem !important; line-height: 1.22 !important; }
-.cp-slot .rc-routine-title { font-size: .95rem; font-weight: 700; color: #0f172a; text-transform: uppercase; }
+.cp-slot .rc-routine-title { display:flex; align-items:center; justify-content:center; gap:.45rem; margin:0 auto .18rem; text-align:center; font-size:.72rem; font-weight:800; color:#000; text-transform:uppercase; letter-spacing:.08em; line-height:1.2; }
+.cp-slot .rc-routine-title::before,
+.cp-slot .rc-routine-title::after { content:""; flex:1; max-width:5rem; height:1px; background:#000; }
+.cp-slot .rc-routine-title span { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; min-height:1.25rem; box-sizing:border-box; padding:.12rem .55rem; border:1px solid #000; border-radius:999px; background:#fff; color:#000; }
 .cp-slot .rc-rules p { margin: 0 0 .15rem; }
 .cp-slot .rc-rules > p:first-child { font-size: .95rem !important; line-height: 1.2; font-weight: 700; color: #0f172a; }
 .cp-slot .rc-rules p:last-child { margin-bottom: 0; white-space: nowrap; font-size: 1rem; }
@@ -486,7 +489,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
             </div>
 
             <div class="rc-routine">
-                <div class="rc-routine-title">Exam Routine</div>
+                <div class="rc-routine-title"><span>Exam Routine</span></div>
                 <table class="rc-routine-table">
                     <thead><tr><th>Subject</th><th>Exam Date</th><th>Day</th><th>Time</th></tr></thead>
                     <tbody>

@@ -313,7 +313,10 @@ $qrContentEscaped = e($qrContent);
         width: calc(100% - 2rem);
         margin: .1rem 1rem .3rem;
     }
-    .rc-routine-title { margin-bottom: .12rem; text-align: center; font-size: .95rem; font-weight: 700; color: #0f172a; text-transform: uppercase; }
+    .rc-routine-title { display:flex; align-items:center; justify-content:center; gap:.45rem; margin:0 auto .18rem; text-align:center; font-size:.72rem; font-weight:800; color:#000; text-transform:uppercase; letter-spacing:.08em; line-height:1.2; }
+    .rc-routine-title::before,
+    .rc-routine-title::after { content:""; flex:1; max-width:5rem; height:1px; background:#000; }
+    .rc-routine-title span { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; min-height:1.25rem; box-sizing:border-box; padding:.12rem .55rem; border:1px solid #000; border-radius:999px; background:#fff; color:#000; }
     .rc-routine-table {
         width: 100%;
         border-collapse: collapse;
@@ -326,7 +329,7 @@ $qrContentEscaped = e($qrContent);
     .rc-routine-table-numbered td:first-child { width: 5%; }
     .rc-routine-table th,
     .rc-routine-table td { border: 1px solid #334155; padding: .15rem .3rem; text-align: center; overflow-wrap: anywhere; }
-    .rc-routine-table th { font-weight: 700; background: #f1f5f9; }
+    .rc-routine-table th { font-weight: 700; background: #f1f5f9; text-transform: uppercase; }
     /* The two text columns use one identical standard line pitch — no
        per-column stretching, so both blocks read at the same rhythm. */
     .rc-col {
@@ -678,7 +681,7 @@ $qrContentEscaped = e($qrContent);
 
         <?php if ($isAdmitCard): ?>
         <div class="rc-routine">
-            <div class="rc-routine-title">Exam Schedule</div>
+            <div class="rc-routine-title"><span><?= !empty($singleAdmitCard) ? 'Exam Routine' : 'Exam Schedule' ?></span></div>
             <?php $studentRoutineRows = $examRoutineRows($student['session'] ?? '', (int) ($student['class'] ?? 0)); ?>
             <?php $showRoutineSl = count($studentRoutineRows) > 1; ?>
             <table class="rc-routine-table<?= $showRoutineSl ? ' rc-routine-table-numbered' : '' ?>">
