@@ -7,6 +7,10 @@ $centerCount = count((array) ($centers ?? []));
 $instituteCount = (int) ($instituteCount ?? 0);
 ?>
 <div class="space-y-4">
+    <style>
+        #admit-pagination-footer { display:flex; width:100%; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; }
+        #admit-per-page-control { margin-left:auto; white-space:nowrap; }
+    </style>
     <div class="card" id="admitcard-list">
         <div class="card-header">
             <h1 class="text-base font-semibold text-slate-800">Admit Cards</h1>
@@ -112,7 +116,20 @@ $instituteCount = (int) ($instituteCount ?? 0);
                     </tbody>
                 </table>
             </div>
-            <div id="admit-pagination"></div>
+            <div id="admit-pagination-footer" class="mt-4">
+                <div id="admit-pagination" class="flex flex-wrap items-center gap-2"></div>
+                <label id="admit-per-page-control" for="admit-per-page" class="flex items-center gap-2 text-sm text-slate-500">
+                    Rows per page
+                    <select id="admit-per-page" class="input" style="width:auto;min-width:5rem">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="150">150</option>
+                        <option value="200">200</option>
+                    </select>
+                </label>
+            </div>
         </div>
     </div>
 </div>
@@ -129,6 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const resetFiltersBtn = document.getElementById('btn-reset-filters');
     const rowsEl      = document.getElementById('admit-rows');
     const pagerEl     = document.getElementById('admit-pagination');
+    const perPageEl   = document.getElementById('admit-per-page');
     const btnPrintCenter = document.getElementById('btn-print-center');
     const btnPrintInstitute = document.getElementById('btn-print-institute');
     const btnPrintClass = document.getElementById('btn-print-class');
@@ -140,10 +158,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const instituteSummaryEl = document.getElementById('selected-institute-summary');
     const instituteSummaryNameEl = document.getElementById('selected-institute-name');
     const instituteSummaryCountEl = document.getElementById('selected-institute-student-count');
-    const PER_PAGE    = 20;
     const CLASS_NAMES = { 6:'KG', 1:'ONE', 2:'TWO', 3:'THREE', 4:'FOUR', 5:'FIVE' };
 
     let pageNum     = 1;
+    let perPage     = Number(perPageEl?.value || 20);
     let searchTimer = null;
     let centerCountRequest = 0;
     let optionCountRequest = 0;
@@ -375,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function () {
         rowsEl.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-slate-400">Loading students…</td></tr>';
         const url = BK.qs('/api/admitcards/search', {
             page:         pageNum,
-            per_page:     PER_PAGE,
+            per_page:     perPage,
             session:      val(sessionEl),
             center_id:    val(centerEl),
             institute_id: val(instituteEl),
@@ -428,6 +446,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!a) return;
         e.preventDefault();
         pageNum = Number(new URL(a.href).searchParams.get('page') || 1);
+        reload();
+    });
+    perPageEl?.addEventListener('change', function () {
+        perPage = Number(perPageEl.value) || 20;
+        pageNum = 1;
         reload();
     });
 
