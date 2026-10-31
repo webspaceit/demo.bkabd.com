@@ -640,7 +640,6 @@ $qrContentEscaped = e($qrContent);
                 <?= $row("Father's Name", $student['father_name'] ?? '') ?>
                 <?= $row("Mother's Name", $student['mother_name'] ?? '') ?>
                 <?= $row('Date of Birth', !empty($student['dob']) ? DateFormat($student['dob'], 'd-m-Y') : '') ?>
-                <div class="rc-row rc-row-pair"><span class="rc-lbl">Registration No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($student['registration'] ?? '') ?></span><span class="rc-lbl rc-lbl-gap">Roll No.</span><span class="rc-sep">:</span><span class="rc-val"><?= e($student['roll'] ?? '') ?></span></div>
             </div>
             <div class="rc-col">
                 <?= $row('Exam Class', $className((int) ($student['class'] ?? 0))) ?>
