@@ -363,7 +363,7 @@ $activeSession = Auth::activeSession();
 
         <?= $content ?>
 
-        <footer class="pt-6 pb-2 text-xs text-slate-400">
+        <footer class="pt-6 pb-2 text-center text-xs text-black">
             &copy; <?= date('Y') ?> <?= e(brand('authority_name')) ?> <?= e(brand('app_name')) ?> — <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?>
         </footer>
     </main>
