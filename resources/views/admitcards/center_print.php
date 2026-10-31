@@ -225,7 +225,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-qr { display: flex; align-items: center; justify-content: center; align-self: center; height: 70px; }
 .cp-slot .rc-logo img { width: 70px; height: 70px; object-fit: contain; }
 .cp-slot .rc-banner > div:not(.rc-qr) { flex: 1 1 auto; min-width: 0; text-align: center; }
-.cp-slot .rc-banner h1 { font-size: 1.75rem; }
+.cp-slot .rc-banner h1 { font-size: 1.75rem; text-transform: uppercase; }
 .cp-slot .rc-reg { font-size: .95rem; }
 .cp-slot .rc-banner .rc-gov { font-size: .85rem; line-height: 1.35; }
 .cp-slot .rc-qr canvas,
@@ -233,7 +233,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-qr table { width: 70px !important; height: 70px !important; }
 .cp-slot .rc-exam-head { font-size: 1.7rem; margin: .2rem 0 .6rem; }
 .cp-slot .rc-top { padding: .15rem .7rem .15rem; margin-bottom: .5rem; }
-.cp-slot .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
+.cp-slot .rc-tag { padding: .15rem .75rem; font-size: .85rem; }
 .cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: 1.5rem; }
 .cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 .25rem !important; }
 .cp-slot .rc-col { flex: 1 1 0; min-width: 0; }
@@ -538,9 +538,9 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
             </p>
 
             <?php if (brand('footer_image_path') !== ''): ?><img class="rc-brand-art rc-brand-art-footer" src="<?= e(brand_asset('footer_image_path', '')) ?>" alt=""><?php endif; ?>
-            <div class="rc-foot">
-                <div>Print Date: <?= e($printDate) ?></div>
-            </div>
+            <?php if (brand('show_admit_card_print_date') !== '0'): ?>
+                <div class="rc-foot"><div>Print Date: <?= e($printDate) ?></div></div>
+            <?php endif; ?>
             </div>
         </div>
         </div>

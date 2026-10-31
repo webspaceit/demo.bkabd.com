@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS `branding_settings` (
   `short_name` varchar(100) NOT NULL DEFAULT 'BKABD',
   `app_name` varchar(160) NOT NULL DEFAULT 'BKABD Exam',
   `exam_name` varchar(160) NOT NULL DEFAULT 'Scholarship Examination',
+  `show_admit_card_print_date` tinyint(1) NOT NULL DEFAULT '1',
   `registration_label` varchar(100) NOT NULL DEFAULT 'Govt. Reg. No.',
   `registration_no` varchar(160) NOT NULL DEFAULT 'S-1028/98',
   `address` varchar(500) NOT NULL DEFAULT '59/3, Brammonchiron, Jatrabari, Dhaka-1203, Bangladesh',

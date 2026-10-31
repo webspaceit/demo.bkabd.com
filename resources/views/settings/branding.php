@@ -44,6 +44,10 @@ $textFields = [
                         </div>
                     <?php endforeach; ?>
                 </div>
+                <label class="flex items-center gap-2 text-sm font-medium text-slate-700" for="brand-show-admit-card-print-date">
+                    <input type="checkbox" id="brand-show-admit-card-print-date" <?= ($branding['show_admit_card_print_date'] ?? '1') !== '0' ? 'checked' : '' ?> <?= $canEdit ? '' : 'disabled' ?>>
+                    Show print date on admit cards
+                </label>
                 <?php if ($canEdit): ?>
                     <button type="submit" class="btn btn-primary">Save branding details</button>
                 <?php endif; ?>
@@ -99,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
     form?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const data = Object.fromEntries(new FormData(form).entries());
+        data.show_admit_card_print_date = document.getElementById('brand-show-admit-card-print-date')?.checked ? '1' : '0';
         try {
             await jsonRequest('/api/branding', {method: 'PUT', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify(data)});
             if (window.BK) BK.alert('Branding details saved.', 'Success', 'success'); else window.alert('Branding details saved.');

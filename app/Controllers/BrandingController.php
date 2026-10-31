@@ -62,6 +62,9 @@ final class BrandingController extends Controller
             }
             $values[$field] = $value;
         }
+        if (array_key_exists('show_admit_card_print_date', $input)) {
+            $values['show_admit_card_print_date'] = in_array((string) $input['show_admit_card_print_date'], ['1', 'true', 'on'], true) ? '1' : '0';
+        }
         if ($errors !== []) throw new ValidationException($errors);
         if ($values === []) throw new HttpException(422, 'Enter at least one branding detail.');
 

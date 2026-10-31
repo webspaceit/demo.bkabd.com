@@ -189,6 +189,7 @@ $qrContentEscaped = e($qrContent);
     .rc-banner h1 {
         margin: 0;
         text-align: center;
+        text-transform: uppercase;
         font-size: 1.5rem;
         line-height: 1.15;
         font-weight: 800;
@@ -306,6 +307,7 @@ $qrContentEscaped = e($qrContent);
     .reg-card.registration-card .rc-col { min-width: 0; }
     .reg-card.registration-card .rc-col:first-child .rc-row { min-width: 0; grid-template-columns: minmax(0, 8.4rem) 1rem minmax(0, 1fr); }
     .reg-card.registration-card .rc-col:nth-child(2) .rc-row { min-width: 0; grid-template-columns: minmax(0, 7rem) 1rem minmax(0, 1fr); }
+    .reg-card.registration-card .rc-row { font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
     .reg-card.registration-card .rc-val { min-width: 0; overflow-wrap: anywhere; }
     .rc-routine {
         width: calc(100% - 2rem);
@@ -474,7 +476,7 @@ $qrContentEscaped = e($qrContent);
     .rc-banner h1 { font-size: 1.75rem; }
     .rc-reg { font-size: .95rem; }
     .rc-banner .rc-gov { font-size: .85rem; line-height: 1.35; }
-    .rc-tag { padding: .1rem .55rem; font-size: .8rem; }
+    .rc-tag { padding: .15rem .75rem; font-size: .85rem; }
     .rc-top { margin-bottom: .5rem; }
     .rc-row { grid-template-columns: 9.5rem 1rem 1fr; font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
     /* Match the center-wide card's vertical spacing around details and rules. */
@@ -741,12 +743,16 @@ $qrContentEscaped = e($qrContent);
             <span class="text-xs">&copy; <?= e($copyrightYear) ?> <?= e(brand('authority_name')) ?>. <?= e(brand('copyright_text')) ?> <?= e(brand('developer_credit')) ?></span>
         </p>
 
-        <?php if (!$isAdmitCard): ?>
-            <?php if (brand('footer_image_path') !== ''): ?><img class="rc-brand-art rc-brand-art-footer" src="<?= e(brand_asset('footer_image_path', '')) ?>" alt=""><?php endif; ?>
+        <?php if (!$isAdmitCard && brand('footer_image_path') !== ''): ?><img class="rc-brand-art rc-brand-art-footer" src="<?= e(brand_asset('footer_image_path', '')) ?>" alt=""><?php endif; ?>
+        <?php if ($isAdmitCard): ?>
+            <?php if (brand('show_admit_card_print_date') !== '0'): ?>
+                <div class="rc-foot"><div>Print Date: <?= e($printDate) ?></div></div>
+            <?php endif; ?>
+        <?php else: ?>
             <div class="rc-foot">
-            <div>Date of Registration &amp; Time: <?= e(DateFormat($student['created_at'] ?? '', 'd-m-Y, h:i A')) ?></div>
-            <div>Print Date: <?= e($printDate) ?></div>
-        </div>
+                <div>Date of Registration &amp; Time: <?= e(DateFormat($student['created_at'] ?? '', 'd-m-Y, h:i A')) ?></div>
+                <div>Print Date: <?= e($printDate) ?></div>
+            </div>
         <?php endif; ?>
         </div>
     </div>
