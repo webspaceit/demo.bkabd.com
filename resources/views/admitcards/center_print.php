@@ -89,10 +89,18 @@ $examRoutineRows = static function (string|int $session, int $class) use ($examR
     if ($rows === []) { $rows = $matchesAllClasses($sessionRows); }
     return $groupRoutineRows($rows);
 };
-$row = static function (string $label, $value): string {
+$row = static function (string $label, $value, string $valueCase = 'none'): string {
+    $value = (string) ($value ?? '');
+    if ($valueCase === 'uppercase') {
+        $value = function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+    } elseif ($valueCase === 'title') {
+        $value = function_exists('mb_convert_case')
+            ? mb_convert_case(mb_strtolower($value, 'UTF-8'), MB_CASE_TITLE, 'UTF-8')
+            : ucwords(strtolower($value));
+    }
     return '<div class="rc-row"><span class="rc-lbl">' . e($label) . '</span>'
         . '<span class="rc-sep">:</span>'
-        . '<span class="rc-val">' . e((string)($value ?? '')) . '</span></div>';
+        . '<span class="rc-val">' . e($value) . '</span></div>';
 };
 
 $brandPhone = brand('phone');
@@ -238,6 +246,8 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-body { padding: .25rem .7rem 0; gap: .6rem; margin: 0 0 .25rem !important; }
 .cp-slot .rc-col { flex: 1 1 0; min-width: 0; }
 .cp-slot .rc-row { grid-template-columns: 9.5rem 1rem 1fr; font-size: .95rem; line-height: 1.2; padding: .03rem 0; }
+.cp-slot .rc-body .rc-val { text-transform: capitalize; }
+.cp-slot .rc-body .rc-col:first-child .rc-row:first-child .rc-val { text-transform: uppercase; }
 .cp-slot .rc-photo img { width: 60px; height: 70px; }
 /* Full-width rules, styled like the individual admit card. */
 .cp-slot .rc-routine { width: calc(100% - 1.4rem); margin: .1rem .7rem .3rem; }
@@ -472,16 +482,16 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 
             <div class="rc-body">
                 <div class="rc-col">
-                    <?= $row('Name', $s['name'] ?? '') ?>
-                    <?= $row("Father's Name", $s['father_name'] ?? '') ?>
-                    <?= $row("Mother's Name", $s['mother_name'] ?? '') ?>
-                    <?= $row('Date of Birth', !empty($s['dob']) ? DateFormat($s['dob'], 'd-m-Y') : '') ?>
+                    <?= $row('Name', $s['name'] ?? '', 'uppercase') ?>
+                    <?= $row("Father's Name", $s['father_name'] ?? '', 'title') ?>
+                    <?= $row("Mother's Name", $s['mother_name'] ?? '', 'title') ?>
+                    <?= $row('Date of Birth', !empty($s['dob']) ? DateFormat($s['dob'], 'd-m-Y') : '', 'title') ?>
                 </div>
                 <div class="rc-col">
-                <?= $row('Exam Class', $className((int)($s['class'] ?? 0))) ?>
-                <?= $row('Exam Center', $s['center_name'] ?? '') ?>
-                <?= $row('Institute Name', $s['institute_name'] ?? '') ?>
-                <?= $row('Seat Location', $s['seat_assignment']['room_label'] ?? 'Not assigned') ?>
+                <?= $row('Exam Class', $className((int)($s['class'] ?? 0)), 'uppercase') ?>
+                <?= $row('Exam Center', $s['center_name'] ?? '', 'title') ?>
+                <?= $row('Institute Name', $s['institute_name'] ?? '', 'title') ?>
+                <?= $row('Seat Location', $s['seat_assignment']['room_label'] ?? 'Not assigned', 'title') ?>
                 </div>
                 <div class="rc-photo">
                     <?php if ($photoSrc): ?><img src="<?= $photoSrc ?>" alt="Student photo"><?php endif; ?>

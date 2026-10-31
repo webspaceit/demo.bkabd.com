@@ -47,10 +47,18 @@ $qrContent = implode("\n", [
 ]);
 
 /** A "Label : value" details row. */
-$row = static function (string $label, $value): string {
+$row = static function (string $label, $value, string $valueCase = 'none'): string {
+    $value = (string) ($value ?? '');
+    if ($valueCase === 'uppercase') {
+        $value = function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+    } elseif ($valueCase === 'title') {
+        $value = function_exists('mb_convert_case')
+            ? mb_convert_case(mb_strtolower($value, 'UTF-8'), MB_CASE_TITLE, 'UTF-8')
+            : ucwords(strtolower($value));
+    }
     return '<div class="rc-row"><span class="rc-lbl">' . e($label) . '</span>'
         . '<span class="rc-sep">:</span>'
-        . '<span class="rc-val">' . e((string) ($value ?? '')) . '</span></div>';
+        . '<span class="rc-val">' . e($value) . '</span></div>';
 };
 
 $resolveStudentPhoto = static function (array $student) use ($resolve): ?string {
@@ -295,6 +303,8 @@ $qrContentEscaped = e($qrContent);
         grid-template-columns: minmax(0, 8.2rem) .75rem minmax(0, 1fr);
     }
     .rc-body-admit .rc-val { min-width: 0; }
+    .rc-body-admit .rc-val { text-transform: capitalize; }
+    .rc-body-admit .rc-col:first-child .rc-row:first-child .rc-val { text-transform: uppercase; }
     /* Keep the registration photo in its own fixed column. Long institute
        names and addresses must wrap inside the two detail columns. */
     .reg-card.registration-card .rc-body {
@@ -641,16 +651,16 @@ $qrContentEscaped = e($qrContent);
         <div class="rc-body<?= $isAdmitCard ? ' rc-body-admit' : '' ?>">
             <?php if ($isAdmitCard): ?>
             <div class="rc-col">
-                <?= $row('Name', $student['name'] ?? '') ?>
-                <?= $row("Father's Name", $student['father_name'] ?? '') ?>
-                <?= $row("Mother's Name", $student['mother_name'] ?? '') ?>
-                <?= $row('Date of Birth', !empty($student['dob']) ? DateFormat($student['dob'], 'd-m-Y') : '') ?>
+                <?= $row('Name', $student['name'] ?? '', 'uppercase') ?>
+                <?= $row("Father's Name", $student['father_name'] ?? '', 'title') ?>
+                <?= $row("Mother's Name", $student['mother_name'] ?? '', 'title') ?>
+                <?= $row('Date of Birth', !empty($student['dob']) ? DateFormat($student['dob'], 'd-m-Y') : '', 'title') ?>
             </div>
             <div class="rc-col">
-                <?= $row('Exam Class', $className((int) ($student['class'] ?? 0))) ?>
-                <?= $row('Exam Center', $student['center_name'] ?? '') ?>
-                <?= $row('Institute Name', $student['institute_name'] ?? '') ?>
-                <?= $row('Seat Location', $student['seat_assignment']['room_label'] ?? 'Not assigned') ?>
+                <?= $row('Exam Class', $className((int) ($student['class'] ?? 0)), 'uppercase') ?>
+                <?= $row('Exam Center', $student['center_name'] ?? '', 'title') ?>
+                <?= $row('Institute Name', $student['institute_name'] ?? '', 'title') ?>
+                <?= $row('Seat Location', $student['seat_assignment']['room_label'] ?? 'Not assigned', 'title') ?>
             </div>
             <?php else: ?>
             <div class="rc-col">
