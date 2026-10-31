@@ -313,7 +313,7 @@ $qrContentEscaped = e($qrContent);
         width: calc(100% - 2rem);
         margin: .1rem 1rem .3rem;
     }
-    .rc-routine-title { margin-bottom: .12rem; text-align: center; font-size: .95rem; font-weight: 700; color: #0f172a; }
+    .rc-routine-title { margin-bottom: .12rem; text-align: center; font-size: .95rem; font-weight: 700; color: #0f172a; text-transform: uppercase; }
     .rc-routine-table {
         width: 100%;
         border-collapse: collapse;
@@ -455,7 +455,7 @@ $qrContentEscaped = e($qrContent);
     .rc-banner .rc-gov { font-size: .8rem; line-height: 1.6; white-space: nowrap; }
     .rc-top { padding: .45rem 1rem .1rem; }
     .rc-tag { padding: .15rem .75rem; font-size: .85rem; }
-    .rc-exam-head { font-size: 1.5rem; margin-bottom: 1rem; }
+    .rc-exam-head { font-size: 1.5rem; margin-bottom: .25rem; }
     .rc-center .rc-pill { padding: .2rem 1.2rem; font-size: 1.5rem; background: #000; color: #fff; }
     .rc-photo img { width: 74px; height: 84px; }
     .rc-body { padding: .35rem 1rem 0; column-gap: 1.8rem; row-gap: 0; }
@@ -647,9 +647,7 @@ $qrContentEscaped = e($qrContent);
                 <?= $row('Exam Class', $className((int) ($student['class'] ?? 0))) ?>
                 <?= $row('Exam Center', $student['center_name'] ?? '') ?>
                 <?= $row('Institute Name', $student['institute_name'] ?? '') ?>
-                <?php if (!empty($student['seat_assignment']['room_label'])): ?>
-                    <?= $row('Seat Location', $student['seat_assignment']['room_label']) ?>
-                <?php endif; ?>
+                <?= $row('Seat Location', $student['seat_assignment']['room_label'] ?? 'Not assigned') ?>
             </div>
             <?php else: ?>
             <div class="rc-col">

@@ -231,7 +231,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-qr canvas,
 .cp-slot .rc-qr img,
 .cp-slot .rc-qr table { width: 70px !important; height: 70px !important; }
-.cp-slot .rc-exam-head { font-size: 1.7rem; margin: .2rem 0 .6rem; }
+.cp-slot .rc-exam-head { font-size: 1.7rem; margin: .2rem 0 .7rem; }
 .cp-slot .rc-top { padding: .15rem .7rem .15rem; margin-bottom: .5rem; }
 .cp-slot .rc-tag { padding: .15rem .75rem; font-size: .85rem; }
 .cp-slot .rc-center .rc-pill { padding: .15rem .8rem; font-size: 1.5rem; }
@@ -245,7 +245,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .rc-routine-table th,
 .cp-slot .rc-routine-table td { padding: .15rem .3rem; }
 .cp-slot .rc-rules { width: auto; margin: .25rem 0 .25rem .7rem !important; font-size: 1rem !important; line-height: 1.22 !important; }
-.cp-slot .rc-routine-title { font-size: .95rem; font-weight: 700; color: #0f172a; }
+.cp-slot .rc-routine-title { font-size: .95rem; font-weight: 700; color: #0f172a; text-transform: uppercase; }
 .cp-slot .rc-rules p { margin: 0 0 .15rem; }
 .cp-slot .rc-rules > p:first-child { font-size: .95rem !important; line-height: 1.2; font-weight: 700; color: #0f172a; }
 .cp-slot .rc-rules p:last-child { margin-bottom: 0; white-space: nowrap; font-size: 1rem; }
@@ -371,6 +371,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
 .cp-slot .py-6 { padding: 0 !important; }
 
 @media print {
+    @page { size: A4 portrait; margin: 0; }
     html, body { background: #fff; }
     .cp-toolbar { display: none; }
     .cp-page-counter { display: none !important; }
@@ -390,7 +391,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
         box-sizing: border-box;
         /* Keep neighbouring card frames from sharing a rule. Flush 148.5mm
            slots stacked the first card's bottom border on the next header. */
-        padding: 2mm 2.5mm;
+        padding: 2mm 7mm;
         overflow: hidden;
     }
     .cp-slot + .cp-slot { border-top: 0; }
@@ -477,9 +478,7 @@ html, body { background: #e5e7eb; margin: 0; padding: 0; }
                 <?= $row('Exam Class', $className((int)($s['class'] ?? 0))) ?>
                 <?= $row('Exam Center', $s['center_name'] ?? '') ?>
                 <?= $row('Institute Name', $s['institute_name'] ?? '') ?>
-                <?php if (!empty($s['seat_assignment']['room_label'])): ?>
-                    <?= $row('Seat Location', $s['seat_assignment']['room_label']) ?>
-                <?php endif; ?>
+                <?= $row('Seat Location', $s['seat_assignment']['room_label'] ?? 'Not assigned') ?>
                 </div>
                 <div class="rc-photo">
                     <?php if ($photoSrc): ?><img src="<?= $photoSrc ?>" alt="Student photo"><?php endif; ?>
