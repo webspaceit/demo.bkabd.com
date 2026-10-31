@@ -19,11 +19,13 @@ final class AdmitCardController extends Controller
         if (!Auth::check()) { Response::json(['status' => 'errors'], 401); }
         if (!Auth::can('admit-card')) { Response::json(['message' => 'This action is unauthorized.'], 403); }
 
+        $centerNameExpression = $this->centerDisplayExpression('centers', 'users');
         $q = (new Query('students'))->select(
             'students.id', 'students.registration', 'students.roll', 'students.name',
             'students.father_name', 'students.mother_name', 'students.class',
-            'users.name as center_name', 'institutes.name as institute_name'
+            'institutes.name as institute_name'
         );
+        $q->selectRaw($centerNameExpression . ' AS `center_name`');
         $q->leftJoin('centers', 'centers.id', '=', 'students.center_id')
           ->leftJoin('users', 'users.id', '=', 'centers.user_id')
           ->leftJoin('institutes', 'institutes.id', '=', 'students.institute_id')
@@ -55,10 +57,10 @@ final class AdmitCardController extends Controller
             $countQuery->whereRaw('(`students`.`registration` LIKE ? OR `students`.`roll` = ?)', $params);
         } elseif ($search !== '') {
             $like = '%' . $search . '%';
-            $q->whereRaw('(`students`.`name` LIKE ? OR `students`.`registration` LIKE ? OR `students`.`roll` LIKE ? OR `users`.`name` LIKE ? OR `institutes`.`name` LIKE ?)', [$like, $like, $like, $like, $like]);
+            $q->whereRaw('(`students`.`name` LIKE ? OR `students`.`registration` LIKE ? OR `students`.`roll` LIKE ? OR ' . $centerNameExpression . ' LIKE ? OR `institutes`.`name` LIKE ?)', [$like, $like, $like, $like, $like]);
             $countQuery->whereRaw(
                 '(`students`.`name` LIKE ? OR `students`.`registration` LIKE ? OR `students`.`roll` LIKE ?'
-                . ' OR `students`.`center_id` IN (SELECT c.`id` FROM `centers` c JOIN `users` u ON u.`id` = c.`user_id` WHERE u.`name` LIKE ?)'
+                . ' OR `students`.`center_id` IN (SELECT c.`id` FROM `centers` c LEFT JOIN `users` u ON u.`id` = c.`user_id` WHERE ' . $this->centerDisplayExpression('c', 'u') . ' LIKE ?)'
                 . ' OR `students`.`institute_id` IN (SELECT i.`id` FROM `institutes` i WHERE i.`name` LIKE ?))',
                 [$like, $like, $like, $like, $like]
             );
@@ -138,9 +140,9 @@ final class AdmitCardController extends Controller
 
         // The registration-card layout also needs the resolved center, institute,
         // and location labels, so load them with the students in one query.
+        $centerNameExpression = $this->centerDisplayExpression('c', 'u');
         $students = Database::select(
-            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
-                    u.`name` AS center_name,
+            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address, " . $centerNameExpression . " AS center_name,
                     d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
                FROM `students` s
           LEFT JOIN `institutes` i ON i.`id` = s.`institute_id`
@@ -169,9 +171,9 @@ final class AdmitCardController extends Controller
     public function printStudentAdmitCard(Request $request): string
     {
         $studentId = (int) $request->params['id'];
+        $centerNameExpression = $this->centerDisplayExpression('c', 'u');
         $student = Database::selectOne(
-            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
-                    u.`name` AS center_name,
+            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address, " . $centerNameExpression . " AS center_name,
                     d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
                FROM `students` s
           LEFT JOIN `institutes` i ON i.`id` = s.`institute_id`
@@ -254,9 +256,9 @@ final class AdmitCardController extends Controller
             $params[] = $class;
         }
 
+        $centerNameExpression = $this->centerDisplayExpression('c', 'u');
         $students = Database::select(
-            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
-                    u.`name` AS center_name,
+            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address, " . $centerNameExpression . " AS center_name,
                     d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
                FROM `students` s
           LEFT JOIN `institutes` i ON i.`id` = s.`institute_id`
@@ -345,9 +347,9 @@ final class AdmitCardController extends Controller
             $params[] = $centerId;
         }
 
+        $centerNameExpression = $this->centerDisplayExpression('c', 'u');
         $students = Database::select(
-            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
-                    u.`name` AS center_name,
+            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address, " . $centerNameExpression . " AS center_name,
                     d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
                FROM `students` s
           LEFT JOIN `institutes` i  ON i.`id`  = s.`institute_id`
@@ -715,5 +717,19 @@ final class AdmitCardController extends Controller
             5 => 'Five',
             default => (string)$class
         };
+    }
+
+    private function centerDisplayExpression(string $centerAlias, string $userAlias): string
+    {
+        $hasDisplayName = \App\Core\Cache::remember('schema:centers.display_name', 300, static function (): bool {
+            return (int) Database::scalar(
+                'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+                ['centers', 'display_name']
+            ) > 0;
+        });
+
+        return $hasDisplayName
+            ? "COALESCE(NULLIF(`{$centerAlias}`.`display_name`, ''), NULLIF(`{$userAlias}`.`name`, ''))"
+            : "NULLIF(`{$userAlias}`.`name`, '')";
     }
 }
