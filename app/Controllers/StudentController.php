@@ -1501,4 +1501,55 @@ final class StudentController extends Controller
             'student' => $student,
         ], 'layouts.guest');
     }
+
+    /** Print a bounded, explicitly selected set of registration cards. */
+    public function printRegistrationCards(Request $request): string
+    {
+        $rawIds = trim((string) ($request->query['ids'] ?? ''));
+        $parts = $rawIds === '' ? [] : explode(',', $rawIds);
+        $ids = [];
+        foreach ($parts as $part) {
+            if (!ctype_digit($part) || (int) $part < 1) {
+                throw new \App\Core\HttpException(422, 'Select valid students to print.');
+            }
+            $ids[] = (int) $part;
+        }
+        $ids = array_values(array_unique($ids));
+        if ($ids === [] || count($ids) > 200) {
+            throw new \App\Core\HttpException(422, 'Choose between 1 and 200 students per print batch.');
+        }
+
+        Auth::assertStudentAccess($ids);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $students = Database::select(
+            "SELECT s.*, i.`name` AS institute_name, i.`address` AS institute_address,
+                    u.`name` AS center_name,
+                    d.`name` AS division_name, dt.`name` AS district_name, uz.`name` AS upazila_name
+               FROM `students` s
+          LEFT JOIN `institutes` i ON i.`id` = s.`institute_id`
+          LEFT JOIN `centers` c ON c.`id` = s.`center_id`
+          LEFT JOIN `users` u ON u.`id` = c.`user_id`
+          LEFT JOIN `divisions` d ON d.`id` = s.`division_id`
+          LEFT JOIN `districts` dt ON dt.`id` = s.`district_id`
+          LEFT JOIN `upozilas` uz ON uz.`id` = s.`upazila_id`
+              WHERE s.`id` IN ({$placeholders}) AND s.`registration` IS NOT NULL AND TRIM(s.`registration`) <> ''",
+            $ids
+        );
+        if (count($students) !== count($ids)) {
+            throw new \App\Core\HttpException(404, 'One or more selected students could not be found.');
+        }
+
+        $byId = [];
+        foreach ($students as $student) {
+            $byId[(int) $student['id']] = $student;
+        }
+        $students = array_values(array_map(static fn(int $id) => $byId[$id], $ids));
+
+        return View::render('students.registration_card', [
+            'title' => 'Selected Student Registration Cards',
+            'students' => $students,
+            'twoPerPage' => true,
+            'batchRegistrationCards' => true,
+        ], 'layouts.guest');
+    }
 }

@@ -17,6 +17,13 @@ $admitCardRules = preg_split('/\\R/u', brand('admit_card_rules'), -1, PREG_SPLIT
 $admitCardRules = array_values(array_filter(array_map('trim', $admitCardRules), static fn(string $line): bool => $line !== ''));
 $cardStudents = $students ?? (isset($student) ? [$student] : []);
 $cardCount = count($cardStudents);
+$batchRegistrationCards = !empty($batchRegistrationCards);
+$cardSheets = array_chunk($cardStudents, $twoPerPage ? 2 : 1);
+$batchCenters = array_values(array_unique(array_filter(array_map(static fn($s): string => trim((string) ($s['center_name'] ?? '')), $cardStudents))));
+$batchSessions = array_values(array_unique(array_filter(array_map(static fn($s): string => trim((string) ($s['session'] ?? '')), $cardStudents))));
+$batchCenterLabel = count($batchCenters) === 1 ? $batchCenters[0] : (count($batchCenters) > 1 ? 'Multiple Centers' : 'Centers');
+$batchSessionLabel = count($batchSessions) === 1 ? $batchSessions[0] : (count($batchSessions) > 1 ? 'Multiple Sessions' : '—');
+$batchPrintTitle = 'Registration Cards — ' . $batchCenterLabel;
 $resolve = static function (string $file): ?string {
     if ($file === '') {
         return null;
@@ -163,25 +170,20 @@ $qrContentEscaped = e($qrContent);
         display: flex;
         align-items: center;
         gap: 1rem;
-        /* Keep 8px under the text so the 6px double rule never collides with
+        /* Keep 8px under the text so the divider never collides with
            the contact line, and so print engines can snap the pair as one box. */
         padding: .8rem 1.2rem 8px;
         border-bottom: 0;
     }
-    /* One 6px decoration (2px / 2px gap / 2px). Hairline `double` borders and
-       two separately positioned .3mm rules snap independently per page, so
-       some PDF pages look thick and others look double. */
+    /* Single clean divider beneath the branding line. */
     .rc-banner::after {
         content: "";
         position: absolute;
         right: 0;
         bottom: 0;
         left: 0;
-        height: 6px;
-        background-image: linear-gradient(#065f46, #065f46), linear-gradient(#065f46, #065f46);
-        background-repeat: no-repeat;
-        background-size: 100% 2px;
-        background-position: 0 0, 0 100%;
+        height: 1px;
+        background: #065f46;
         pointer-events: none;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
@@ -443,6 +445,20 @@ $qrContentEscaped = e($qrContent);
         box-shadow: 0 2px 10px rgba(15, 23, 42, .35), 0 0 1px rgba(15, 23, 42, .4);
     }
 
+    .rc-sheet-two { width:210mm; height:297mm; box-sizing:border-box; margin:0 auto .75rem; padding:.15in; background:#fff; display:flex; flex-direction:column; box-shadow:0 2px 10px rgba(15,23,42,.35),0 0 1px rgba(15,23,42,.4); }
+    .rc-card-slot { height:50%; min-height:0; box-sizing:border-box; overflow:hidden; }
+    .rc-card-slot + .rc-card-slot { border-top:1px dashed #94a3b8; }
+    .rc-card-slot .rc-page { width:100%; height:100%; min-height:0; margin:0; padding:.12in; box-shadow:none; }
+    .rc-card-slot .reg-card, .rc-card-slot .rc-inner { box-sizing:border-box; }
+    .cp-toolbar { background:linear-gradient(110deg,#064e3b 0%,#065f46 100%); color:#fff; padding:.65rem 0; position:sticky; top:0; z-index:100; font-family:Arial,sans-serif; box-shadow:0 2px 10px rgba(15,23,42,.18); }
+    .cp-toolbar-inner { width:100%; max-width:72rem; margin:0 auto; padding:0 1rem; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .cp-toolbar h2 { margin:0 0 .15rem; font-size:.95rem; line-height:1.25; font-weight:700; letter-spacing:.01em; }
+    .cp-toolbar small { display:inline-block; font-size:.72rem; line-height:1.2; color:#d1fae5; }
+    .cp-toolbar-actions { display:flex; align-items:center; gap:.55rem; flex-shrink:0; }
+    .cp-toolbar button { background:#fff; color:#064e3b; border:1px solid #fff; border-radius:7px; padding:.5rem .85rem; font-size:.8rem; font-weight:700; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.12); }
+    .cp-toolbar a { display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .75rem; border:1px solid rgba(255,255,255,.5); border-radius:7px; color:#fff; text-decoration:none; font-size:.8rem; font-weight:700; white-space:nowrap; }
+    .cp-page-counter { position:fixed; right:1.25rem; bottom:1.25rem; z-index:110; padding:.55rem .85rem; border:1px solid rgba(255,255,255,.2); border-radius:999px; background:#064e3b; color:#fff; box-shadow:0 4px 14px rgba(15,23,42,.22); font:700 .8rem/1 Arial,sans-serif; letter-spacing:.02em; }
+
     .reg-card {
         max-width: none;
         margin: 0;
@@ -514,12 +530,18 @@ $qrContentEscaped = e($qrContent);
        the four signatures go 2 x 2. (Paper is unaffected — the @media print
        block below carries the 210mm sheet through to the printer.) */
     @media screen and (max-width: 900px) {
-        .rc-page {
+        .rc-page, .rc-sheet-two {
             width: 100%;
             min-height: 0;
             padding: .5rem;
             box-shadow: 0 1px 4px rgba(15, 23, 42, .25);
         }
+        .rc-sheet-two { height:auto; }
+        .rc-card-slot { height:auto; min-height:50vh; overflow:visible; }
+        .rc-card-slot .rc-page { height:auto; min-height:0; }
+        .rc-card-slot .reg-card, .rc-card-slot .rc-inner { height:auto; }
+        .cp-toolbar-inner { flex-wrap:wrap; }
+        .cp-toolbar-actions { flex-wrap:wrap; }
 
         .rc-banner { flex-wrap: nowrap; gap: .5rem; padding: .5rem .5rem 8px; margin-bottom: .6rem; }
         .rc-logo img { width: 70px; height: 70px; }
@@ -579,7 +601,15 @@ $qrContentEscaped = e($qrContent);
         html, body { background: #fff !important; }
         body > header, body > footer, #toast-stack { display: none !important; }
         .no-print { display: none !important; }
+        .cp-toolbar { display:none !important; }
+        .cp-page-counter { display:none !important; }
         .rc-pages.multiple > .py-6:not(:last-child) .rc-page { break-after: page; page-break-after: always; }
+        .rc-pages.two-per-page > .rc-sheet-two { width:100%; height:289.4mm; margin:0; padding:0; box-shadow:none; break-after:page; page-break-after:always; }
+        .rc-pages.two-per-page > .rc-sheet-two:last-child { break-after:auto; page-break-after:auto; }
+        .rc-sheet-two .rc-card-slot { height:50%; min-height:0; overflow:hidden; }
+        .rc-sheet-two .rc-card-slot + .rc-card-slot { border-top:1px dashed #64748b; }
+        .rc-sheet-two .rc-page { width:100%; height:100%; min-height:0; margin:0; padding:2mm; box-shadow:none; break-after:auto !important; page-break-after:auto !important; }
+        .rc-sheet-two .reg-card, .rc-sheet-two .rc-inner { box-sizing:border-box; }
         body.print-one-admit-card .rc-page:not(.print-target) { display: none !important; }
         body.print-one-admit-card .rc-page.print-target { break-after: auto !important; page-break-after: auto !important; }
         /* The thank-you line is screen-only; with it hidden the Scholarship
@@ -595,14 +625,29 @@ $qrContentEscaped = e($qrContent);
         .rc-page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
     }
 
-    /* ---- Two-per-page mode removed — handled by admitcards.center_print ---- */
-    <?php if ($twoPerPage): ?><?php endif; ?>
 </style>
 
-<div class="rc-pages<?= $cardCount > 1 ? ' multiple' : '' ?>">
-<?php foreach ($cardStudents as $student): ?>
+<?php if ($batchRegistrationCards): ?>
+<div class="cp-toolbar no-print">
+    <div class="cp-toolbar-inner">
+        <div>
+            <h2><?= e($batchPrintTitle) ?> &nbsp;|&nbsp; Session <?= e($batchSessionLabel) ?></h2>
+            <small><?= number_format($cardCount) ?> students &nbsp;·&nbsp; <?= number_format(count($cardSheets)) ?> pages</small>
+        </div>
+        <div class="cp-toolbar-actions">
+            <a href="/students" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }">&#8592; Back</a>
+            <button type="button" onclick="window.print()">&#128424; Print / Save as PDF</button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<div class="rc-pages<?= $cardCount > 1 ? ' multiple' : '' ?><?= $twoPerPage ? ' two-per-page' : '' ?>">
+<?php foreach ($cardSheets as $sheetIndex => $sheet): ?>
+<?php if ($twoPerPage): ?><section class="rc-sheet-two" data-page="<?= $sheetIndex + 1 ?>"><?php endif; ?>
+<?php foreach ($sheet as $student): ?>
 <?php $photoSrc = $resolveStudentPhoto((array) $student); ?>
-<div class="py-6 print:py-0">
+<div class="<?= $twoPerPage ? 'rc-card-slot' : 'py-6 print:py-0' ?>">
     <?php if ($isAdmitCard): ?>
     <div class="mb-3 flex justify-center gap-2 print:hidden">
         <a href="/admitcards" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }" class="btn bg-slate-500 text-white hover:bg-slate-600">Back</a>
@@ -664,22 +709,22 @@ $qrContentEscaped = e($qrContent);
             </div>
             <?php else: ?>
             <div class="rc-col">
-                <?= $row('Name', $student['name'] ?? '') ?>
-                <?= $row("Father's Name", $student['father_name'] ?? '') ?>
-                <?= $row("Mother's Name", $student['mother_name'] ?? '') ?>
-                <?= $row('Exam Subject', 'Bangla, English, Mathematics') ?>
-                <?= $row('Exam Center', $student['center_name'] ?? '') ?>
-                <?= $row('Institute Name', $student['institute_name'] ?? '') ?>            
-                <?= $row('Institute Address', $student['institute_address'] ?? '') ?>
+                <?= $row('Name', $student['name'] ?? '', 'uppercase') ?>
+                <?= $row("Father's Name", $student['father_name'] ?? '', 'title') ?>
+                <?= $row("Mother's Name", $student['mother_name'] ?? '', 'title') ?>
+                <?= $row('Exam Subject', 'Bangla, English, Mathematics', 'title') ?>
+                <?= $row('Exam Center', $student['center_name'] ?? '', 'title') ?>
+                <?= $row('Institute Name', $student['institute_name'] ?? '', 'title') ?>            
+                <?= $row('Institute Address', $student['institute_address'] ?? '', 'title') ?>
             </div>
             <div class="rc-col">
-                <?= $row('Gender', GenderName((int) ($student['gender'] ?? 0))) ?>
-                <?= $row('Class', ClassName((int) ($student['class'] ?? 0))) ?>
-                <?= $row('Mobile', $student['phone'] ?? '') ?>
-                <?= $row('Date of Birth', !empty($student['dob']) ? DateFormat($student['dob'], 'd-m-Y') : '') ?>
-                <?= $row('Division', $student['division_name'] ?? '') ?>
-                <?= $row('District', $student['district_name'] ?? '') ?>
-                <?= $row('Thana/Upazila', $student['upazila_name'] ?? '') ?>
+                <?= $row('Gender', GenderName((int) ($student['gender'] ?? 0)), 'title') ?>
+                <?= $row('Class', ClassName((int) ($student['class'] ?? 0)), 'uppercase') ?>
+                <?= $row('Mobile', $student['phone'] ?? '', 'title') ?>
+                <?= $row('Date of Birth', !empty($student['dob']) ? DateFormat($student['dob'], 'd-m-Y') : '', 'title') ?>
+                <?= $row('Division', $student['division_name'] ?? '', 'title') ?>
+                <?= $row('District', $student['district_name'] ?? '', 'title') ?>
+                <?= $row('Thana/Upazila', $student['upazila_name'] ?? '', 'title') ?>
             </div>
             <?php endif; ?>
             <div class="rc-photo">
@@ -770,9 +815,47 @@ $qrContentEscaped = e($qrContent);
     </div>
 </div>
 <?php endforeach; ?>
+<?php if ($twoPerPage): ?></section><?php endif; ?>
+<?php endforeach; ?>
 </div>
 
-<?php if (!$isAdmitCard): ?>
+<?php if ($batchRegistrationCards && count($cardSheets) > 1): ?>
+<div class="cp-page-counter" role="status" aria-live="polite">Page 1 of <?= count($cardSheets) ?></div>
+<script>
+(function () {
+    var pages = Array.from(document.querySelectorAll('.rc-sheet-two[data-page]'));
+    var counter = document.querySelector('.cp-page-counter');
+    if (!counter || pages.length < 2) return;
+    var framePending = false;
+    function updatePageNumber() {
+        var viewportCenter = window.innerHeight / 2;
+        var currentPage = 1;
+        var nearestDistance = Infinity;
+        pages.forEach(function (page) {
+            var rect = page.getBoundingClientRect();
+            var distance = rect.top <= viewportCenter && rect.bottom >= viewportCenter
+                ? 0
+                : Math.min(Math.abs(rect.top - viewportCenter), Math.abs(rect.bottom - viewportCenter));
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                currentPage = Number(page.dataset.page);
+            }
+        });
+        counter.textContent = 'Page ' + currentPage + ' of ' + pages.length;
+        framePending = false;
+    }
+    window.addEventListener('scroll', function () {
+        if (!framePending) {
+            framePending = true;
+            window.requestAnimationFrame(updatePageNumber);
+        }
+    }, { passive: true });
+    updatePageNumber();
+})();
+</script>
+<?php endif; ?>
+
+<?php if (!$isAdmitCard && !$batchRegistrationCards): ?>
 <div class="mt-4 flex justify-center gap-3 print:hidden">
     <a href="/admitcards" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }" class="btn bg-slate-500 text-white hover:bg-slate-600">Back</a>
     <button type="button" onclick="window.print();" class="btn bg-emerald-500 text-white hover:bg-emerald-600">Print</button>

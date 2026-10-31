@@ -41,6 +41,7 @@ Router::get('/api/totalStudent', [StudentController::class, 'totalStudent'], 'au
 // controller). The card's QR no longer links back here — it carries the
 // association's address/contact text instead (see registration_card.php).
 Router::get('/api/registrationpdf/{id}', [StudentController::class, 'registrationpdf'], 'auth');
+Router::get('/api/registration-cards/print', [StudentController::class, 'printRegistrationCards'], 'auth|permission:student-list');
 
 // Edit student
 // Original: GET /edit-student/{id}  ->  edit (page)

@@ -29,6 +29,9 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
          data-perm-pend="<?= can('student-approve') ? '1' : '0' ?>">
         <div class="card-header">
             <h1 class="text-base font-semibold text-slate-800">List of All Student's With Details Info (<span id="student-total">0</span>)</h1>
+            <?php if (can('student-list')): ?>
+                <button type="button" id="btn-print-registration-cards" class="btn btn-primary btn-sm" hidden disabled>Print selected registration cards (0)</button>
+            <?php endif; ?>
             <?php if (can('student-registration')): ?>
                 <a href="/student-registration" class="btn btn-primary btn-sm">Add New Student</a>
             <?php endif; ?>
@@ -115,6 +118,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                 <table class="table">
                     <thead>
                         <tr>
+                            <th class="text-center" style="width:34px"><input type="checkbox" id="student-select-page" aria-label="Select students on this page"></th>
                             <th class="text-center" style="width:10px">Sl.</th>
                             <th style="width:130px">Reg. No</th>
                             <th class="text-center" style="width:80px">Roll No</th>
@@ -127,7 +131,7 @@ $selectedSession = array_key_exists('session', $filters) && $filters['session'] 
                         </tr>
                     </thead>
                     <tbody id="student-rows">
-                        <tr><td colspan="9" class="text-center py-8 text-slate-400">Loading…</td></tr>
+                        <tr><td colspan="10" class="text-center py-8 text-slate-400">Loading…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -171,6 +175,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const instituteEl = document.getElementById('f-institute');
     const searchEl = document.getElementById('f-search');
     const resetFiltersBtn = document.getElementById('btn-reset-filters');
+    const printRegistrationCardsBtn = document.getElementById('btn-print-registration-cards');
+    const selectPageEl = document.getElementById('student-select-page');
     const modalEl = document.getElementById('student-modal');
     const centerSummaryEl = document.getElementById('selected-center-summary');
     const centerSummaryNameEl = document.getElementById('selected-center-name');
@@ -200,6 +206,66 @@ document.addEventListener('DOMContentLoaded', function () {
     let centerSummaryRequest = 0;
     let instituteSummaryRequest = 0;
     let optionCountRequest = 0;
+    const selectedRegistrationCardIds = new Set();
+    const maxRegistrationCardsPerBatch = 200;
+
+    function syncRegistrationCardSelection() {
+        if (!printRegistrationCardsBtn) return;
+        const count = selectedRegistrationCardIds.size;
+        printRegistrationCardsBtn.hidden = count === 0;
+        printRegistrationCardsBtn.disabled = count === 0;
+        printRegistrationCardsBtn.textContent = 'Print selected registration cards (' + count + ')';
+        if (selectPageEl) {
+            const boxes = Array.from(rowsEl.querySelectorAll('input[data-registration-card-id]'));
+            const checked = boxes.filter(function (box) { return box.checked; }).length;
+            selectPageEl.checked = boxes.length > 0 && checked === boxes.length;
+            selectPageEl.indeterminate = checked > 0 && checked < boxes.length;
+        }
+    }
+
+    if (printRegistrationCardsBtn) {
+        printRegistrationCardsBtn.addEventListener('click', function () {
+            if (selectedRegistrationCardIds.size === 0) return;
+            const ids = Array.from(selectedRegistrationCardIds);
+            window.open('/api/registration-cards/print?ids=' + encodeURIComponent(ids.join(',')), '_blank', 'noopener');
+        });
+    }
+    if (selectPageEl) {
+        selectPageEl.addEventListener('change', function () {
+            rowsEl.querySelectorAll('input[data-registration-card-id]').forEach(function (box) {
+                const id = box.dataset.registrationCardId;
+                if (selectPageEl.checked) {
+                    if (selectedRegistrationCardIds.size >= maxRegistrationCardsPerBatch && !selectedRegistrationCardIds.has(id)) {
+                        BK.toast('Select up to ' + maxRegistrationCardsPerBatch + ' students per print batch.', 'error');
+                        box.checked = false;
+                        return;
+                    }
+                    selectedRegistrationCardIds.add(id);
+                    box.checked = true;
+                } else {
+                    selectedRegistrationCardIds.delete(id);
+                    box.checked = false;
+                }
+            });
+            syncRegistrationCardSelection();
+        });
+    }
+    rowsEl.addEventListener('change', function (event) {
+        const box = event.target.closest('input[data-registration-card-id]');
+        if (!box) return;
+        const id = box.dataset.registrationCardId;
+        if (box.checked) {
+            if (selectedRegistrationCardIds.size >= maxRegistrationCardsPerBatch && !selectedRegistrationCardIds.has(id)) {
+                box.checked = false;
+                BK.toast('Select up to ' + maxRegistrationCardsPerBatch + ' students per print batch.', 'error');
+                return;
+            }
+            selectedRegistrationCardIds.add(id);
+        } else {
+            selectedRegistrationCardIds.delete(id);
+        }
+        syncRegistrationCardSelection();
+    });
 
     function refreshOptionStudentCounts() {
         const requestId = ++optionCountRequest;
@@ -321,7 +387,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         actions += '</div>';
 
-        return '<tr><td class="text-center">' + ((pageNum - 1) * rowsPerPage + i + 1) + '</td>' +
+        const registrationCardCheckbox = rec.registration
+            ? '<input type="checkbox" data-registration-card-id="' + id + '" aria-label="Select registration card for ' + BK.esc(rec.name || '') + '"' + (selectedRegistrationCardIds.has(String(rec.id)) ? ' checked' : '') + '>'
+            : '';
+        return '<tr><td class="text-center">' + registrationCardCheckbox + '</td>' +
+            '<td class="text-center">' + ((pageNum - 1) * rowsPerPage + i + 1) + '</td>' +
             '<td>' + BK.esc(rec.registration) + '</td>' +
             '<td class="text-center">' + BK.esc(rec.roll) + '</td>' +
             '<td>' + BK.esc(rec.name) + '</td>' +
@@ -353,7 +423,8 @@ document.addEventListener('DOMContentLoaded', function () {
             totalEl.textContent = pager.total || 0;
             rowsEl.innerHTML = rows.length
                 ? rows.map(rowHtml).join('')
-                : '<tr><td colspan="9" class="px-4 py-8 text-center text-slate-400">No records found</td></tr>';
+                : '<tr><td colspan="10" class="px-4 py-8 text-center text-slate-400">No records found</td></tr>';
+            syncRegistrationCardSelection();
             if (pager.current_page) { pageNum = pager.current_page; }
             if (pagerEl) {
                 pagerEl.innerHTML = '';
