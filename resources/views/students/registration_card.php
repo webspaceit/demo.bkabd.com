@@ -19,6 +19,7 @@ $cardStudents = $students ?? (isset($student) ? [$student] : []);
 $cardCount = count($cardStudents);
 $batchRegistrationCards = !empty($batchRegistrationCards);
 $cardSheets = array_chunk($cardStudents, $twoPerPage ? 2 : 1);
+$singleRegistrationCard = !$isAdmitCard && !$batchRegistrationCards && $cardCount === 1;
 $batchCenters = array_values(array_unique(array_filter(array_map(static fn($s): string => trim((string) ($s['center_name'] ?? '')), $cardStudents))));
 $batchSessions = array_values(array_unique(array_filter(array_map(static fn($s): string => trim((string) ($s['session'] ?? '')), $cardStudents))));
 $batchCenterLabel = count($batchCenters) === 1 ? $batchCenters[0] : (count($batchCenters) > 1 ? 'Multiple Centers' : 'Centers');
@@ -627,12 +628,12 @@ $qrContentEscaped = e($qrContent);
 
 </style>
 
-<?php if ($batchRegistrationCards): ?>
+<?php if ($batchRegistrationCards || $singleRegistrationCard): ?>
 <div class="cp-toolbar no-print">
     <div class="cp-toolbar-inner">
         <div>
-            <h2><?= e($batchPrintTitle) ?> &nbsp;|&nbsp; Session <?= e($batchSessionLabel) ?></h2>
-            <small><?= number_format($cardCount) ?> students &nbsp;·&nbsp; <?= number_format(count($cardSheets)) ?> pages</small>
+            <h2><?= e($batchRegistrationCards ? $batchPrintTitle : 'Registration Card — ' . $batchCenterLabel) ?> &nbsp;|&nbsp; Session <?= e($batchSessionLabel) ?></h2>
+            <small><?= number_format($cardCount) ?> <?= $cardCount === 1 ? 'student' : 'students' ?> &nbsp;·&nbsp; <?= number_format(count($cardSheets)) ?> <?= count($cardSheets) === 1 ? 'page' : 'pages' ?></small>
         </div>
         <div class="cp-toolbar-actions">
             <a href="/students" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }">&#8592; Back</a>
@@ -855,7 +856,7 @@ $qrContentEscaped = e($qrContent);
 </script>
 <?php endif; ?>
 
-<?php if (!$isAdmitCard && !$batchRegistrationCards): ?>
+<?php if (!$isAdmitCard && !$batchRegistrationCards && !$singleRegistrationCard): ?>
 <div class="mt-4 flex justify-center gap-3 print:hidden">
     <a href="/admitcards" onclick="if (history.length > 1 && document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }" class="btn bg-slate-500 text-white hover:bg-slate-600">Back</a>
     <button type="button" onclick="window.print();" class="btn bg-emerald-500 text-white hover:bg-emerald-600">Print</button>

@@ -1499,6 +1499,7 @@ final class StudentController extends Controller
         return View::render('students.registration_card', [
             'title'   => 'Registration Card ' . ($student['registration'] ?? ''),
             'student' => $student,
+            'hideLoginLink' => true,
         ], 'layouts.guest');
     }
 
@@ -1550,6 +1551,7 @@ final class StudentController extends Controller
             'students' => $students,
             'twoPerPage' => true,
             'batchRegistrationCards' => true,
+            'hideLoginLink' => true,
         ], 'layouts.guest');
     }
 }
