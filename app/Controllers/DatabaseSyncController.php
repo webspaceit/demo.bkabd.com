@@ -59,6 +59,18 @@ final class DatabaseSyncController extends Controller
         }
     }
 
+    public function demoOnlyStudentReport(): array
+    {
+        try {
+            return (new DatabaseSyncService())->demoOnlyStudentReport((int) Auth::activeSession());
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] demo-only student report failed: ' . $e->getCode());
+            return ['error' => 'Could not compare the selected-session students. Check read access to students on both databases.'];
+        }
+    }
+
     public function previewStudentRollSync(): array
     {
         $session = (int) Auth::activeSession();

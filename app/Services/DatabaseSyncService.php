@@ -1109,6 +1109,65 @@ final class DatabaseSyncService
         }
     }
 
+    /** Read-only report of session rows in demo that exceed the exam registration occurrences. */
+    public function demoOnlyStudentReport(int $session): array
+    {
+        $this->assertReady();
+        if ($session <= 0) { throw new RuntimeException('Select a valid active exam session.'); }
+        $source = $this->connectSource();
+        $target = $this->connectTarget();
+        try {
+            $sourceStmt = $source->prepare("SELECT `registration` FROM `students` WHERE `session` = ? ORDER BY `id`");
+            $sourceStmt->execute([$session]);
+            $sourceCounts = [];
+            $sourceTotal = 0;
+            while (($registration = $sourceStmt->fetchColumn()) !== false) {
+                $sourceTotal++;
+                $key = mb_strtolower(trim((string) ($registration ?? '')), 'UTF-8');
+                $sourceCounts[$key] = ($sourceCounts[$key] ?? 0) + 1;
+            }
+
+            $targetStmt = $target->prepare(
+                'SELECT s.`id`, s.`registration`, s.`name`, s.`class`, s.`session`, s.`roll`, s.`center_id`, s.`institute_id`, s.`active` '
+                . 'FROM `students` s WHERE s.`session` = ? ORDER BY s.`registration`, s.`id`'
+            );
+            $targetStmt->execute([$session]);
+            $targetRows = $targetStmt->fetchAll(PDO::FETCH_ASSOC);
+            $demoTotal = count($targetRows);
+            $seenTarget = [];
+            $extras = [];
+            foreach ($targetRows as $row) {
+                $key = mb_strtolower(trim((string) ($row['registration'] ?? '')), 'UTF-8');
+                $seenTarget[$key] = ($seenTarget[$key] ?? 0) + 1;
+                if ($seenTarget[$key] > ($sourceCounts[$key] ?? 0)) {
+                    $extras[] = [
+                        'registration' => (string) ($row['registration'] ?? ''),
+                        'name' => (string) ($row['name'] ?? ''),
+                        'class' => $row['class'] ?? '',
+                        'session' => (int) $row['session'],
+                        'roll' => $row['roll'] ?? '',
+                        'center_id' => $row['center_id'] ?? '',
+                        'institute_id' => $row['institute_id'] ?? '',
+                        'active' => $row['active'] ?? '',
+                        'demo_student_id' => (int) $row['id'],
+                        'registration_occurrence' => $seenTarget[$key],
+                        'exam_occurrences' => $sourceCounts[$key] ?? 0,
+                    ];
+                }
+            }
+            return [
+                'session' => $session,
+                'exam_total' => $sourceTotal,
+                'demo_total' => $demoTotal,
+                'demo_excess_count' => count($extras),
+                'students' => $extras,
+                'note' => 'Read-only comparison by normalized registration number and session. Duplicate demo rows beyond the number in exam are included. No records are changed.',
+            ];
+        } finally {
+            if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
     /** Preview roll numbers that can safely fill blank demo rows for one session. */
     public function previewStudentRollSync(int $session): array
     {

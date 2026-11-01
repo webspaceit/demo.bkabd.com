@@ -59,6 +59,21 @@
                 <div id="db-sync-import-progress" class="mt-2 hidden text-sm text-slate-600" aria-live="polite"></div>
             </section>
 
+            <section class="rounded-xl border border-rose-200 bg-rose-50/40 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="font-semibold text-rose-950">Report extra student rows in demo</h2>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Compares the selected session in demo against exam by registration number. Lists demo rows in excess, including duplicate registration occurrences. This report is read-only.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="db-sync-demo-only-report" type="button" class="btn btn-light" disabled>Generate report</button>
+                        <button id="db-sync-demo-only-csv" type="button" class="btn btn-primary hidden" disabled>Download CSV</button>
+                    </div>
+                </div>
+                <div id="db-sync-demo-only-summary" class="mt-3 hidden rounded-lg border border-rose-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
+                <div id="db-sync-demo-only-table" class="mt-3 hidden overflow-x-auto rounded-lg border border-rose-100 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
+            </section>
+
             <section class="rounded-xl border border-violet-200 bg-violet-50/50 p-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -215,6 +230,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const startImportButton = document.getElementById('db-sync-start-import');
     const importPreview = document.getElementById('db-sync-import-preview');
     const importProgress = document.getElementById('db-sync-import-progress');
+    const demoOnlyReportButton = document.getElementById('db-sync-demo-only-report');
+    const demoOnlyCsvButton = document.getElementById('db-sync-demo-only-csv');
+    const demoOnlySummary = document.getElementById('db-sync-demo-only-summary');
+    const demoOnlyTable = document.getElementById('db-sync-demo-only-table');
+    let demoOnlyReport = null;
     const importConfirmDialog = document.getElementById('db-sync-import-confirm');
     const previewRollsButton = document.getElementById('db-sync-preview-rolls');
     const syncRollsButton = document.getElementById('db-sync-start-rolls');
@@ -281,6 +301,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 compareButton.disabled = false;
                 refreshStudents.disabled = false;
                 previewImportButton.disabled = false;
+                demoOnlyReportButton.disabled = photoSession <= 0;
                 previewRollsButton.disabled = photoSession <= 0;
                 previewCentersButton.disabled = false;
                 previewReferencesButton.disabled = false;
@@ -880,6 +901,70 @@ document.addEventListener('DOMContentLoaded', function () {
         } finally {
             previewImportButton.disabled = false;
         }
+    });
+
+    function csvCell(value) {
+        return '"' + String(value ?? '').replace(/"/g, '""') + '"';
+    }
+
+    demoOnlyReportButton.addEventListener('click', async function () {
+        demoOnlyReportButton.disabled = true;
+        demoOnlyCsvButton.classList.add('hidden');
+        demoOnlySummary.classList.remove('hidden');
+        demoOnlyTable.classList.add('hidden');
+        demoOnlySummary.textContent = 'Comparing demo and exam session ' + photoSession + '…';
+        try {
+            const data = await BK.get('/api/database-sync/demo-only-students');
+            if (data.error) throw new Error(data.error);
+            demoOnlyReport = data;
+            demoOnlySummary.textContent = 'Session ' + data.session + ': exam has ' + Number(data.exam_total).toLocaleString() + ' row(s), demo has ' + Number(data.demo_total).toLocaleString() + ', and ' + Number(data.demo_excess_count).toLocaleString() + ' demo row(s) exceed exam by registration occurrence. ' + (data.note || '');
+            demoOnlyTable.replaceChildren();
+            const rows = data.students || [];
+            if (!rows.length) {
+                const empty = document.createElement('p');
+                empty.textContent = 'No extra demo student rows found for this session.';
+                demoOnlyTable.appendChild(empty);
+            } else {
+                const table = document.createElement('table');
+                table.className = 'min-w-full border-collapse text-left text-xs';
+                const headers = ['Demo row ID', 'Registration', 'Student', 'Class', 'Roll', 'Center ID', 'Institute ID', 'Status', 'Occurrence in demo', 'Occurrences in exam'];
+                const thead = document.createElement('thead');
+                const headRow = document.createElement('tr');
+                headers.forEach(function (label) { const th = document.createElement('th'); th.className = 'border-b px-2 py-2 font-semibold'; th.textContent = label; headRow.appendChild(th); });
+                thead.appendChild(headRow); table.appendChild(thead);
+                const tbody = document.createElement('tbody');
+                rows.forEach(function (item) {
+                    const tr = document.createElement('tr');
+                    [item.demo_student_id, item.registration || '—', item.name || '—', item.class || '—', item.roll || '—', item.center_id || '—', item.institute_id || '—', Number(item.active) === 1 ? 'Active' : 'Pending / inactive', item.registration_occurrence, item.exam_occurrences].forEach(function (value) {
+                        const td = document.createElement('td'); td.className = 'border-b px-2 py-2 align-top'; td.textContent = String(value); tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody); demoOnlyTable.appendChild(table);
+            }
+            demoOnlyTable.classList.remove('hidden');
+            demoOnlyCsvButton.classList.toggle('hidden', rows.length === 0);
+            demoOnlyCsvButton.disabled = rows.length === 0;
+        } catch (error) {
+            demoOnlySummary.textContent = error.message || 'Could not compare demo-only student rows.';
+            demoOnlyTable.classList.add('hidden');
+        } finally {
+            demoOnlyReportButton.disabled = photoSession <= 0;
+        }
+    });
+
+    demoOnlyCsvButton.addEventListener('click', function () {
+        if (!demoOnlyReport || !Array.isArray(demoOnlyReport.students)) return;
+        const columns = ['Demo student ID', 'Registration', 'Student', 'Class', 'Session', 'Roll', 'Center ID', 'Institute ID', 'Active', 'Occurrence in demo', 'Occurrences in exam'];
+        const csvRows = [columns, ...demoOnlyReport.students.map(function (item) {
+            return [item.demo_student_id, item.registration, item.name, item.class, item.session, item.roll, item.center_id, item.institute_id, item.active, item.registration_occurrence, item.exam_occurrences];
+        })];
+        const csv = '\uFEFF' + csvRows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'demo-only-students-session-' + Number(demoOnlyReport.session) + '.csv';
+        document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
     });
 
     function renderRollsPreview(data) {
