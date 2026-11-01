@@ -34,6 +34,8 @@ Router::get('/api/database-sync/student-photo-run-details', [DatabaseSyncControl
 Router::post('/api/database-sync/email-photo-attention-csv', [DatabaseSyncController::class, 'emailPhotoAttentionCsv'], 'auth|permission:settings');
 Router::get('/api/database-sync/student-import-preview', [DatabaseSyncController::class, 'previewStudentImport'], 'auth|permission:settings');
 Router::get('/api/database-sync/demo-only-students', [DatabaseSyncController::class, 'demoOnlyStudentReport'], 'auth|permission:settings');
+Router::post('/api/database-sync/archive-demo-only-students', [DatabaseSyncController::class, 'archiveDemoOnlyStudents'], 'auth|permission:settings');
+Router::post('/api/database-sync/restore-demo-only-students', [DatabaseSyncController::class, 'restoreDemoOnlyStudents'], 'auth|permission:settings');
 Router::get('/api/database-sync/student-roll-preview', [DatabaseSyncController::class, 'previewStudentRollSync'], 'auth|permission:settings');
 Router::post('/api/database-sync/sync-student-rolls', [DatabaseSyncController::class, 'syncStudentRolls'], 'auth|permission:settings');
 Router::post('/api/database-sync/import-students', [DatabaseSyncController::class, 'importStudents'], 'auth|permission:settings');

@@ -65,6 +65,18 @@ final class StudentController extends Controller
           ->leftJoin('users', 'users.id', '=', 'centers.user_id')
           ->leftJoin('institutes', 'institutes.id', '=', 'students.institute_id');
 
+        // Rows hidden from this list are retained in students and can be
+        // restored from Database Sync. Keep older installations working until
+        // the additive archive-table migration has been applied.
+        $archiveTableExists = Cache::remember('schema:codex_archived_students', 60, static function (): bool {
+            return (int) Database::scalar(
+                "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'codex_archived_students'"
+            ) > 0;
+        });
+        if ($archiveTableExists) {
+            $q->whereRaw('NOT EXISTS (SELECT 1 FROM `codex_archived_students` AS `archived` WHERE `archived`.`student_id` = `students`.`id`)');
+        }
+
         if ($centerId !== null && !Auth::isAdmin()) {
             $q->where('students.center_id', $centerId);
         }

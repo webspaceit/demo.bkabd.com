@@ -63,15 +63,18 @@
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 class="font-semibold text-rose-950">Report extra student rows in demo</h2>
-                        <p class="mt-1 text-sm leading-6 text-slate-700">Compares the selected session in demo against exam by registration number. Lists demo rows in excess, including duplicate registration occurrences. This report is read-only.</p>
+                        <p class="mt-1 text-sm leading-6 text-slate-700">Compares the selected session in demo against exam by registration number. You can hide the reported extra rows from the Students list without deleting them, then restore them here if needed.</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <button id="db-sync-demo-only-report" type="button" class="btn btn-light" disabled>Generate report</button>
                         <button id="db-sync-demo-only-csv" type="button" class="btn btn-primary hidden" disabled>Download CSV</button>
+                        <button id="db-sync-demo-only-archive" type="button" class="btn btn-primary hidden" disabled>Hide extra rows from Students</button>
+                        <button id="db-sync-demo-only-restore" type="button" class="btn btn-light hidden" disabled>Restore hidden rows</button>
                     </div>
                 </div>
                 <div id="db-sync-demo-only-summary" class="mt-3 hidden rounded-lg border border-rose-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
                 <div id="db-sync-demo-only-table" class="mt-3 hidden overflow-x-auto rounded-lg border border-rose-100 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
+                <div id="db-sync-demo-only-archived" class="mt-3 hidden overflow-x-auto rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700" aria-live="polite"></div>
             </section>
 
             <section class="rounded-xl border border-violet-200 bg-violet-50/50 p-4">
@@ -173,6 +176,28 @@
                 </form>
             </dialog>
 
+            <dialog id="db-sync-demo-only-archive-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
+                <form method="dialog" class="p-6">
+                    <h2 class="text-lg font-semibold text-slate-900">Hide extra demo students?</h2>
+                    <p id="db-sync-demo-only-archive-confirm-text" class="mt-3 text-sm leading-6 text-slate-600">Only the extra rows in this session’s latest report will be hidden from the Students list. The student records stay in the database and can be restored.</p>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
+                        <button type="submit" value="confirm" class="btn btn-primary">Hide rows</button>
+                    </div>
+                </form>
+            </dialog>
+
+            <dialog id="db-sync-demo-only-restore-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
+                <form method="dialog" class="p-6">
+                    <h2 class="text-lg font-semibold text-slate-900">Restore hidden students?</h2>
+                    <p id="db-sync-demo-only-restore-confirm-text" class="mt-3 text-sm leading-6 text-slate-600">Restore the rows hidden by this report for the selected session? They will appear in the Students list again.</p>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="submit" value="cancel" class="btn btn-light">Cancel</button>
+                        <button type="submit" value="confirm" class="btn btn-primary">Restore rows</button>
+                    </div>
+                </form>
+            </dialog>
+
             <dialog id="db-sync-rolls-confirm" class="rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/50" style="width:40vw; min-width:min(90vw, 22rem); max-width:calc(100vw - 2rem)">
                 <form method="dialog" class="p-6">
                     <h2 class="text-lg font-semibold text-slate-900">Fill missing student rolls?</h2>
@@ -232,8 +257,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const importProgress = document.getElementById('db-sync-import-progress');
     const demoOnlyReportButton = document.getElementById('db-sync-demo-only-report');
     const demoOnlyCsvButton = document.getElementById('db-sync-demo-only-csv');
+    const demoOnlyArchiveButton = document.getElementById('db-sync-demo-only-archive');
+    const demoOnlyRestoreButton = document.getElementById('db-sync-demo-only-restore');
     const demoOnlySummary = document.getElementById('db-sync-demo-only-summary');
     const demoOnlyTable = document.getElementById('db-sync-demo-only-table');
+    const demoOnlyArchived = document.getElementById('db-sync-demo-only-archived');
+    const demoOnlyArchiveDialog = document.getElementById('db-sync-demo-only-archive-confirm');
+    const demoOnlyRestoreDialog = document.getElementById('db-sync-demo-only-restore-confirm');
     let demoOnlyReport = null;
     const importConfirmDialog = document.getElementById('db-sync-import-confirm');
     const previewRollsButton = document.getElementById('db-sync-preview-rolls');
@@ -917,7 +947,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await BK.get('/api/database-sync/demo-only-students');
             if (data.error) throw new Error(data.error);
             demoOnlyReport = data;
-            demoOnlySummary.textContent = 'Session ' + data.session + ': exam has ' + Number(data.exam_total).toLocaleString() + ' row(s), demo has ' + Number(data.demo_total).toLocaleString() + ', and ' + Number(data.demo_excess_count).toLocaleString() + ' demo row(s) exceed exam by registration occurrence. ' + (data.note || '');
+            demoOnlySummary.textContent = 'Session ' + data.session + ': exam has ' + Number(data.exam_total).toLocaleString() + ' row(s), demo has ' + Number(data.demo_total).toLocaleString() + ', ' + Number(data.demo_excess_count).toLocaleString() + ' demo row(s) exceed exam, and ' + Number(data.archived_count || 0).toLocaleString() + ' row(s) are hidden from the Students list. ' + (data.note || '') + (!data.archive_ready ? ' To enable hiding/restoring, apply the pending demo migration, then generate this report again.' : '');
             demoOnlyTable.replaceChildren();
             const rows = data.students || [];
             if (!rows.length) {
@@ -945,11 +975,84 @@ document.addEventListener('DOMContentLoaded', function () {
             demoOnlyTable.classList.remove('hidden');
             demoOnlyCsvButton.classList.toggle('hidden', rows.length === 0);
             demoOnlyCsvButton.disabled = rows.length === 0;
+            demoOnlyArchiveButton.classList.toggle('hidden', rows.length === 0);
+            demoOnlyArchiveButton.disabled = rows.length === 0 || !data.archive_ready;
+            demoOnlyRestoreButton.classList.toggle('hidden', Number(data.archived_count || 0) === 0);
+            demoOnlyRestoreButton.disabled = Number(data.archived_count || 0) === 0 || !data.archive_ready;
+            demoOnlyArchived.replaceChildren();
+            const archivedRows = data.archived_students || [];
+            if (archivedRows.length) {
+                const title = document.createElement('h3');
+                title.className = 'mb-2 font-semibold text-slate-800';
+                title.textContent = 'Hidden rows (' + archivedRows.length.toLocaleString() + ')';
+                demoOnlyArchived.appendChild(title);
+                const archivedTable = document.createElement('table');
+                archivedTable.className = 'min-w-full border-collapse text-left text-xs';
+                const head = document.createElement('tr');
+                ['Registration', 'Student', 'Class', 'Session', 'Roll', 'Hidden at'].forEach(function (label) {
+                    const th = document.createElement('th'); th.className = 'border-b px-2 py-2 font-semibold'; th.textContent = label; head.appendChild(th);
+                });
+                const thead = document.createElement('thead'); thead.appendChild(head); archivedTable.appendChild(thead);
+                const tbody = document.createElement('tbody');
+                archivedRows.forEach(function (item) {
+                    const tr = document.createElement('tr');
+                    [item.registration || '—', item.name || '—', item.class || '—', item.session, item.roll || '—', item.archived_at || '—'].forEach(function (value) {
+                        const td = document.createElement('td'); td.className = 'border-b px-2 py-2 align-top'; td.textContent = String(value); tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                archivedTable.appendChild(tbody); demoOnlyArchived.appendChild(archivedTable);
+                demoOnlyArchived.classList.remove('hidden');
+            } else {
+                demoOnlyArchived.classList.add('hidden');
+            }
         } catch (error) {
             demoOnlySummary.textContent = error.message || 'Could not compare demo-only student rows.';
             demoOnlyTable.classList.add('hidden');
         } finally {
             demoOnlyReportButton.disabled = photoSession <= 0;
+        }
+    });
+
+    demoOnlyArchiveButton.addEventListener('click', async function () {
+        if (!demoOnlyReport || !demoOnlyReport.archive_ready || !demoOnlyReport.students?.length) return;
+        const count = demoOnlyReport.students.length;
+        document.getElementById('db-sync-demo-only-archive-confirm-text').textContent = 'Hide ' + count.toLocaleString() + ' extra student row(s) from the Students list for session ' + demoOnlyReport.session + '? These rows will remain in the database and can be restored later.';
+        demoOnlyArchiveDialog.returnValue = '';
+        demoOnlyArchiveDialog.showModal();
+        await new Promise(resolve => demoOnlyArchiveDialog.addEventListener('close', resolve, { once: true }));
+        if (demoOnlyArchiveDialog.returnValue !== 'confirm') return;
+        demoOnlyArchiveButton.disabled = true;
+        demoOnlySummary.textContent = 'Hiding the extra demo rows from the Students list…';
+        try {
+            const result = await BK.post('/api/database-sync/archive-demo-only-students', { session: demoOnlyReport.session });
+            if (result.error) throw new Error(result.error);
+            demoOnlySummary.textContent = Number(result.archived || 0).toLocaleString() + ' row(s) hidden. Student records remain in the database; you can restore them below.';
+            demoOnlyReportButton.click();
+        } catch (error) {
+            demoOnlySummary.textContent = error.message || 'Could not hide the extra student rows.';
+        } finally {
+            demoOnlyArchiveButton.disabled = false;
+        }
+    });
+
+    demoOnlyRestoreButton.addEventListener('click', async function () {
+        if (!demoOnlyReport || !demoOnlyReport.archive_ready || Number(demoOnlyReport.archived_count || 0) === 0) return;
+        document.getElementById('db-sync-demo-only-restore-confirm-text').textContent = 'Restore ' + Number(demoOnlyReport.archived_count).toLocaleString() + ' hidden student row(s) for session ' + demoOnlyReport.session + '? They will appear in the Students list again.';
+        demoOnlyRestoreDialog.returnValue = '';
+        demoOnlyRestoreDialog.showModal();
+        await new Promise(resolve => demoOnlyRestoreDialog.addEventListener('close', resolve, { once: true }));
+        if (demoOnlyRestoreDialog.returnValue !== 'confirm') return;
+        demoOnlyRestoreButton.disabled = true;
+        try {
+            const result = await BK.post('/api/database-sync/restore-demo-only-students', { session: demoOnlyReport.session });
+            if (result.error) throw new Error(result.error);
+            demoOnlySummary.textContent = Number(result.restored || 0).toLocaleString() + ' row(s) restored. They are visible in the Students list again.';
+            demoOnlyReportButton.click();
+        } catch (error) {
+            demoOnlySummary.textContent = error.message || 'Could not restore the hidden student rows.';
+        } finally {
+            demoOnlyRestoreButton.disabled = false;
         }
     });
 

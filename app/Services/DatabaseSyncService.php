@@ -1127,20 +1127,28 @@ final class DatabaseSyncService
                 $sourceCounts[$key] = ($sourceCounts[$key] ?? 0) + 1;
             }
 
-            $targetStmt = $target->prepare(
-                'SELECT s.`id`, s.`registration`, s.`name`, s.`class`, s.`session`, s.`roll`, s.`center_id`, s.`institute_id`, s.`active` '
-                . 'FROM `students` s WHERE s.`session` = ? ORDER BY s.`registration`, s.`id`'
-            );
+            $archiveReady = $this->tableExists($target, (string) $this->targetSettings()['database'], 'codex_archived_students');
+            $targetSql = 'SELECT s.`id`, s.`registration`, s.`name`, s.`class`, s.`session`, s.`roll`, s.`center_id`, s.`institute_id`, s.`active`';
+            if ($archiveReady) {
+                $targetSql .= ', a.`student_id` AS `archived_student_id`';
+            }
+            $targetSql .= ' FROM `students` s';
+            if ($archiveReady) {
+                $targetSql .= ' LEFT JOIN `codex_archived_students` a ON a.`student_id` = s.`id` AND a.`session` = s.`session` AND a.`archive_reason` = \'demo-only-report\'';
+            }
+            $targetSql .= ' WHERE s.`session` = ? ORDER BY s.`registration`, s.`id`';
+            $targetStmt = $target->prepare($targetSql);
             $targetStmt->execute([$session]);
             $targetRows = $targetStmt->fetchAll(PDO::FETCH_ASSOC);
             $demoTotal = count($targetRows);
             $seenTarget = [];
             $extras = [];
+            $archivedExtras = [];
             foreach ($targetRows as $row) {
                 $key = mb_strtolower(trim((string) ($row['registration'] ?? '')), 'UTF-8');
                 $seenTarget[$key] = ($seenTarget[$key] ?? 0) + 1;
                 if ($seenTarget[$key] > ($sourceCounts[$key] ?? 0)) {
-                    $extras[] = [
+                    $item = [
                         'registration' => (string) ($row['registration'] ?? ''),
                         'name' => (string) ($row['name'] ?? ''),
                         'class' => $row['class'] ?? '',
@@ -1153,18 +1161,95 @@ final class DatabaseSyncService
                         'registration_occurrence' => $seenTarget[$key],
                         'exam_occurrences' => $sourceCounts[$key] ?? 0,
                     ];
+                    if (!empty($row['archived_student_id'])) {
+                        $archivedExtras[] = $item;
+                    } else {
+                        $extras[] = $item;
+                    }
                 }
+            }
+            $archivedCount = 0;
+            $archivedStudents = [];
+            if ($archiveReady) {
+                $archiveStmt = $target->prepare(
+                    "SELECT s.`id` AS `demo_student_id`, s.`registration`, s.`name`, s.`class`, s.`session`, s.`roll`, a.`archived_at` "
+                    . "FROM `codex_archived_students` a JOIN `students` s ON s.`id` = a.`student_id` "
+                    . "WHERE a.`session` = ? AND a.`archive_reason` = 'demo-only-report' ORDER BY s.`registration`, s.`id`"
+                );
+                $archiveStmt->execute([$session]);
+                $archivedStudents = $archiveStmt->fetchAll(PDO::FETCH_ASSOC);
+                $archivedCount = count($archivedStudents);
             }
             return [
                 'session' => $session,
                 'exam_total' => $sourceTotal,
                 'demo_total' => $demoTotal,
-                'demo_excess_count' => count($extras),
+                'demo_excess_count' => count($extras) + count($archivedExtras),
                 'students' => $extras,
-                'note' => 'Read-only comparison by normalized registration number and session. Duplicate demo rows beyond the number in exam are included. No records are changed.',
+                'archived_count' => $archivedCount,
+                'archived_students' => $archivedStudents,
+                'archive_ready' => $archiveReady,
+                'note' => 'Compares normalized registration numbers and session. Extra rows can be hidden from the Students list and restored later; student records are not deleted.',
             ];
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
+        }
+    }
+
+    /** Hide only current demo-only session rows from the regular Students list. */
+    public function archiveDemoOnlyStudents(int $session, int $userId): array
+    {
+        $this->assertReady();
+        if ($session <= 0) { throw new RuntimeException('Select a valid active exam session.'); }
+        $target = $this->connectTarget();
+        $lockAcquired = false;
+        try {
+            $target->beginTransaction();
+            $lockAcquired = (int) $target->query("SELECT GET_LOCK('codex_demo_student_archive', 10)")->fetchColumn() === 1;
+            if (!$lockAcquired) { throw new RuntimeException('Another student archive action is running. Retry in a moment.'); }
+            $schema = (string) $this->targetSettings()['database'];
+            if (!$this->tableExists($target, $schema, 'codex_archived_students')) {
+                throw new RuntimeException('Apply the pending demo student archive migration first.');
+            }
+            $report = $this->demoOnlyStudentReport($session);
+            $insert = $target->prepare(
+                "INSERT IGNORE INTO `codex_archived_students` (`student_id`, `session`, `registration`, `archived_at`, `archived_by`, `archive_reason`) "
+                . "SELECT `id`, `session`, `registration`, NOW(), ?, 'demo-only-report' FROM `students` WHERE `id` = ? AND `session` = ?"
+            );
+            $archived = 0;
+            foreach ($report['students'] as $row) {
+                $insert->execute([$userId > 0 ? $userId : null, (int) $row['demo_student_id'], $session]);
+                $archived += $insert->rowCount();
+            }
+            $target->commit();
+            return ['session' => $session, 'archived' => $archived, 'message' => 'Extra demo rows are now hidden from the Students list. They remain in the database and can be restored.'];
+        } catch (\Throwable $e) {
+            if ($target->inTransaction()) { $target->rollBack(); }
+            throw $e;
+        } finally {
+            if ($lockAcquired) { $target->query("SELECT RELEASE_LOCK('codex_demo_student_archive')"); }
+        }
+    }
+
+    /** Restore rows hidden by the demo-only report for the selected session. */
+    public function restoreDemoOnlyStudents(int $session): array
+    {
+        $this->assertReady();
+        if ($session <= 0) { throw new RuntimeException('Select a valid active exam session.'); }
+        $target = $this->connectTarget();
+        $lockAcquired = false;
+        try {
+            $lockAcquired = (int) $target->query("SELECT GET_LOCK('codex_demo_student_archive', 10)")->fetchColumn() === 1;
+            if (!$lockAcquired) { throw new RuntimeException('Another student archive action is running. Retry in a moment.'); }
+            $schema = (string) $this->targetSettings()['database'];
+            if (!$this->tableExists($target, $schema, 'codex_archived_students')) {
+                throw new RuntimeException('The demo student archive table is not available.');
+            }
+            $stmt = $target->prepare("DELETE FROM `codex_archived_students` WHERE `session` = ? AND `archive_reason` = 'demo-only-report'");
+            $stmt->execute([$session]);
+            return ['session' => $session, 'restored' => $stmt->rowCount(), 'message' => 'Archived rows are visible in the Students list again.'];
+        } finally {
+            if ($lockAcquired) { $target->query("SELECT RELEASE_LOCK('codex_demo_student_archive')"); }
         }
     }
 

@@ -71,6 +71,49 @@ final class DatabaseSyncController extends Controller
         }
     }
 
+    public function archiveDemoOnlyStudents(Request $request): array
+    {
+        if (!$this->isSyncHostAllowed($request)) {
+            return ['error' => 'Archiving demo-only students is blocked on this host. Use the configured demo dashboard or an explicitly allowed local dashboard.'];
+        }
+        $session = (int) Auth::activeSession();
+        if ($session <= 0 || (int) $request->input('session', 0) !== $session) {
+            return ['error' => 'The active session changed or is unavailable. Reload and generate the report again.'];
+        }
+        try {
+            $result = (new DatabaseSyncService())->archiveDemoOnlyStudents($session, (int) (Auth::id() ?? 0));
+            \App\Core\Cache::forgetPrefix('students');
+            \App\Core\Cache::forget('schema:codex_archived_students');
+            return $result;
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] archive demo-only students failed: ' . $e->getCode());
+            return ['error' => 'Could not hide the extra demo rows. Check target database permissions and the application error log.'];
+        }
+    }
+
+    public function restoreDemoOnlyStudents(Request $request): array
+    {
+        if (!$this->isSyncHostAllowed($request)) {
+            return ['error' => 'Restoring archived students is blocked on this host. Use the configured demo dashboard or an explicitly allowed local dashboard.'];
+        }
+        $session = (int) Auth::activeSession();
+        if ($session <= 0 || (int) $request->input('session', 0) !== $session) {
+            return ['error' => 'The active session changed or is unavailable. Reload and generate the report again.'];
+        }
+        try {
+            $result = (new DatabaseSyncService())->restoreDemoOnlyStudents($session);
+            \App\Core\Cache::forgetPrefix('students');
+            return $result;
+        } catch (RuntimeException $e) {
+            return ['error' => $e->getMessage()];
+        } catch (PDOException $e) {
+            error_log('[database-sync] restore demo-only students failed: ' . $e->getCode());
+            return ['error' => 'Could not restore the archived rows. Check target database permissions and the application error log.'];
+        }
+    }
+
     public function previewStudentRollSync(): array
     {
         $session = (int) Auth::activeSession();
