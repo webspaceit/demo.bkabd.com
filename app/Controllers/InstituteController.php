@@ -557,10 +557,18 @@ final class InstituteController extends Controller
     /** GET /institute-registration — create form. */
     public function pageCreate(Request $request): string
     {
+        $centerId = !Auth::isAdmin() ? (int) (Auth::centerId() ?? 0) : 0;
+        $centerDefaults = $centerId > 0
+            ? (new Query('centers'))
+                ->select('id', 'division_id', 'district_id', 'upazila_id', 'union_id')
+                ->where('id', $centerId)
+                ->first()
+            : null;
         return View::render('institutes.form', [
             'title' => 'Institute Registration Form',
             'mode' => 'create',
             'instituteId' => 0,
+            'centerDefaults' => $centerDefaults,
             ...$this->geoDropdownOptions(),
         ], 'layouts.dashboard');
     }
@@ -607,6 +615,7 @@ final class InstituteController extends Controller
         return [
             'districtOptions' => (new Query('districts'))->select('id', 'name', 'division_id')->orderBy('name', 'asc')->get(),
             'upazilaOptions' => (new Query('upozilas'))->select('id', 'name', 'district_id')->orderBy('name', 'asc')->get(),
+            'unionOptions' => (new Query('unions'))->select('id', 'name', 'upozila_id')->orderBy('name', 'asc')->get(),
         ];
     }
 

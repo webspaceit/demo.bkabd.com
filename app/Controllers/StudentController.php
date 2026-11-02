@@ -686,14 +686,20 @@ final class StudentController extends Controller
         $divisions  = (new Query('divisions'))->orderBy('name', 'asc')->get();
         $centers    = $this->centerOptions();
         $sessions   = (new Query('sessions'))->orderBy('id', 'desc')->get();
-        $oldDivId   = (int) (Session::get('old', [])['division_id'] ?? 0);
-        $oldDistId  = (int) (Session::get('old', [])['district_id'] ?? 0);
-        $oldUpaId   = (int) (Session::get('old', [])['upazila_id'] ?? 0);
+        $old = Session::get('old', []);
+        $ownCenterId = !Auth::isAdmin() ? (int) (Auth::centerId() ?? 0) : 0;
+        $ownCenter = $ownCenterId > 0
+            ? (new Query('centers'))->where('id', $ownCenterId)->first()
+            : null;
+        $selectedCenterId = (int) ($old['center_id'] ?? $ownCenterId);
+        $oldDivId   = (int) ($old['division_id'] ?? ($ownCenter['division_id'] ?? 0));
+        $oldDistId  = (int) ($old['district_id'] ?? ($ownCenter['district_id'] ?? 0));
+        $oldUpaId   = (int) ($old['upazila_id'] ?? ($ownCenter['upazila_id'] ?? 0));
+        $selectedUnionId = (int) ($old['union_id'] ?? ($ownCenter['union_id'] ?? 0));
         $districts  = $oldDivId  ? (new Query('districts'))->where('division_id', $oldDivId)->orderBy('name','asc')->get() : [];
         $upazilas   = $oldDistId ? (new Query('upozilas'))->where('district_id', $oldDistId)->orderBy('name','asc')->get() : [];
         $unions     = $oldUpaId  ? (new Query('unions'))->where('upozila_id', $oldUpaId)->orderBy('name','asc')->get() : [];
-        $oldCenterId = (int) (Session::get('old', [])['center_id'] ?? 0);
-        $institutes = $oldCenterId ? (new Query('institutes'))->where('center_id', $oldCenterId)->where('active', 1)->orderBy('name','asc')->get() : [];
+        $institutes = $selectedCenterId ? (new Query('institutes'))->where('center_id', $selectedCenterId)->where('active', 1)->orderBy('name','asc')->get() : [];
         return View::render('students.create', [
             'title'        => 'Student Registration',
             'divisions'    => $divisions,
@@ -703,6 +709,11 @@ final class StudentController extends Controller
             'upazilas'     => $upazilas,
             'unions'       => $unions,
             'institutes'   => $institutes,
+            'selectedCenterId' => $selectedCenterId,
+            'selectedDivisionId' => $oldDivId,
+            'selectedDistrictId' => $oldDistId,
+            'selectedUpazilaId' => $oldUpaId,
+            'selectedUnionId' => $selectedUnionId,
             'classes'      => [1,2,3,4,5,6],
             'activeSession' => Auth::activeSession(),
             'pageStyles'   => ['/assets/css/dobpicker.css'],

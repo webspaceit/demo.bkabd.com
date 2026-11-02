@@ -16,6 +16,7 @@ $isEdit = ($mode ?? 'create') === 'edit';
                     <div class="fl"><select class="input" id="f-division_id" name="division_id" required><option value="">Select Division</option></select><label for="f-division_id">Division <span class="text-red-600">*</span></label><p class="field-error hidden" data-error-for="division_id"></p></div>
                     <div class="fl"><select class="input" id="f-district_id" name="district_id" required><option value="">Select District</option></select><label for="f-district_id">District <span class="text-red-600">*</span></label><p class="field-error hidden" data-error-for="district_id"></p></div>
                     <div class="fl"><select class="input" id="f-upazila_id" name="upazila_id" required><option value="">Select Upazila</option></select><label for="f-upazila_id">Upazila <span class="text-red-600">*</span></label><p class="field-error hidden" data-error-for="upazila_id"></p></div>
+                    <div class="fl"><select class="input" id="f-union_id" name="union_id"><option value="">Select Union</option></select><label for="f-union_id">Union</label><p class="field-error hidden" data-error-for="union_id"></p></div>
                     <div class="fl"><input class="input" id="f-zip" name="zip" placeholder="Postal Code" required><label for="f-zip">Postal Code <span class="text-red-600">*</span></label><p class="field-error hidden" data-error-for="zip"></p></div>
                     <div class="fl"><input class="input" type="text" id="f-established_date" name="established_date" placeholder="YYYY-MM-DD" required><label for="f-established_date">Established Date <span class="text-red-600">*</span></label><p class="field-error hidden" data-error-for="established_date"></p></div>
                     <div class="fl"><input class="input" id="f-website" name="website" placeholder="Website"><label for="f-website">Website (If any)</label><p class="field-error hidden" data-error-for="website"></p></div>
@@ -47,11 +48,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     const center=document.getElementById('f-center_id'), division=document.getElementById('f-division_id'), district=document.getElementById('f-district_id'), upazila=document.getElementById('f-upazila_id');
     const allDistricts=<?= json_encode($districtOptions ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
     const allUpazilas=<?= json_encode($upazilaOptions ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+    const allUnions=<?= json_encode($unionOptions ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+    const centerDefaults=<?= json_encode($centerDefaults ?? null, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
     function options(items,selected,label){let html='<option value="">'+BK.esc(label)+'</option>';(items||[]).forEach(x=>{html+='<option value="'+BK.esc(String(x.id))+'"'+(String(x.id)===String(selected??'')?' selected':'')+'>'+BK.esc(String(x.name||'').toUpperCase())+'</option>';});return html;}
     function districts(selected){const rows=allDistricts.filter(x=>String(x.division_id)===String(division.value));district.innerHTML=options(rows,selected,'Select District');}
     function upazilas(selected){const rows=allUpazilas.filter(x=>String(x.district_id)===String(district.value));upazila.innerHTML=options(rows,selected,'Select Upazila');}
-    division.addEventListener('change',()=>{upazila.innerHTML=options([],'','Select Upazila');districts('');});
-    district.addEventListener('change',()=>upazilas(''));
+    function unions(selected){const el=document.getElementById('f-union_id');const rows=allUnions.filter(x=>String(x.upozila_id)===String(upazila.value));el.innerHTML=options(rows,selected,'Select Union');}
+    division.addEventListener('change',()=>{upazila.innerHTML=options([],'','Select Upazila');unions('');districts('');});
+    district.addEventListener('change',()=>{upazilas('');unions('');});
+    upazila.addEventListener('change',()=>unions(''));
     document.getElementById('f-member_type').addEventListener('change',function(){const show=this.value==='2';document.getElementById('cert-wrap').classList.toggle('hidden',!show);document.getElementById('f-certificate_no').required=show;});
     function showPreview(idValue,path,file){const img=document.getElementById(idValue);if(file){img.src='/'+path+'/'+encodeURIComponent(file);img.classList.remove('hidden');}}
     document.getElementById('f-logo').addEventListener('change',function(){const f=this.files&&this.files[0];if(f){const img=document.getElementById('logo-preview');img.src=URL.createObjectURL(f);img.classList.remove('hidden');}});
@@ -63,9 +68,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         if(isEdit){
             const row=(await BK.get('/api/institutes/'+id)).instituteById;
             ['center_id','name','address','director_name','phone','email','zip','established_date','website','total_students','total_teachers','membership_type','member_type','certificate_no','type','recognized','institution_run','monthly_income','monthly_expense','note','active'].forEach(k=>{const el=form.elements[k];if(el&&row[k]!=null)el.value=row[k];});
-            division.value=row.division_id||'';districts(row.district_id);upazilas(row.upazila_id);
+            division.value=row.division_id||'';districts(row.district_id);upazilas(row.upazila_id);unions(row.union_id);
             const memberType=document.getElementById('f-member_type');memberType.dispatchEvent(new Event('change'));
             showPreview('logo-preview','images/logos',row.logo);showPreview('principal-preview','images/principals',row.principal_photo);
+        } else if(centerDefaults){
+            center.value=String(centerDefaults.id||'');
+            division.value=String(centerDefaults.division_id||'');
+            districts(centerDefaults.district_id);
+            upazilas(centerDefaults.upazila_id);
+            unions(centerDefaults.union_id);
         }
     } catch(e){BK.toast(e.message||'Could not load the institute form','error');}
     form.addEventListener('submit',function(event){

@@ -193,7 +193,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
                         <select id="center_id" name="center_id" class="input" data-field="center_id" required>
                             <option value="">Select center</option>
                             <?php foreach ($centers as $c): ?>
-                                <option value="<?= e($c['id']) ?>" <?= old('center_id') == $c['id'] ? 'selected' : '' ?>><?= e($c['name'] ?? '') ?></option>
+                                <option value="<?= e($c['id']) ?>" <?= (string) ($selectedCenterId ?? old('center_id')) === (string) $c['id'] ? 'selected' : '' ?>><?= e($c['name'] ?? '') ?></option>
                             <?php endforeach; ?>
                         </select>
                         <label for="center_id">Center <?= $req ?></label>
@@ -218,7 +218,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
                         <select id="division_id" name="division_id" class="input" data-field="division_id" required>
                             <option value="">Select division</option>
                             <?php foreach ($divisions as $d): ?>
-                                <option value="<?= e($d['id']) ?>" <?= old('division_id') == $d['id'] ? 'selected' : '' ?>><?= e($d['name']) ?></option>
+                                <option value="<?= e($d['id']) ?>" <?= (string) ($selectedDivisionId ?? old('division_id')) === (string) $d['id'] ? 'selected' : '' ?>><?= e($d['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                         <label for="division_id">Division <?= $req ?></label>
@@ -228,7 +228,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
                         <select id="district_id" name="district_id" class="input" data-field="district_id">
                             <option value="">Select district</option>
                             <?php foreach ($districts as $d): ?>
-                                <option value="<?= e($d['id']) ?>" <?= old('district_id') == $d['id'] ? 'selected' : '' ?>><?= e($d['name']) ?></option>
+                                <option value="<?= e($d['id']) ?>" <?= (string) ($selectedDistrictId ?? old('district_id')) === (string) $d['id'] ? 'selected' : '' ?>><?= e($d['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                         <label for="district_id">District</label>
@@ -238,7 +238,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
                         <select id="upazila_id" name="upazila_id" class="input" data-field="upazila_id">
                             <option value="">Select upazila</option>
                             <?php foreach ($upazilas as $u): ?>
-                                <option value="<?= e($u['id']) ?>" <?= old('upazila_id') == $u['id'] ? 'selected' : '' ?>><?= e($u['name']) ?></option>
+                                <option value="<?= e($u['id']) ?>" <?= (string) ($selectedUpazilaId ?? old('upazila_id')) === (string) $u['id'] ? 'selected' : '' ?>><?= e($u['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                         <label for="upazila_id">Upazila</label>
@@ -248,7 +248,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
                         <select id="union_id" name="union_id" class="input" data-field="union_id">
                             <option value="">Select union</option>
                             <?php foreach ($unions as $un): ?>
-                                <option value="<?= e($un['id']) ?>" <?= old('union_id') == $un['id'] ? 'selected' : '' ?>><?= e($un['name']) ?></option>
+                                <option value="<?= e($un['id']) ?>" <?= (string) ($selectedUnionId ?? old('union_id')) === (string) $un['id'] ? 'selected' : '' ?>><?= e($un['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                         <label for="union_id">Union</label>
