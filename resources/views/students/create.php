@@ -202,7 +202,7 @@ if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dobOld)) {
                     <div class="fl">
                         <select id="institute_id" name="institute_id" class="input" data-field="institute_id" required>
                             <option value="">Select institute</option>
-                            <?php if (old('center_id')): ?>
+                            <?php if (!empty($selectedCenterId)): ?>
                                 <?php foreach ($institutes as $i): ?>
                                     <option value="<?= e($i['id']) ?>" <?= old('institute_id') == $i['id'] ? 'selected' : '' ?>><?= e($i['name'] ?? '') ?></option>
                                 <?php endforeach; ?>
