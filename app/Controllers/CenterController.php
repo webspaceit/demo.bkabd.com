@@ -15,6 +15,7 @@ use App\Core\View;
 use App\Models\Center;
 use App\Models\District;
 use App\Models\Upazila;
+use App\Models\Union;
 
 /**
  * Exam centers (ported from exam/app/Http/Controllers/CenterController.php).
@@ -192,6 +193,7 @@ class CenterController extends Controller
             'centerById' => $centerById,
             'districts' => District::where('division_id', $centerById['division_id'])->get(),
             'upazilas' => Upazila::where('district_id', $centerById['district_id'])->get(),
+            'unions' => Union::where('upozila_id', $centerById['upazila_id'])->get(),
         ];
     }
 
@@ -228,6 +230,7 @@ class CenterController extends Controller
             'division_id' => 'required|integer',
             'district_id' => 'required|integer',
             'upazila_id' => 'required|integer',
+            'union_id' => 'nullable|integer',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|same:confirmpassword',
             'website' => 'nullable|string|max:255',
@@ -238,6 +241,7 @@ class CenterController extends Controller
             'district_id.required' => 'The district code field is required',
             'upazila_id.required' => 'The upazila name field is required',
         ]);
+        $this->assertUnionBelongsToUpazila($data['union_id'] ?? null, (int) $data['upazila_id']);
         $this->validateUpload($request, 'authority_photo');
         $this->validateUpload($request, 'authority_signature');
 
@@ -267,6 +271,7 @@ class CenterController extends Controller
                     'division_id' => (int) $data['division_id'],
                     'district_id' => (int) $data['district_id'],
                     'upazila_id' => (int) $data['upazila_id'],
+                    'union_id' => $data['union_id'] !== null ? (int) $data['union_id'] : null,
                     'authority_person' => $data['authority_person'],
                     'institute_name' => $data['institute_name'],
                     'code' => $data['code'],
@@ -314,6 +319,7 @@ class CenterController extends Controller
             'division_id' => 'required|integer',
             'district_id' => 'required|integer',
             'upazila_id' => 'required|integer',
+            'union_id' => 'nullable|integer',
             'email' => 'required|email|unique:users,email,' . $userId,
             'password' => 'nullable|same:confirmpassword',
             'website' => 'nullable|string|max:255',
@@ -323,6 +329,7 @@ class CenterController extends Controller
             'district_id.required' => 'The district code field is required',
             'upazila_id.required' => 'The upazila name field is required',
         ]);
+        $this->assertUnionBelongsToUpazila($data['union_id'] ?? null, (int) $data['upazila_id']);
         $this->validateUpload($request, 'authority_photo');
         $this->validateUpload($request, 'authority_signature');
 
@@ -350,6 +357,7 @@ class CenterController extends Controller
                     'division_id' => (int) $data['division_id'],
                     'district_id' => (int) $data['district_id'],
                     'upazila_id' => (int) $data['upazila_id'],
+                    'union_id' => $data['union_id'] !== null ? (int) $data['union_id'] : null,
                     'authority_person' => $data['authority_person'],
                     'institute_name' => $data['institute_name'],
                     'code' => $data['code'],
@@ -383,6 +391,23 @@ class CenterController extends Controller
         Cache::forget('pending_centers:all');
 
         return ['status' => 'success'];
+    }
+
+    private function assertUnionBelongsToUpazila(mixed $unionId, int $upazilaId): void
+    {
+        if ($unionId === null || $unionId === '') {
+            return;
+        }
+
+        $matches = (int) Database::scalar(
+            'SELECT COUNT(*) FROM `unions` WHERE `id` = ? AND `upozila_id` = ?',
+            [(int) $unionId, $upazilaId]
+        );
+        if ($matches !== 1) {
+            throw new ValidationException([
+                'union_id' => ['The selected union does not belong to the selected upazila.'],
+            ]);
+        }
     }
 
     /** DELETE /api/centers/{id} — 406 when institutes still reference the center. */

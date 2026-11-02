@@ -50,6 +50,13 @@
                     <label for="f-upazila_id">Upazila <span class="text-red-600">*</span></label>
                     <p class="field-error hidden" data-error-for="upazila_id"></p>
                 </div>
+                <div class="fl">
+                    <select class="input" id="f-union_id" name="union_id" data-field="union_id">
+                        <option value="">Select Union</option>
+                    </select>
+                    <label for="f-union_id">Union</label>
+                    <p class="field-error hidden" data-error-for="union_id"></p>
+                </div>
 
                 <div class="fl">
                     <input class="input" id="f-authority_person" name="authority_person" type="text" data-field="authority_person" placeholder="Authority Person">

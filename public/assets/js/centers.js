@@ -219,6 +219,7 @@
     const divisionSel = document.getElementById('f-division_id');
     const districtSel = document.getElementById('f-district_id');
     const upazilaSel = document.getElementById('f-upazila_id');
+    const unionSel = document.getElementById('f-union_id');
 
     function optionList(items, selectedId, placeholder) {
         let html = '<option value="">' + BK.esc(placeholder) + '</option>';
@@ -254,16 +255,35 @@
         upazilaSel.innerHTML = optionList(json.upazilaById || [], selectedId, 'Select Upazila');
     }
 
+    async function loadUnions(selectedId) {
+        if (!upazilaSel.value) {
+            unionSel.innerHTML = optionList([], null, 'Select Union');
+            return;
+        }
+        const json = await BK.get('/api/unionById/' + upazilaSel.value);
+        unionSel.innerHTML = optionList(json.unionById || [], selectedId, 'Select Union');
+    }
+
     if (divisionSel && districtSel && upazilaSel) {
         divisionSel.addEventListener('change', function () {
+            districtSel.innerHTML = optionList([], null, 'Select District');
             upazilaSel.innerHTML = optionList([], null, 'Select Upazila');
+            unionSel.innerHTML = optionList([], null, 'Select Union');
             loadDistricts(null).catch(function (err) {
                 BK.toast(err.message || 'Could not load districts', 'error');
             });
         });
         districtSel.addEventListener('change', function () {
+            upazilaSel.innerHTML = optionList([], null, 'Select Upazila');
+            unionSel.innerHTML = optionList([], null, 'Select Union');
             loadUpazilas(null).catch(function (err) {
                 BK.toast(err.message || 'Could not load upazilas', 'error');
+            });
+        });
+        upazilaSel.addEventListener('change', function () {
+            unionSel.innerHTML = optionList([], null, 'Select Union');
+            loadUnions(null).catch(function (err) {
+                BK.toast(err.message || 'Could not load unions', 'error');
             });
         });
     }
@@ -293,6 +313,7 @@
             await loadDivisions(rec.division_id);
             districtSel.innerHTML = optionList(json.districts || [], rec.district_id, 'Select District');
             upazilaSel.innerHTML = optionList(json.upazilas || [], rec.upazila_id, 'Select Upazila');
+            unionSel.innerHTML = optionList(json.unions || [], rec.union_id, 'Select Union');
             showPreview('preview-photo', 'images/authorities', rec.authority_photo);
             showPreview('preview-signature', 'images/authority_signatures', rec.authority_signature);
         } else {
