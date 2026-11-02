@@ -537,20 +537,41 @@ final class InstituteController extends Controller
     /** GET /institutes — list page. */
     public function pageIndex(Request $request): string
     {
-        return $this->pageList(false);
+        return $this->pageList(false, $request);
     }
 
     /** GET /pending-institutes — institutes awaiting approval. */
     public function pagePending(Request $request): string
     {
-        return $this->pageList(true);
+        return $this->pageList(true, $request);
     }
 
-    private function pageList(bool $pendingOnly): string
+    private function pageList(bool $pendingOnly, Request $request): string
     {
+        $hasDisplayName = Cache::remember('schema:centers.display_name', 300, static function (): bool {
+            return (int) Database::scalar(
+                'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+                ['centers', 'display_name']
+            ) > 0;
+        });
+        $centerLabel = $hasDisplayName
+            ? "COALESCE(NULLIF(centers.display_name, ''), NULLIF(users.name, ''), CONCAT('Center #', centers.id))"
+            : "COALESCE(NULLIF(users.name, ''), CONCAT('Center #', centers.id))";
+        $centersQuery = (new Query('centers'))
+            ->select('centers.id')
+            ->selectRaw($centerLabel . ' AS name')
+            ->leftJoin('users', 'users.id', '=', 'centers.user_id')
+            ->where('centers.active', 1);
+        if (!Auth::isAdmin() && Auth::centerId() !== null) {
+            $centersQuery->where('centers.id', (int) Auth::centerId());
+        }
+        $centers = $centersQuery->orderByRaw($centerLabel . ' ASC')->get();
+
         return View::render('institutes.index', [
             'title' => $pendingOnly ? 'Pending Institutes' : 'Manage Institute',
             'pendingOnly' => $pendingOnly,
+            'centers' => $centers,
+            'selectedCenterId' => (string) $request->input('center_id', ''),
         ], 'layouts.dashboard');
     }
 

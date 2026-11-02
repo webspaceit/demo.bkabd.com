@@ -18,9 +18,16 @@
         </div>
         <div class="card-body space-y-4">
             <div class="filter-bar">
-                <div id="institute-center-filter" style="display:none" class="items-center gap-2 text-sm text-slate-600">
-                    <span>Filtered by center: <span id="institute-center-filter-text" class="font-medium text-slate-800"></span></span>
-                    <a href="/institutes" class="text-emerald-600">Clear</a>
+                <div class="fl">
+                    <select id="institute-center" class="w-full">
+                        <option value="">All Centers</option>
+                        <?php foreach ((array) ($centers ?? []) as $center): ?>
+                            <option value="<?= (int) $center['id'] ?>" <?= (string) ($selectedCenterId ?? '') === (string) $center['id'] ? 'selected' : '' ?>>
+                                <?= e($center['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <label for="institute-center">Center <span class="filter-record-count" title="Available centers"><?= count((array) ($centers ?? [])) ?></span></label>
                 </div>
                 <div class="ml-auto">
                     <input type="search" id="institute-search" placeholder="Search Here..." autocomplete="off">
@@ -69,17 +76,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const countEl = document.getElementById('institute-count');
     const pagerEl = document.getElementById('institute-pagination');
     const searchEl = document.getElementById('institute-search');
+    const centerEl = document.getElementById('institute-center');
     const perPageEl = document.getElementById('institute-per-page');
-    const filterEl = document.getElementById('institute-center-filter');
-    const filterTextEl = document.getElementById('institute-center-filter-text');
     const canEdit = root.getAttribute('data-perm-edit') === '1';
     const canDelete = root.getAttribute('data-perm-delete') === '1';
     const canValidity = root.getAttribute('data-perm-validity') === '1';
     const pendingOnly = root.getAttribute('data-pending-only') === '1';
     const status = pendingOnly ? 'pending' : 'approved';
 
-    // Optional ?center_id=N filter (linked from the /centers delete guard).
-    const centerId = new URLSearchParams(window.location.search).get('center_id') || '';
+    // Preserve a center selected through a /centers link and allow changing it here.
+    const requestedCenterId = new URLSearchParams(window.location.search).get('center_id') || '';
+    if (requestedCenterId && centerEl) { centerEl.value = requestedCenterId; }
+    const centerId = function () { return centerEl ? centerEl.value : ''; };
     const perPage = function () { return Number(perPageEl.value) || 20; };
 
     function actionCell(row) {
@@ -139,10 +147,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 : '<tr><td colspan="8" class="text-center py-8 text-slate-400">No records found</td></tr>';
             countEl.textContent = pager.total;
             BK.renderPagination(pagerEl, pager);
-            if (centerId && filterEl) {
-                filterEl.style.display = 'flex';
-                filterTextEl.textContent = (rows[0] && rows[0].center_name) ? rows[0].center_name : ('#' + centerId);
-            }
         } catch (err) {
             rowsEl.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">Could not load the list</td></tr>';
             BK.toast(err.message || 'Could not load the list', 'error');
@@ -175,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const result = (response && response.data) || response || {};
                 const instituteName = approveBtn.closest('tr')?.children[2]?.textContent?.trim() || 'Institute';
                 BK.toast(instituteName + ' approved successfully. Certificate No: ' + (result.certificate_no || 'assigned'), 'success');
-                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
+                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId(), status: status }));
             } catch (err) {
                 approveBtn.disabled = false;
                 BK.toast(err.message || 'Could not approve institute', 'error');
@@ -188,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const result = await BK.post('/api/institutes/' + encodeURIComponent(assignBtn.getAttribute('data-assign-certificate')) + '/assign-certificate-number');
                 BK.toast('Certificate number assigned: ' + result.certificate_no, 'success');
-                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
+                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId(), status: status }));
             } catch (err) {
                 assignBtn.disabled = false;
                 BK.toast(err.message || 'Could not assign certificate number', 'error');
@@ -200,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             await BK.del('/api/institutes/' + btn.getAttribute('data-delete'));
             BK.toast('Institute deleted', 'success');
-                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
+                load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId(), status: status }));
         } catch (err) {
             BK.toast(err.message || 'Could not delete', 'error');
         }
@@ -210,21 +214,29 @@ document.addEventListener('DOMContentLoaded', function () {
     searchEl.addEventListener('input', function () {
         clearTimeout(timer);
         timer = setTimeout(function () {
-            load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
+            load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId(), status: status }));
         }, 200);
     });
 
-    perPageEl.addEventListener('change', function () {
-        load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId, status: status }));
+    centerEl.addEventListener('change', function () {
+        const url = new URL(window.location.href);
+        if (centerId()) { url.searchParams.set('center_id', centerId()); }
+        else { url.searchParams.delete('center_id'); }
+        window.history.replaceState({}, '', url.pathname + url.search);
+        load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId(), status: status }));
     });
 
-    load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), center_id: centerId, status: status }));
+    perPageEl.addEventListener('change', function () {
+        load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId(), status: status }));
+    });
+
+    load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), center_id: centerId(), status: status }));
 
     if (pendingOnly) {
         function refreshPendingTotal() {
             if (document.hidden) { return; }
             BK.get(BK.qs('/api/pending-institutes/count', {
-                center_id: centerId,
+                center_id: centerId(),
                 search: searchEl.value.trim()
             }), {cache: 'no-store'}).then(function (json) {
                 const payload = (json && json.data) || {};
