@@ -11,32 +11,73 @@ $val = fn(string $f, string $d = '') => (string) ($old[$f] ?? $d);
 $mainWebsite = trim(explode(',', brand('website'))[0] ?? '');
 if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWebsite = 'https://' . $mainWebsite; }
 ?>
-<div class="max-w-4xl mx-auto px-4 py-6">
-    <div class="mb-5 text-center text-xs leading-relaxed text-slate-500">
-        <p><b><?= e(brand('address')) ?><?= brand('phone') !== '' ? ', Mobile: ' . e(brand('phone')) : '' ?></b></p>
-        <p><b><?= brand('email') !== '' ? 'Email: ' . e(brand('email')) : '' ?><?= brand('website') !== '' ? ', Web: ' . e(brand('website')) : '' ?></b></p>
-    </div>
+<style>
+    .membership-page { width: min(100% - 2rem, 1440px); margin-inline: auto; padding: 2rem 0 3rem; }
+    .membership-hero { position: relative; overflow: hidden; margin-bottom: 1.25rem; padding: clamp(1.5rem, 3vw, 2.75rem); border-radius: 1.5rem; color: #fff; background: radial-gradient(circle at 90% 10%, rgba(110,231,183,.35), transparent 28%), linear-gradient(120deg, #064e3b, #047857 58%, #059669); box-shadow: 0 18px 40px rgba(6,78,59,.18); }
+    .membership-hero:after { content: ""; position: absolute; width: 16rem; height: 16rem; right: -5rem; bottom: -10rem; border: 1px solid rgba(255,255,255,.2); border-radius: 50%; box-shadow: 0 0 0 1.5rem rgba(255,255,255,.05), 0 0 0 3rem rgba(255,255,255,.04); pointer-events: none; }
+    .membership-kicker { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: .75rem; padding: .35rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; background: rgba(255,255,255,.1); color: #d1fae5; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .membership-hero h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.15; font-weight: 800; letter-spacing: -.025em; }
+    .membership-hero p { max-width: 54rem; margin: .75rem 0 0; color: #ecfdf5; font-size: .95rem; line-height: 1.65; }
+    .membership-contact { display: flex; flex-wrap: wrap; gap: .35rem 1.25rem; margin-top: 1.25rem; color: #d1fae5; font-size: .8rem; }
+    .membership-card { overflow: visible; border: 1px solid #d1fae5; border-radius: 1.5rem; background: linear-gradient(145deg,#fff 0%,#fbfffd 100%); box-shadow: 0 16px 42px rgba(15,23,42,.08); }
+    .membership-card-body { padding: clamp(1rem, 2.5vw, 2.25rem); }
+    .membership-section-heading { grid-column: 1 / -1; display: flex; align-items: center; gap: .75rem; margin-top: .6rem; padding: .8rem 0 .55rem; border-bottom: 1px solid #e2e8f0; color: #065f46; font-size: .9rem; font-weight: 750; }
+    .membership-section-heading span { display: inline-grid; width: 1.75rem; height: 1.75rem; place-items: center; border-radius: .65rem; background: #ecfdf5; color: #047857; font-size: .75rem; }
+    .membership-form { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1.2rem 1rem; }
+    .membership-form > .membership-full { grid-column: 1 / -1; }
+    .membership-form .fl { margin-top: .6rem; }
+    .membership-form .fl .input { min-height: 3.15rem; border-radius: .8rem; border-color: #cbd5e1; background-color: #fff; transition: border-color .18s, box-shadow .18s; }
+    .membership-form .fl .input:focus { border-color: #059669; box-shadow: 0 0 0 4px rgba(16,185,129,.12); }
+    .membership-form .fl label { border-color: #cbd5e1; border-radius: .5rem .5rem 0 0; font-weight: 600; }
+    .membership-form .fl:focus-within label { border-color: #059669; color: #047857; }
+    .membership-form input[type=file].input { min-height: 3.4rem; padding-top: .72rem; }
+    .membership-declaration { display: flex; align-items: flex-start; gap: .75rem; padding: 1rem; border: 1px solid #d1fae5; border-radius: .9rem; background: #f0fdf4; color: #475569; line-height: 1.6; }
+    .membership-declaration input { margin-top: .25rem; accent-color: #059669; }
+    .membership-submit { min-width: 12rem; min-height: 3rem; border-radius: .8rem; box-shadow: 0 8px 18px rgba(5,150,105,.2); }
+    .membership-form .field-error { grid-column: 1 / -1; margin: .3rem 0 0; color: #b91c1c; font-size: .8rem; }
+    @media (max-width: 1023px) { .membership-form { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+    @media (max-width: 639px) { .membership-page { width: min(100% - 1rem, 1440px); padding-top: .75rem; } .membership-form { grid-template-columns: 1fr; gap: 1rem; } .membership-form > .membership-full { grid-column: 1; } .membership-submit { width: 100%; } }
+</style>
+<div class="membership-page">
+    <section class="membership-hero">
+        <span class="membership-kicker">Membership application</span>
+        <h1>Institute Registration</h1>
+        <p>Complete the form below to apply for institute membership. Please provide accurate institute, contact and location details, then attach the required logo.</p>
+        <div class="membership-contact">
+            <?php if (brand('address') !== ''): ?><span><?= e(brand('address')) ?></span><?php endif; ?>
+            <?php if (brand('phone') !== ''): ?><span>Mobile: <?= e(brand('phone')) ?></span><?php endif; ?>
+            <?php if (brand('email') !== ''): ?><span>Email: <?= e(brand('email')) ?></span><?php endif; ?>
+            <?php if (brand('website') !== ''): ?><span>Web: <?= e(brand('website')) ?></span><?php endif; ?>
+        </div>
+    </section>
 
-    <div class="card rounded-3xl border-dashed">
-        <div class="card-body">
-            <h1 class="mb-4 text-center text-lg font-bold text-slate-900">Membership/Institute Registration Form</h1>
+    <div class="membership-card">
+        <div class="membership-card-body">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-slate-900">Application details</h2>
+                <p class="mt-1 text-sm text-slate-500">Fields marked <span class="text-red-500">*</span> are required.</p>
+            </div>
 
             <div id="reg-alert" class="mb-4 hidden rounded border px-3 py-2 text-sm" role="alert"></div>
 
-            <form id="institute-register-form" class="grid gap-4 sm:grid-cols-2" enctype="multipart/form-data">
+            <form id="institute-register-form" class="membership-form" enctype="multipart/form-data">
                 <?= csrf_field() ?>
 
-                <div class="sm:col-span-2 fl">
+                <div class="membership-section-heading"><span>1</span>Institute information</div>
+
+                <div class="membership-full fl">
                     <input class="input" type="text" id="name" name="name" data-field="name" placeholder="Institute Name" required value="<?= e($val('name')) ?>">
                     <label for="name">Name of Institute <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="name"></p>
                 </div>
 
-                <div class="sm:col-span-2 fl">
+                <div class="membership-full fl">
                     <input class="input" type="text" id="address" name="address" data-field="address" placeholder="Institute Address" required value="<?= e($val('address')) ?>">
                     <label for="address">Institute Address <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="address"></p>
                 </div>
+
+                <div class="membership-section-heading"><span>2</span>Contact information</div>
 
                 <div class="fl">
                     <input class="input" type="text" id="director_name" name="director_name" data-field="director_name" placeholder="Director Name" required value="<?= e($val('director_name')) ?>">
@@ -61,6 +102,8 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     <label for="website">Website (If Any)</label>
                     <p class="field-error hidden" data-error-for="website"></p>
                 </div>
+
+                <div class="membership-section-heading"><span>3</span>Institute location</div>
 
                 <div class="fl">
                     <select class="input" id="division-dropdown" name="division_id" data-field="division_id" required>
@@ -108,6 +151,8 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     <label for="established_date">Established Date <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="established_date"></p>
                 </div>
+
+                <div class="membership-section-heading"><span>4</span>Membership and education</div>
 
                 <div class="fl">
                     <input class="input" type="number" id="total_students" name="total_students" data-field="total_students" min="0" placeholder="e.g. 120" required value="<?= e($val('total_students')) ?>">
@@ -179,6 +224,8 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     <p class="field-error hidden" data-error-for="institution_run"></p>
                 </div>
 
+                <div class="membership-section-heading"><span>5</span>Operations and attachments</div>
+
                 <div class="fl">
                     <input class="input" type="text" id="monthly_income" name="monthly_income" data-field="monthly_income" placeholder="Monthly Income (BDT)">
                     <label for="monthly_income">Monthly Income</label>
@@ -204,21 +251,21 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     <p class="field-error hidden" data-error-for="principal_photo"></p>
                 </div>
 
-                <div class="sm:col-span-2 fl">
+                <div class="membership-full fl">
                     <input class="input" type="text" id="note" name="note" data-field="note" placeholder="Note (if any)">
                     <label for="note">Note (If Any)</label>
                     <p class="field-error hidden" data-error-for="note"></p>
                 </div>
 
-                <label class="sm:col-span-2 flex items-start gap-2 text-sm text-slate-600">
+                <label class="membership-full membership-declaration text-sm">
                     <input type="checkbox" id="declaration" class="mt-1">
                     <span>My Declaration: I hereby declare that if this/my educational institution is recognized as a
                     member according to the laws of the association, I'll abide by all these rules and regulations and
                     take part in all activities of the association.</span>
                 </label>
 
-                <div class="sm:col-span-2 flex justify-end">
-                    <button type="submit" id="reg-submit" class="btn btn-primary">Submit</button>
+                <div class="membership-full flex justify-end">
+                    <button type="submit" id="reg-submit" class="btn btn-primary membership-submit">Submit application</button>
                 </div>
             </form>
         </div>
@@ -346,7 +393,7 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
             alertMsg('Network error. Please try again.', 'error');
         }).finally(() => {
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Submit';
+            submitBtn.textContent = 'Submit application';
         });
     });
 })();
