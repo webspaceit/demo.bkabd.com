@@ -26,6 +26,7 @@ Router::delete('/api/divisionDelete/{id}', [DivisionController::class, 'destroy'
 // the original). Everything else under /api/* requires auth.
 Router::get('/api/districtById/{id}', [DivisionController::class, 'districtById']);
 Router::get('/api/upazilaById/{id}', [DivisionController::class, 'upazilaById']);
+Router::get('/api/public/unions/by-upazila/{id}', [UnionController::class, 'unionById']);
 Router::get('/api/unionById/{id}', [UnionController::class, 'unionById'], 'auth');
 
 // Districts (apiResource + original custom update/edit routes)

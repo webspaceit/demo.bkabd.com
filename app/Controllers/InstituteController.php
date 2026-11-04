@@ -457,6 +457,7 @@ final class InstituteController extends Controller
             'division_id' => 'required|integer',
             'district_id' => 'required|integer',
             'upazila_id' => 'required|integer',
+            'union_id' => 'nullable|integer',
             'address' => 'required|string|max:255',
             'zip' => 'required|string|max:255',
             'established_date' => 'required|date_format:Y-m-d',
@@ -472,6 +473,18 @@ final class InstituteController extends Controller
             'note' => 'nullable|string',
             'certificate_no' => 'nullable|string|max:255',
         ]);
+
+        if (!empty($data['union_id'])) {
+            $unionMatchesUpazila = (int) Database::scalar(
+                'SELECT COUNT(*) FROM `unions` WHERE `id` = ? AND `upozila_id` = ?',
+                [(int) $data['union_id'], (int) $data['upazila_id']]
+            ) > 0;
+            if (!$unionMatchesUpazila) {
+                Response::validationError([
+                    'union_id' => ['The selected union does not belong to the selected upazila.'],
+                ]);
+            }
+        }
 
         // Duplicate guard: same institute already registered.
         $dup = Database::selectOne(
@@ -502,6 +515,7 @@ final class InstituteController extends Controller
             'division_id' => (int) $data['division_id'],
             'district_id' => (int) $data['district_id'],
             'upazila_id' => (int) $data['upazila_id'],
+            'union_id' => !empty($data['union_id']) ? (int) $data['union_id'] : null,
             'director_name' => $data['director_name'],
             'address' => $data['address'],
             'zip' => $data['zip'],

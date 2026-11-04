@@ -19,7 +19,7 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
 
     <div class="card rounded-3xl border-dashed">
         <div class="card-body">
-            <h1 class="mb-4 text-center text-lg font-bold text-slate-900">New Institute Registration</h1>
+            <h1 class="mb-4 text-center text-lg font-bold text-slate-900">Membership/Institute Registration Form</h1>
 
             <div id="reg-alert" class="mb-4 hidden rounded border px-3 py-2 text-sm" role="alert"></div>
 
@@ -30,6 +30,12 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     <input class="input" type="text" id="name" name="name" data-field="name" placeholder="Institute Name" required value="<?= e($val('name')) ?>">
                     <label for="name">Name of Institute <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="name"></p>
+                </div>
+
+                <div class="sm:col-span-2 fl">
+                    <input class="input" type="text" id="address" name="address" data-field="address" placeholder="Institute Address" required value="<?= e($val('address')) ?>">
+                    <label for="address">Institute Address <span class="text-red-500">*</span></label>
+                    <p class="field-error hidden" data-error-for="address"></p>
                 </div>
 
                 <div class="fl">
@@ -81,6 +87,14 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     </select>
                     <label for="upazila_id">Upazila <span class="text-red-500">*</span></label>
                     <p class="field-error hidden" data-error-for="upazila_id"></p>
+                </div>
+
+                <div class="fl">
+                    <select class="input" id="union-dropdown" name="union_id" data-field="union_id">
+                        <option value="">Select Union (Optional)</option>
+                    </select>
+                    <label for="union_id">Union</label>
+                    <p class="field-error hidden" data-error-for="union_id"></p>
                 </div>
 
                 <div class="fl">
@@ -280,10 +294,18 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
 
     document.getElementById('division-dropdown').addEventListener('change', function () {
         document.getElementById('upazila-dropdown').innerHTML = '<option value="">Select Upazila</option>';
+        document.getElementById('union-dropdown').innerHTML = '<option value="">Select Union (Optional)</option>';
         if (this.value) selected('/api/districtById/' + this.value, 'districtById', 'district-dropdown');
     });
     document.getElementById('district-dropdown').addEventListener('change', function () {
+        document.getElementById('upazila-dropdown').innerHTML = '<option value="">Select Upazila</option>';
+        document.getElementById('union-dropdown').innerHTML = '<option value="">Select Union (Optional)</option>';
         if (this.value) selected('/api/upazilaById/' + this.value, 'upazilaById', 'upazila-dropdown');
+    });
+    document.getElementById('upazila-dropdown').addEventListener('change', function () {
+        const unionSelect = document.getElementById('union-dropdown');
+        unionSelect.innerHTML = '<option value="">Select Union (Optional)</option>';
+        if (this.value) selected('/api/public/unions/by-upazila/' + encodeURIComponent(this.value), 'unionById', 'union-dropdown');
     });
 
     form.addEventListener('submit', function (e) {
