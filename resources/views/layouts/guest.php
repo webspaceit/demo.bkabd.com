@@ -35,7 +35,7 @@ $currentPath = Request::capture()->path();
         @media (max-width: 480px) { .guest-header-inner { min-height: 3.9rem; flex-wrap: wrap; padding-top: .55rem; padding-bottom: .55rem; } .guest-brand { gap: .55rem; } .guest-brand-mark { width: 2.25rem; height: 2.25rem; flex-basis: 2.25rem; } .guest-brand-mark img { width: 1.75rem; height: 1.75rem; } .guest-brand-name { font-size: .95rem; } .guest-brand-tagline { font-size: .55rem; } .guest-nav { width: 100%; justify-content: flex-end; gap: .2rem; } .guest-nav a { min-height: 2.1rem; padding: 0 .55rem; font-size: .78rem; } }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="<?= $currentPath === '/scholarship-result' ? 'bg-white' : 'bg-slate-100' ?> text-slate-800 antialiased min-h-screen flex flex-col">
 <header class="guest-header">
     <div class="max-w-6xl mx-auto px-4 guest-header-inner">
         <a href="/" class="guest-brand" aria-label="<?= e(brand('app_name', 'BKABD Exam')) ?> home">

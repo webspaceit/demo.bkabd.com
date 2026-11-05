@@ -6,6 +6,10 @@ Thumbs.db
 *.swp
 *.tmp
 
+# ---- local Windows helper scripts (keep on developer PC, not on VPS) ----
+/push-project.bat
+/start.bat
+
 # ---- environment (never publish credentials) ----
 .env
 

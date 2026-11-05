@@ -25,11 +25,18 @@ $mainWebsite = trim(explode(',', brand('website'))[0] ?? '');
 if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWebsite = 'https://' . $mainWebsite; }
 ?>
 <style>
-    .result-membership-page { background: linear-gradient(180deg,#ecfdf5 0%,#f8fafc 55%,#f1f5f9 100%); }
+    .result-membership-page { background: transparent; }
     .result-membership-intro { padding: 1rem; text-align: center; }
     .result-membership-intro .membership-kicker { display: inline-flex; margin-bottom: .35rem; padding: .35rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; background: rgba(255,255,255,.1); color: #d1fae5; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
     .result-membership-intro h1 { margin: 0; color: #fff; font-size: clamp(1.25rem, 2.4vw, 1.8rem); line-height: 1.2; font-weight: 800; }
     .result-membership-intro p { margin: .35rem 0 0; color: #ecfdf5; font-size: .95rem; line-height: 1.5; }
+    .result-contact-address { white-space: nowrap; font-size: clamp(.55rem, 1vw, .75rem); }
+    .result-contact-email { justify-content: center; text-align: center; }
+    .result-form-card { overflow: visible; border: 1px solid #d1fae5; border-radius: 1.5rem; background: linear-gradient(145deg,#fff 0%,#fbfffd 100%); box-shadow: 0 16px 42px rgba(15,23,42,.08); }
+    .result-form-card-body { padding: clamp(1rem, 2.5vw, 2.25rem); }
+    .result-form-heading { margin-bottom: 1.5rem; }
+    .result-form-heading h2 { margin: 0; color: #0f172a; font-size: 1.25rem; line-height: 1.5rem; font-weight: 700; }
+    .result-form-heading p { margin: .25rem 0 0; color: #64748b; font-size: .875rem; }
 </style>
 <div class="membership-page result-membership-page">
     <?= partial('shared.membership_header') ?>
@@ -40,18 +47,12 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
     </section>
 
         <!-- Search card -->
-        <div class="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70">
-            <div class="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                </span>
-                <div>
-                    <h2 class="text-base font-semibold text-slate-800">Find your result</h2>
-                    <p class="text-xs text-slate-500">Search by your registration number.</p>
+        <div class="result-form-card mt-6">
+            <div class="result-form-card-body">
+                <div class="result-form-heading">
+                    <h2>Find your result</h2>
+                    <p>Enter your registration number, or search by exam details.</p>
                 </div>
-            </div>
-
-            <div class="px-6 py-5 sm:px-7">
                 <?php if ($gateError): ?>
                     <div class="mb-5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert">
                         <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
@@ -133,16 +134,16 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
 
         <!-- Contact / help -->
         <div class="mt-6 grid gap-3 rounded-2xl bg-white/70 px-6 py-5 text-center text-xs text-slate-500 ring-1 ring-slate-200/70 sm:grid-cols-3 sm:text-left">
-            <div class="flex items-start justify-center gap-2 sm:justify-start">
-                <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <div class="result-contact-address flex items-center justify-center gap-2 sm:justify-start">
+                <svg class="h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                 <span><?= e(brand('address')) ?></span>
             </div>
-            <div class="flex items-start justify-center gap-2 sm:justify-start">
-                <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="m4 6 8 6 8-6"/></svg>
+            <div class="result-contact-email flex items-center justify-center gap-2">
+                <svg class="h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="m4 6 8 6 8-6"/></svg>
                 <span><?= e(brand('email')) ?></span>
             </div>
-            <div class="flex items-start justify-center gap-2 sm:justify-start">
-                <svg class="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18Z"/></svg>
+            <div class="flex items-center justify-center gap-2 sm:justify-start">
+                <svg class="h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18Z"/></svg>
                 <span><?= e(brand('website')) ?></span>
             </div>
         </div>
