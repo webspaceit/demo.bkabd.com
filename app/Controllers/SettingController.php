@@ -268,6 +268,21 @@ final class SettingController extends Controller
                         'id = ?',
                         [(int) $row['id']]
                     );
+                    $now = date('Y-m-d H:i:s');
+                    $sr = Database::selectOne('SELECT id FROM `student_results` WHERE `student_id` = ?', [(int) $row['id']]);
+                    if ($sr) {
+                        Database::update('student_results', ['place_id' => $placeId, 'updated_at' => $now], ['student_id' => (int) $row['id']]);
+                    } else {
+                        $s = Database::selectOne('SELECT session, class FROM `students` WHERE `id` = ?', [(int) $row['id']]);
+                        Database::insert('student_results', [
+                            'student_id' => (int) $row['id'],
+                            'session' => $s['session'] ?? $session,
+                            'class' => $s['class'] ?? null,
+                            'place_id' => $placeId,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+                    }
                 }
             }
         });

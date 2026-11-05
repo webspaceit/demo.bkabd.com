@@ -49,12 +49,14 @@ final class MarkEntryController extends Controller
         // (one DISTINCT query over the whole batch — see Auth::assertStudentAccess).
         Auth::assertStudentAccess(array_column($rows, 'id'));
 
+        $now = date('Y-m-d H:i:s');
         foreach ($rows as $row) {
             // Original: `Student::find(...)` then update — missing ids are skipped.
-            if (Student::find($row['id']) === null) {
+            $student = Student::find($row['id']);
+            if ($student === null) {
                 continue;
             }
-            Student::updateRow($row['id'], [
+            $update = [
                 'bangla' => $row['bangla'],
                 'english' => $row['english'],
                 'math' => $row['math'],
@@ -62,8 +64,42 @@ final class MarkEntryController extends Controller
                 'percentage' => $row['percentage'],
                 'grade' => $row['grade'],
                 'ml' => $row['ml'],
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
+                'updated_at' => $now,
+            ];
+            Student::updateRow($row['id'], $update);
+            // Dual-write to normalized student_results
+            $sr = \App\Core\Database::selectOne('SELECT id FROM `student_results` WHERE `student_id` = ?', [$row['id']]);
+            if ($sr) {
+                \App\Core\Database::update('student_results', [
+                    'bangla' => $row['bangla'],
+                    'english' => $row['english'],
+                    'math' => $row['math'],
+                    'total' => $row['total'],
+                    'percentage' => $row['percentage'],
+                    'grade' => $row['grade'],
+                    'ml' => $row['ml'],
+                    'place_id' => $student['place_id'] ?? null,
+                    'marker_id' => $student['marker_id'] ?? null,
+                    'updated_at' => $now,
+                ], ['student_id' => $row['id']]);
+            } else {
+                \App\Core\Database::insert('student_results', [
+                    'student_id' => $row['id'],
+                    'session' => $student['session'] ?? null,
+                    'class' => $student['class'] ?? null,
+                    'bangla' => $row['bangla'],
+                    'english' => $row['english'],
+                    'math' => $row['math'],
+                    'total' => $row['total'],
+                    'percentage' => $row['percentage'],
+                    'grade' => $row['grade'],
+                    'ml' => $row['ml'],
+                    'place_id' => $student['place_id'] ?? null,
+                    'marker_id' => $student['marker_id'] ?? null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
         }
 
         return $this->sendResponse(ReportService::markEntryPayload($rows), 'Updated successfully');

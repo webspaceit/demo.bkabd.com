@@ -8,6 +8,15 @@
     <style>
         #institute-pagination-footer { display:flex; width:100%; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; }
         #institute-per-page-control { margin-left:auto; }
+        #institute-filter-bar { display:flex; width:50%; max-width:50%; flex-wrap:nowrap; align-items:center; gap:.75rem; }
+        #institute-filter-bar > .fl { flex:1 1 18rem; min-width:12rem; }
+        #institute-search-control { display:flex; flex:0 0 auto; align-items:center; gap:.5rem; margin-left:auto; }
+        #institute-search-control input { width:18rem; max-width:40vw; }
+        @media (max-width: 640px) {
+            #institute-filter-bar { width:100%; max-width:100%; flex-wrap:wrap; }
+            #institute-search-control { width:100%; margin-left:0; }
+            #institute-search-control input { flex:1; width:auto; max-width:none; min-width:0; }
+        }
     </style>
     <div class="card">
         <div class="card-header">
@@ -17,7 +26,7 @@
             <?php endif; ?>
         </div>
         <div class="card-body space-y-4">
-            <div class="filter-bar">
+            <div class="filter-bar" id="institute-filter-bar">
                 <div class="fl">
                     <select id="institute-center" class="w-full">
                         <option value="">All Centers</option>
@@ -29,8 +38,9 @@
                     </select>
                     <label for="institute-center">Center <span class="filter-record-count" title="Available centers"><?= count((array) ($centers ?? [])) ?></span></label>
                 </div>
-                <div class="ml-auto">
+                <div id="institute-search-control">
                     <input type="search" id="institute-search" placeholder="Search Here..." autocomplete="off">
+                    <button type="button" id="institute-reset-filters" class="btn btn-light">Reset</button>
                 </div>
             </div>
             <div class="overflow-x-auto">
@@ -77,6 +87,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const pagerEl = document.getElementById('institute-pagination');
     const searchEl = document.getElementById('institute-search');
     const centerEl = document.getElementById('institute-center');
+    const resetFiltersEl = document.getElementById('institute-reset-filters');
     const perPageEl = document.getElementById('institute-per-page');
     const canEdit = root.getAttribute('data-perm-edit') === '1';
     const canDelete = root.getAttribute('data-perm-delete') === '1';
@@ -89,6 +100,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (requestedCenterId && centerEl) { centerEl.value = requestedCenterId; }
     const centerId = function () { return centerEl ? centerEl.value : ''; };
     const perPage = function () { return Number(perPageEl.value) || 20; };
+    function updateCenterUrl() {
+        const url = new URL(window.location.href);
+        if (centerId()) { url.searchParams.set('center_id', centerId()); }
+        else { url.searchParams.delete('center_id'); }
+        window.history.replaceState({}, '', url.pathname + url.search);
+    }
 
     function actionCell(row) {
         const id = row.id;
@@ -219,11 +236,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     centerEl.addEventListener('change', function () {
-        const url = new URL(window.location.href);
-        if (centerId()) { url.searchParams.set('center_id', centerId()); }
-        else { url.searchParams.delete('center_id'); }
-        window.history.replaceState({}, '', url.pathname + url.search);
+        updateCenterUrl();
         load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), search: searchEl.value.trim(), center_id: centerId(), status: status }));
+    });
+
+    resetFiltersEl.addEventListener('click', function () {
+        clearTimeout(timer);
+        searchEl.value = '';
+        centerEl.value = '';
+        updateCenterUrl();
+        load(BK.qs('/api/institutes', { page: 1, per_page: perPage(), center_id: '', status: status }));
     });
 
     perPageEl.addEventListener('change', function () {

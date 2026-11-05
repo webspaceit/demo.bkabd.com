@@ -443,6 +443,7 @@ CREATE TABLE `branding_settings` (
   `education_secretary_name` varchar(160) NOT NULL DEFAULT 'MD. ABDUL ALIM',
   `education_secretary_title` varchar(100) NOT NULL DEFAULT 'Education Secretary',
   `logo_path` varchar(500) NOT NULL DEFAULT '',
+  `membership_logo_path` varchar(500) NOT NULL DEFAULT '',
   `header_image_path` varchar(500) NOT NULL DEFAULT '',
   `footer_image_path` varchar(500) NOT NULL DEFAULT '',
   `favicon_path` varchar(500) NOT NULL DEFAULT '',
