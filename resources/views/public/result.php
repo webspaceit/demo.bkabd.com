@@ -37,6 +37,26 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
     .result-form-heading { margin-bottom: 1.5rem; }
     .result-form-heading h2 { margin: 0; color: #0f172a; font-size: 1.25rem; line-height: 1.5rem; font-weight: 700; }
     .result-form-heading p { margin: .25rem 0 0; color: #64748b; font-size: .875rem; }
+    .result-form-fields .fl .input,
+    .result-form-fields #captcha { min-height: 3.15rem; border: 1px solid #cbd5e1; border-radius: .8rem; background-color: #fff; transition: border-color .18s, box-shadow .18s; }
+    .result-form-fields .fl .input:focus,
+    .result-form-fields #captcha:focus { border-color: #059669; box-shadow: 0 0 0 4px rgba(16,185,129,.12); outline: none; }
+    .result-form-fields .fl label { border-color: #cbd5e1; border-radius: .5rem .5rem 0 0; font-weight: 600; }
+    .result-form-fields .fl:focus-within label { border-color: #059669; color: #047857; }
+    .result-select-wrap { position: relative; }
+    .result-select-wrap > select { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .result-select-button { display: flex; width: 100%; min-height: 3.15rem; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem 1rem; border: 1px solid #cbd5e1; border-radius: .8rem; background: #fff; color: #0f172a; text-align: left; transition: border-color .18s, box-shadow .18s; }
+    .result-select-button:hover { border-color: #6ee7b7; }
+    .result-select-button:focus-visible, .result-select-wrap.is-open .result-select-button { border-color: #059669; box-shadow: 0 0 0 4px rgba(16,185,129,.12); outline: none; }
+    .result-select-button .is-placeholder { color: #64748b; }
+    .result-select-chevron { width: 1rem; height: 1rem; flex: 0 0 1rem; color: #475569; transition: transform .16s ease; }
+    .result-select-wrap.is-open .result-select-chevron { transform: rotate(180deg); }
+    .result-select-menu { position: absolute; z-index: 30; top: calc(100% + .4rem); left: 0; right: 0; max-height: 15rem; overflow-y: auto; padding: .35rem; border: 1px solid #d1fae5; border-radius: .85rem; background: #fff; box-shadow: 0 16px 35px rgba(15,23,42,.16); }
+    .result-select-menu[hidden] { display: none; }
+    .result-select-option { display: flex; width: 100%; min-height: 2.55rem; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border: 0; border-radius: .55rem; background: transparent; color: #334155; text-align: left; cursor: pointer; }
+    .result-select-option:hover, .result-select-option:focus-visible { background: #f0fdf4; color: #065f46; outline: none; }
+    .result-select-option[aria-selected="true"] { background: #ecfdf5; color: #047857; font-weight: 600; }
+    .result-select-option[aria-disabled="true"] { color: #94a3b8; cursor: default; }
 </style>
 <div class="membership-page result-membership-page">
     <?= partial('shared.membership_header') ?>
@@ -60,7 +80,7 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" action="/result/search" id="result-search-form" novalidate>
+                <form method="POST" action="/result/search" id="result-search-form" class="result-form-fields" novalidate>
                     <?= csrf_field() ?>
 
                     <!-- Primary: registration number (unique) -->
@@ -87,7 +107,7 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                                         <option value="<?= e($s['session']) ?>" <?= (string) $val('session_id') === (string) $s['session'] ? 'selected' : '' ?>><?= e($s['session']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <label for="session_id">Session</label>
+                                <label for="session_id-button">Session</label>
                                 <?= $fieldError('session_id') ?>
                             </div>
 
@@ -98,7 +118,7 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                                         <option value="<?= $cv ?>" <?= (string) $val('class') === (string) $cv ? 'selected' : '' ?>><?= e($cl) ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <label for="class">Class</label>
+                                <label for="class-button">Class</label>
                                 <?= $fieldError('class') ?>
                             </div>
 

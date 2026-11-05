@@ -33,6 +33,21 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
     .membership-form .fl { margin-top: .6rem; }
     .membership-form .fl .input { min-height: 3.15rem; border-radius: .8rem; border-color: #cbd5e1; background-color: #fff; transition: border-color .18s, box-shadow .18s; }
     .membership-form .fl .input:focus { border-color: #059669; box-shadow: 0 0 0 4px rgba(16,185,129,.12); }
+    .membership-select-wrap { position: relative; }
+    .membership-select-wrap > select { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .membership-select-button { display: flex; width: 100%; min-height: 3.15rem; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem 1rem; border: 1px solid #cbd5e1; border-radius: .8rem; background: #fff; color: #0f172a; text-align: left; transition: border-color .18s, box-shadow .18s; }
+    .membership-select-button:hover { border-color: #6ee7b7; }
+    .membership-select-button:focus-visible, .membership-select-wrap.is-open .membership-select-button { border-color: #059669; box-shadow: 0 0 0 4px rgba(16,185,129,.12); outline: none; }
+    .membership-select-button .is-placeholder { color: #64748b; }
+    .membership-select-button[aria-invalid="true"] { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.1); }
+    .membership-select-chevron { width: 1rem; height: 1rem; flex: 0 0 1rem; color: #475569; transition: transform .16s ease; }
+    .membership-select-wrap.is-open .membership-select-chevron { transform: rotate(180deg); }
+    .membership-select-menu { position: absolute; z-index: 40; top: calc(100% + .4rem); left: 0; right: 0; max-height: 15rem; overflow-y: auto; padding: .35rem; border: 1px solid #d1fae5; border-radius: .85rem; background: #fff; box-shadow: 0 16px 35px rgba(15,23,42,.16); }
+    .membership-select-menu[hidden] { display: none; }
+    .membership-select-option { display: flex; width: 100%; min-height: 2.55rem; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .75rem; border: 0; border-radius: .55rem; background: transparent; color: #334155; text-align: left; cursor: pointer; }
+    .membership-select-option:hover, .membership-select-option:focus-visible { background: #f0fdf4; color: #065f46; outline: none; }
+    .membership-select-option[aria-selected="true"] { background: #ecfdf5; color: #047857; font-weight: 600; }
+    .membership-select-option[aria-disabled="true"] { color: #94a3b8; cursor: default; }
     .membership-form #monthly_income::placeholder, .membership-form #monthly_expense::placeholder { font-size: .75rem; }
     .membership-form .fl label { border-color: #cbd5e1; border-radius: .5rem .5rem 0 0; font-weight: 600; }
     .membership-form .fl:focus-within label { border-color: #059669; color: #047857; }
@@ -290,6 +305,143 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
     const alertBox = document.getElementById('reg-alert');
     const submitBtn = document.getElementById('reg-submit');
 
+    // Keep the native selects as the submitted values, but render their menus
+    // consistently with the styled dropdowns on the public results form.
+    const closeSelectMenus = (except) => {
+        form.querySelectorAll('.membership-select-wrap.is-open').forEach((wrap) => {
+            if (wrap !== except) {
+                wrap.classList.remove('is-open');
+                wrap.querySelector('.membership-select-menu')?.setAttribute('hidden', '');
+                wrap.querySelector('.membership-select-button')?.setAttribute('aria-expanded', 'false');
+            }
+        });
+    };
+
+    const selectStates = [];
+    form.querySelectorAll('select.input').forEach((select) => {
+        const label = form.querySelector(`label[for="${select.id}"]`) || form.querySelector(`label[for="${select.name}"]`);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'membership-select-wrap';
+        select.parentNode.insertBefore(wrapper, select);
+        wrapper.appendChild(select);
+        select.tabIndex = -1;
+        select.setAttribute('aria-hidden', 'true');
+        const isRequired = select.required;
+        select.required = false;
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.id = `${select.id}-button`;
+        button.className = 'membership-select-button';
+        button.setAttribute('aria-haspopup', 'listbox');
+        button.setAttribute('aria-expanded', 'false');
+        button.setAttribute('aria-label', label?.textContent.trim() || 'Choose an option');
+        if (label) { label.htmlFor = button.id; }
+        const display = document.createElement('span');
+        const chevron = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        chevron.setAttribute('viewBox', '0 0 24 24');
+        chevron.setAttribute('fill', 'none');
+        chevron.setAttribute('stroke', 'currentColor');
+        chevron.setAttribute('stroke-width', '2');
+        chevron.setAttribute('stroke-linecap', 'round');
+        chevron.setAttribute('stroke-linejoin', 'round');
+        chevron.setAttribute('aria-hidden', 'true');
+        chevron.classList.add('membership-select-chevron');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'm6 9 6 6 6-6');
+        chevron.appendChild(path);
+        button.append(display, chevron);
+
+        const menu = document.createElement('div');
+        menu.className = 'membership-select-menu';
+        menu.id = `${select.id}-listbox`;
+        menu.hidden = true;
+        menu.setAttribute('role', 'listbox');
+        menu.setAttribute('aria-label', label?.textContent.trim() || 'Options');
+        button.setAttribute('aria-controls', menu.id);
+        wrapper.append(button, menu);
+
+        let items = [];
+        const syncSelection = () => {
+            const current = select.options[select.selectedIndex];
+            display.textContent = current?.textContent.trim() || 'Select an option';
+            display.classList.toggle('is-placeholder', !select.value);
+            button.setAttribute('aria-invalid', String(isRequired && !select.value));
+            items.forEach((item) => item.setAttribute('aria-selected', String(item.dataset.value === select.value)));
+        };
+        const rebuildOptions = () => {
+            menu.replaceChildren();
+            items = [];
+            Array.from(select.options).forEach((option, index) => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'membership-select-option';
+                item.setAttribute('role', 'option');
+                item.dataset.value = option.value;
+                item.textContent = option.textContent.trim();
+                if (option.disabled) { item.setAttribute('aria-disabled', 'true'); }
+                item.addEventListener('click', () => {
+                    if (option.disabled) { return; }
+                    select.value = option.value;
+                    button.removeAttribute('aria-invalid');
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    syncSelection();
+                    wrapper.classList.remove('is-open');
+                    menu.hidden = true;
+                    button.setAttribute('aria-expanded', 'false');
+                    button.focus();
+                });
+                item.addEventListener('keydown', (event) => {
+                    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        const step = event.key === 'ArrowDown' ? 1 : -1;
+                        let next = index + step;
+                        while (items[next] && items[next].getAttribute('aria-disabled') === 'true') { next += step; }
+                        items[next]?.focus();
+                    } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        closeSelectMenus();
+                        button.focus();
+                    }
+                });
+                items.push(item);
+                menu.appendChild(item);
+            });
+            syncSelection();
+        };
+        rebuildOptions();
+        select.addEventListener('change', syncSelection);
+        const observer = new MutationObserver(rebuildOptions);
+        observer.observe(select, { childList: true, subtree: true, attributes: true, characterData: true });
+        selectStates.push({ select, button, wrapper, menu, isRequired, syncSelection, items: () => items });
+
+        button.addEventListener('click', () => {
+            const opening = menu.hidden;
+            closeSelectMenus(wrapper);
+            menu.hidden = !opening;
+            wrapper.classList.toggle('is-open', opening);
+            button.setAttribute('aria-expanded', String(opening));
+        });
+        button.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                closeSelectMenus(wrapper);
+                menu.hidden = false;
+                wrapper.classList.add('is-open');
+                button.setAttribute('aria-expanded', 'true');
+                const available = items.filter((item) => item.getAttribute('aria-disabled') !== 'true');
+                (available.find((item) => item.getAttribute('aria-selected') === 'true') || available[0])?.focus();
+            } else if (event.key === 'Escape') {
+                closeSelectMenus();
+            }
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('.membership-select-wrap')) { closeSelectMenus(); }
+    });
+    form.addEventListener('reset', () => setTimeout(() => selectStates.forEach((state) => state.syncSelection()), 0));
+
     document.getElementById('member_type').addEventListener('change', function () {
         document.getElementById('cert-wrap').classList.toggle('hidden', this.value !== '2');
     });
@@ -375,6 +527,17 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         clearErrors();
+        const missingSelect = selectStates.find((state) => state.isRequired && !state.select.value);
+        if (missingSelect) {
+            closeSelectMenus(missingSelect.wrapper);
+            missingSelect.menu.hidden = false;
+            missingSelect.wrapper.classList.add('is-open');
+            missingSelect.button.setAttribute('aria-expanded', 'true');
+            missingSelect.button.setAttribute('aria-invalid', 'true');
+            missingSelect.button.focus();
+            alertMsg('Please select an option for ' + (form.querySelector(`label[for="${missingSelect.button.id}"]`)?.textContent.replace('*', '').trim() || 'the required field') + '.', 'error');
+            return;
+        }
         if (!document.getElementById('declaration').checked) {
             alertMsg('Please check the declaration before submitting.', 'error');
             return;
