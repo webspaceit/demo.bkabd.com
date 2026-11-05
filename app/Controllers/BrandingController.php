@@ -35,7 +35,7 @@ final class BrandingController extends Controller
         'education_secretary_name' => 160,
         'education_secretary_title' => 100,
     ];
-    private const IMAGE_FIELDS = ['logo', 'header_image', 'footer_image', 'favicon', 'watermark', 'pattern'];
+    private const IMAGE_FIELDS = ['logo', 'membership_logo', 'header_image', 'footer_image', 'favicon', 'watermark', 'pattern'];
 
     public function page(Request $request): string
     {

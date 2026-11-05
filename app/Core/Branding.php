@@ -32,6 +32,7 @@ final class Branding
         'education_secretary_name' => 'MD. ABDUL ALIM',
         'education_secretary_title' => 'Education Secretary',
         'logo_path' => '',
+        'membership_logo_path' => '',
         'header_image_path' => '',
         'footer_image_path' => '',
         'favicon_path' => '',
@@ -75,9 +76,9 @@ final class Branding
         }
         $sql = <<<'SQL'
 INSERT INTO `branding_settings`
-    (`id`, `authority_name`, `short_name`, `app_name`, `exam_name`, `show_admit_card_print_date`, `admit_card_rules_title`, `admit_card_rules`, `registration_label`, `registration_no`, `address`, `phone`, `email`, `website`, `copyright_text`, `developer_credit`, `chairman_name`, `chairman_title`, `general_secretary_name`, `general_secretary_title`, `controller_name`, `controller_title`, `education_secretary_name`, `education_secretary_title`, `logo_path`, `header_image_path`, `footer_image_path`, `favicon_path`, `watermark_path`, `pattern_path`, `updated_at`)
+    (`id`, `authority_name`, `short_name`, `app_name`, `exam_name`, `show_admit_card_print_date`, `admit_card_rules_title`, `admit_card_rules`, `registration_label`, `registration_no`, `address`, `phone`, `email`, `website`, `copyright_text`, `developer_credit`, `chairman_name`, `chairman_title`, `general_secretary_name`, `general_secretary_title`, `controller_name`, `controller_title`, `education_secretary_name`, `education_secretary_title`, `logo_path`, `membership_logo_path`, `header_image_path`, `footer_image_path`, `favicon_path`, `watermark_path`, `pattern_path`, `updated_at`)
 VALUES
-    (:id, :authority_name, :short_name, :app_name, :exam_name, :show_admit_card_print_date, :admit_card_rules_title, :admit_card_rules, :registration_label, :registration_no, :address, :phone, :email, :website, :copyright_text, :developer_credit, :chairman_name, :chairman_title, :general_secretary_name, :general_secretary_title, :controller_name, :controller_title, :education_secretary_name, :education_secretary_title, :logo_path, :header_image_path, :footer_image_path, :favicon_path, :watermark_path, :pattern_path, :updated_at)
+    (:id, :authority_name, :short_name, :app_name, :exam_name, :show_admit_card_print_date, :admit_card_rules_title, :admit_card_rules, :registration_label, :registration_no, :address, :phone, :email, :website, :copyright_text, :developer_credit, :chairman_name, :chairman_title, :general_secretary_name, :general_secretary_title, :controller_name, :controller_title, :education_secretary_name, :education_secretary_title, :logo_path, :membership_logo_path, :header_image_path, :footer_image_path, :favicon_path, :watermark_path, :pattern_path, :updated_at)
 ON DUPLICATE KEY UPDATE
     `authority_name`=VALUES(`authority_name`), `short_name`=VALUES(`short_name`), `app_name`=VALUES(`app_name`), `exam_name`=VALUES(`exam_name`),
     `show_admit_card_print_date`=VALUES(`show_admit_card_print_date`),
@@ -86,7 +87,7 @@ ON DUPLICATE KEY UPDATE
     `email`=VALUES(`email`), `website`=VALUES(`website`), `copyright_text`=VALUES(`copyright_text`), `developer_credit`=VALUES(`developer_credit`),
     `chairman_name`=VALUES(`chairman_name`), `chairman_title`=VALUES(`chairman_title`), `general_secretary_name`=VALUES(`general_secretary_name`), `general_secretary_title`=VALUES(`general_secretary_title`),
     `controller_name`=VALUES(`controller_name`), `controller_title`=VALUES(`controller_title`), `education_secretary_name`=VALUES(`education_secretary_name`), `education_secretary_title`=VALUES(`education_secretary_title`),
-    `logo_path`=VALUES(`logo_path`), `header_image_path`=VALUES(`header_image_path`), `footer_image_path`=VALUES(`footer_image_path`),
+    `logo_path`=VALUES(`logo_path`), `membership_logo_path`=VALUES(`membership_logo_path`), `header_image_path`=VALUES(`header_image_path`), `footer_image_path`=VALUES(`footer_image_path`),
     `favicon_path`=VALUES(`favicon_path`), `watermark_path`=VALUES(`watermark_path`), `pattern_path`=VALUES(`pattern_path`), `updated_at`=VALUES(`updated_at`)
 SQL;
         Database::statement($sql, $params);

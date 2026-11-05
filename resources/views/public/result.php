@@ -24,23 +24,20 @@ $fallbackUsed = (string) $val('session_id') !== '' || (string) $val('roll') !== 
 $mainWebsite = trim(explode(',', brand('website'))[0] ?? '');
 if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWebsite = 'https://' . $mainWebsite; }
 ?>
-<div class="bg-gradient-to-b from-emerald-50 via-slate-50 to-slate-100">
-    <div class="mx-auto w-full max-w-3xl px-4 py-8 sm:py-12">
-
-        <!-- Branded hero -->
-        <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70">
-            <div class="bg-gradient-to-r from-emerald-800 via-emerald-700 to-emerald-600 px-6 py-7 text-center text-white">
-                <img src="<?= e(brand_asset('logo_path', '/assets/img/result/logo.png')) ?>" alt="<?= e(brand('short_name')) ?>"
-                     class="mx-auto mb-3 h-16 w-16 rounded-full bg-white object-contain shadow-sm ring-2 ring-white/50">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/90"><?= e(brand('authority_name')) ?></p>
-                <h1 class="mt-2 text-2xl font-bold tracking-tight sm:text-3xl"><?= e(brand('exam_name')) ?> Result</h1>
-                <p class="mx-auto mt-2 max-w-md text-sm text-emerald-50/90">Enter your registration number to view the published result.</p>
-            </div>
-            <!-- <div class="bg-white px-4 py-4 text-center sm:px-6">
-                <img src="<?= e(brand_asset('header_image_path', '/assets/img/result/header.png')) ?>" alt="<?= e(brand('short_name')) ?>"
-                     class="mx-auto block w-full" width="1920" height="184">
-            </div> -->
-        </div>
+<style>
+    .result-membership-page { background: linear-gradient(180deg,#ecfdf5 0%,#f8fafc 55%,#f1f5f9 100%); }
+    .result-membership-intro { padding: 1rem; text-align: center; }
+    .result-membership-intro .membership-kicker { display: inline-flex; margin-bottom: .35rem; padding: .35rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; background: rgba(255,255,255,.1); color: #d1fae5; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .result-membership-intro h1 { margin: 0; color: #fff; font-size: clamp(1.25rem, 2.4vw, 1.8rem); line-height: 1.2; font-weight: 800; }
+    .result-membership-intro p { margin: .35rem 0 0; color: #ecfdf5; font-size: .95rem; line-height: 1.5; }
+</style>
+<div class="membership-page result-membership-page">
+    <?= partial('shared.membership_header') ?>
+    <section class="membership-hero result-membership-intro">
+        <span class="membership-kicker">Results</span>
+        <h1><?= e(brand('exam_name')) ?> Result</h1>
+        <p>Enter your registration number to view the published result.</p>
+    </section>
 
         <!-- Search card -->
         <div class="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70">
@@ -153,5 +150,4 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
         <p class="mt-6 text-center">
             <?php if ($mainWebsite !== ''): ?><a href="<?= e($mainWebsite) ?>" class="btn btn-dark btn-sm">Go to <?= e(brand('authority_name')) ?> Website</a><?php endif; ?>
         </p>
-    </div>
 </div>

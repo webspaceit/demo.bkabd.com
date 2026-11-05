@@ -12,43 +12,51 @@ $mainWebsite = trim(explode(',', brand('website'))[0] ?? '');
 if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWebsite = 'https://' . $mainWebsite; }
 ?>
 <style>
-    .membership-page { width: min(100% - 2rem, 1440px); margin-inline: auto; padding: 2rem 0 3rem; }
-    .membership-hero { position: relative; overflow: hidden; margin-bottom: 1.25rem; padding: clamp(1.5rem, 3vw, 2.75rem); border-radius: 1.5rem; color: #fff; background: radial-gradient(circle at 90% 10%, rgba(110,231,183,.35), transparent 28%), linear-gradient(120deg, #064e3b, #047857 58%, #059669); box-shadow: 0 18px 40px rgba(6,78,59,.18); }
-    .membership-hero:after { content: ""; position: absolute; width: 16rem; height: 16rem; right: -5rem; bottom: -10rem; border: 1px solid rgba(255,255,255,.2); border-radius: 50%; box-shadow: 0 0 0 1.5rem rgba(255,255,255,.05), 0 0 0 3rem rgba(255,255,255,.04); pointer-events: none; }
+.membership-intro {
+    text-align: center!important;
+    padding: 1%!important;
+}
+    .membership-intro .membership-kicker { margin-bottom: .35rem; }
+    
+    .membership-intro > p {max-width: 100%!important;margin-top: 0rem!important; }
     .membership-kicker { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: .75rem; padding: .35rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; background: rgba(255,255,255,.1); color: #d1fae5; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-    .membership-hero h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.15; font-weight: 800; letter-spacing: -.025em; }
-    .membership-hero p { max-width: 54rem; margin: .75rem 0 0; color: #ecfdf5; font-size: .95rem; line-height: 1.65; }
-    .membership-contact { display: flex; flex-wrap: wrap; gap: .35rem 1.25rem; margin-top: 1.25rem; color: #d1fae5; font-size: .8rem; }
+    .membership-hero > h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 1.25rem); line-height: 1.15; font-weight: bold; letter-spacing: -.025em;text-transform: uppercase; }
+    .membership-hero > p { max-width: 54rem; margin: .75rem 0 0; color: #ecfdf5; font-size: .95rem; line-height: 1.65; }
     .membership-card { overflow: visible; border: 1px solid #d1fae5; border-radius: 1.5rem; background: linear-gradient(145deg,#fff 0%,#fbfffd 100%); box-shadow: 0 16px 42px rgba(15,23,42,.08); }
     .membership-card-body { padding: clamp(1rem, 2.5vw, 2.25rem); }
-    .membership-section-heading { grid-column: 1 / -1; display: flex; align-items: center; gap: .75rem; margin-top: .6rem; padding: .8rem 0 .55rem; border-bottom: 1px solid #e2e8f0; color: #065f46; font-size: .9rem; font-weight: 750; }
-    .membership-section-heading span { display: inline-grid; width: 1.75rem; height: 1.75rem; place-items: center; border-radius: .65rem; background: #ecfdf5; color: #047857; font-size: .75rem; }
-    .membership-form { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1.2rem 1rem; }
+    .membership-form { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1.2rem 1rem; }
     .membership-form > .membership-full { grid-column: 1 / -1; }
+    .membership-file-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
+    .membership-two { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
+    .membership-triple { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; }
+    .membership-financial-row { display: grid; grid-template-columns: minmax(0,2fr) minmax(0,2fr) minmax(8rem,1fr) minmax(8rem,1fr); gap: 1rem; }
     .membership-form .fl { margin-top: .6rem; }
     .membership-form .fl .input { min-height: 3.15rem; border-radius: .8rem; border-color: #cbd5e1; background-color: #fff; transition: border-color .18s, box-shadow .18s; }
     .membership-form .fl .input:focus { border-color: #059669; box-shadow: 0 0 0 4px rgba(16,185,129,.12); }
+    .membership-form #monthly_income::placeholder, .membership-form #monthly_expense::placeholder { font-size: .75rem; }
     .membership-form .fl label { border-color: #cbd5e1; border-radius: .5rem .5rem 0 0; font-weight: 600; }
     .membership-form .fl:focus-within label { border-color: #059669; color: #047857; }
     .membership-form input[type=file].input { min-height: 3.4rem; padding-top: .72rem; }
+    .membership-upload-card { min-width: 0; padding: 1rem; border: 1px solid #d1fae5; border-radius: 1rem; background: linear-gradient(145deg,#f0fdf4,#fff); box-shadow: 0 8px 20px rgba(6,78,59,.05); }
+    .membership-upload-card .upload-help { margin: .5rem 0 0; color: #64748b; font-size: .78rem; line-height: 1.45; }
+    .membership-upload-card input[type=file].input { width: 100%; border-style: dashed; border-color: #6ee7b7; background: #fff; }
+    .membership-upload-card input[type=file]::file-selector-button { margin: -.3rem .75rem -.3rem -.3rem; padding: .55rem .9rem; border: 0; border-radius: .55rem; background: #059669; color: #fff; font: inherit; font-weight: 700; cursor: pointer; transition: background-color .15s, transform .15s; }
+    .membership-upload-card input[type=file]::file-selector-button:hover { background: #047857; }
+    .membership-upload-preview.hidden { display: none; }
+    .membership-upload-preview { display: block; max-width: 100%; max-height: 7rem; margin-top: .75rem; border: 1px solid #d1fae5; border-radius: .65rem; background: #fff; object-fit: contain; }
     .membership-declaration { display: flex; align-items: flex-start; gap: .75rem; padding: 1rem; border: 1px solid #d1fae5; border-radius: .9rem; background: #f0fdf4; color: #475569; line-height: 1.6; }
     .membership-declaration input { margin-top: .25rem; accent-color: #059669; }
     .membership-submit { min-width: 12rem; min-height: 3rem; border-radius: .8rem; box-shadow: 0 8px 18px rgba(5,150,105,.2); }
     .membership-form .field-error { grid-column: 1 / -1; margin: .3rem 0 0; color: #b91c1c; font-size: .8rem; }
-    @media (max-width: 1023px) { .membership-form { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-    @media (max-width: 639px) { .membership-page { width: min(100% - 1rem, 1440px); padding-top: .75rem; } .membership-form { grid-template-columns: 1fr; gap: 1rem; } .membership-form > .membership-full { grid-column: 1; } .membership-submit { width: 100%; } }
+    @media (max-width: 1023px) { .membership-form { grid-template-columns: repeat(2,minmax(0,1fr)); } .membership-financial-row { grid-template-columns: repeat(2,minmax(0,1fr)); } .membership-triple { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+    @media (max-width: 639px) { .membership-page { padding-top: .75rem; } .membership-form { grid-template-columns: 1fr; gap: 1rem; } .membership-form > .membership-full { grid-column: 1; } .membership-file-row, .membership-two, .membership-financial-row, .membership-triple { grid-template-columns: 1fr; } .membership-submit { width: 100%; } }
 </style>
 <div class="membership-page">
-    <section class="membership-hero">
+    <?= partial('shared.membership_header') ?>
+    <section class="membership-hero membership-intro">
         <span class="membership-kicker">Membership application</span>
         <h1>Institute Registration</h1>
-        <p>Complete the form below to apply for institute membership. Please provide accurate institute, contact and location details, then attach the required logo.</p>
-        <div class="membership-contact">
-            <?php if (brand('address') !== ''): ?><span><?= e(brand('address')) ?></span><?php endif; ?>
-            <?php if (brand('phone') !== ''): ?><span>Mobile: <?= e(brand('phone')) ?></span><?php endif; ?>
-            <?php if (brand('email') !== ''): ?><span>Email: <?= e(brand('email')) ?></span><?php endif; ?>
-            <?php if (brand('website') !== ''): ?><span>Web: <?= e(brand('website')) ?></span><?php endif; ?>
-        </div>
+        <p>Complete the form to apply for institute membership. Enter accurate details and attach the required logo.</p>
     </section>
 
     <div class="membership-card">
@@ -63,21 +71,19 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
             <form id="institute-register-form" class="membership-form" enctype="multipart/form-data">
                 <?= csrf_field() ?>
 
-                <div class="membership-section-heading"><span>1</span>Institute information</div>
+                <div class="membership-full membership-two">
+                    <div class="fl">
+                        <input class="input" type="text" id="name" name="name" data-field="name" placeholder="Institute Name" required value="<?= e($val('name')) ?>">
+                        <label for="name">Name of Institute <span class="text-red-500">*</span></label>
+                        <p class="field-error hidden" data-error-for="name"></p>
+                    </div>
 
-                <div class="membership-full fl">
-                    <input class="input" type="text" id="name" name="name" data-field="name" placeholder="Institute Name" required value="<?= e($val('name')) ?>">
-                    <label for="name">Name of Institute <span class="text-red-500">*</span></label>
-                    <p class="field-error hidden" data-error-for="name"></p>
+                    <div class="fl">
+                        <input class="input" type="text" id="address" name="address" data-field="address" placeholder="Institute Address" required value="<?= e($val('address')) ?>">
+                        <label for="address">Institute Address <span class="text-red-500">*</span></label>
+                        <p class="field-error hidden" data-error-for="address"></p>
+                    </div>
                 </div>
-
-                <div class="membership-full fl">
-                    <input class="input" type="text" id="address" name="address" data-field="address" placeholder="Institute Address" required value="<?= e($val('address')) ?>">
-                    <label for="address">Institute Address <span class="text-red-500">*</span></label>
-                    <p class="field-error hidden" data-error-for="address"></p>
-                </div>
-
-                <div class="membership-section-heading"><span>2</span>Contact information</div>
 
                 <div class="fl">
                     <input class="input" type="text" id="director_name" name="director_name" data-field="director_name" placeholder="Director Name" required value="<?= e($val('director_name')) ?>">
@@ -102,8 +108,6 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     <label for="website">Website (If Any)</label>
                     <p class="field-error hidden" data-error-for="website"></p>
                 </div>
-
-                <div class="membership-section-heading"><span>3</span>Institute location</div>
 
                 <div class="fl">
                     <select class="input" id="division-dropdown" name="division_id" data-field="division_id" required>
@@ -152,8 +156,6 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     <p class="field-error hidden" data-error-for="established_date"></p>
                 </div>
 
-                <div class="membership-section-heading"><span>4</span>Membership and education</div>
-
                 <div class="fl">
                     <input class="input" type="number" id="total_students" name="total_students" data-field="total_students" min="0" placeholder="e.g. 120" required value="<?= e($val('total_students')) ?>">
                     <label for="total_students">Total Students <span class="text-red-500">*</span></label>
@@ -166,24 +168,37 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     <p class="field-error hidden" data-error-for="total_teachers"></p>
                 </div>
 
-                <div class="fl">
-                    <select class="input" id="membership_type" name="membership_type" data-field="membership_type" required>
-                        <option value="">Select Membership Type</option>
-                        <option value="1">Temporary (1500 BDT)</option>
-                        <option value="2">Life Time (3000 BDT)</option>
-                    </select>
-                    <label for="membership_type">Membership Type <span class="text-red-500">*</span></label>
-                    <p class="field-error hidden" data-error-for="membership_type"></p>
-                </div>
+                <div class="membership-full membership-triple">
+                    <div class="fl">
+                        <select class="input" id="membership_type" name="membership_type" data-field="membership_type" required>
+                            <option value="">Select Membership Type</option>
+                            <option value="1">Temporary (1500 BDT)</option>
+                            <option value="2">Life Time (3000 BDT)</option>
+                        </select>
+                        <label for="membership_type">Membership Type <span class="text-red-500">*</span></label>
+                        <p class="field-error hidden" data-error-for="membership_type"></p>
+                    </div>
 
-                <div class="fl">
-                    <select class="input" id="member_type" name="member_type" data-field="member_type" required>
-                        <option value="">Select Member Type</option>
-                        <option value="1">New Member</option>
-                        <option value="2">Old Member</option>
-                    </select>
-                    <label for="member_type">Member Type <span class="text-red-500">*</span></label>
-                    <p class="field-error hidden" data-error-for="member_type"></p>
+                    <div class="fl">
+                        <select class="input" id="member_type" name="member_type" data-field="member_type" required>
+                            <option value="">Select Member Type</option>
+                            <option value="1">New Member</option>
+                            <option value="2">Old Member</option>
+                        </select>
+                        <label for="member_type">Member Type <span class="text-red-500">*</span></label>
+                        <p class="field-error hidden" data-error-for="member_type"></p>
+                    </div>
+
+                    <div class="fl">
+                        <select class="input" id="type" name="type" data-field="type" required>
+                            <option value="">Select Education Type</option>
+                            <option value="1">Bangla Medium</option>
+                            <option value="2">English Version</option>
+                            <option value="3">Arabic Version</option>
+                        </select>
+                        <label for="type">Version of Education Type <span class="text-red-500">*</span></label>
+                        <p class="field-error hidden" data-error-for="type"></p>
+                    </div>
                 </div>
 
                 <div id="cert-wrap" class="hidden fl">
@@ -192,63 +207,56 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
                     <p class="field-error hidden" data-error-for="certificate_no"></p>
                 </div>
 
-                <div class="fl">
-                    <select class="input" id="type" name="type" data-field="type" required>
-                        <option value="">Select Education Type</option>
-                        <option value="1">Bangla Medium</option>
-                        <option value="2">English Version</option>
-                        <option value="3">Arabic Version</option>
-                    </select>
-                    <label for="type">Version of Education Type <span class="text-red-500">*</span></label>
-                    <p class="field-error hidden" data-error-for="type"></p>
+                <div class="membership-full membership-financial-row">
+                    <div class="fl">
+                        <select class="input" id="recognized" name="recognized" data-field="recognized" required>
+                            <option value="">Select Recognized Status</option>
+                            <option value="1">Yes</option>
+                            <option value="2">No</option>
+                        </select>
+                        <label for="recognized">Is it Govt. Recognized / Approved? <span class="text-red-500">*</span></label>
+                        <p class="field-error hidden" data-error-for="recognized"></p>
+                    </div>
+
+                    <div class="fl">
+                        <select class="input" id="institution_run" name="institution_run" data-field="institution_run" required>
+                            <option value="">Select Institution Status</option>
+                            <option value="1">Personal</option>
+                            <option value="2">Committee</option>
+                            <option value="3">Partnership</option>
+                        </select>
+                        <label for="institution_run">How does the Institution Run? <span class="text-red-500">*</span></label>
+                        <p class="field-error hidden" data-error-for="institution_run"></p>
+                    </div>
+                    <div class="fl">
+                        <input class="input" type="text" id="monthly_income" name="monthly_income" data-field="monthly_income" placeholder="Monthly Income (BDT)">
+                        <label for="monthly_income">Monthly Income</label>
+                        <p class="field-error hidden" data-error-for="monthly_income"></p>
+                    </div>
+
+                    <div class="fl">
+                        <input class="input" type="text" id="monthly_expense" name="monthly_expense" data-field="monthly_expense" placeholder="Monthly Expense (BDT)">
+                        <label for="monthly_expense">Monthly Expense</label>
+                        <p class="field-error hidden" data-error-for="monthly_expense"></p>
+                    </div>
                 </div>
 
-                <div class="fl">
-                    <select class="input" id="recognized" name="recognized" data-field="recognized" required>
-                        <option value="">Select Recognized Status</option>
-                        <option value="1">Yes</option>
-                        <option value="2">No</option>
-                    </select>
-                    <label for="recognized">Is it Govt. Recognized / Approved? <span class="text-red-500">*</span></label>
-                    <p class="field-error hidden" data-error-for="recognized"></p>
-                </div>
+                <div class="membership-full membership-file-row">
+                    <div class="fl membership-upload-card">
+                        <input type="file" id="logo" name="logo" class="input" accept="image/*" required>
+                        <label for="logo">Institute Logo <span class="text-red-500">*</span></label>
+                        <p class="upload-help">Upload a clear image of the institute logo.</p>
+                        <img id="logo-preview" class="membership-upload-preview hidden" alt="Institute logo preview">
+                        <p class="field-error hidden" data-error-for="logo"></p>
+                    </div>
 
-                <div class="fl">
-                    <select class="input" id="institution_run" name="institution_run" data-field="institution_run" required>
-                        <option value="">Select Institution Status</option>
-                        <option value="1">Personal</option>
-                        <option value="2">Committee</option>
-                        <option value="3">Partnership</option>
-                    </select>
-                    <label for="institution_run">How does the Institution Run? <span class="text-red-500">*</span></label>
-                    <p class="field-error hidden" data-error-for="institution_run"></p>
-                </div>
-
-                <div class="membership-section-heading"><span>5</span>Operations and attachments</div>
-
-                <div class="fl">
-                    <input class="input" type="text" id="monthly_income" name="monthly_income" data-field="monthly_income" placeholder="Monthly Income (BDT)">
-                    <label for="monthly_income">Monthly Income</label>
-                    <p class="field-error hidden" data-error-for="monthly_income"></p>
-                </div>
-
-                <div class="fl">
-                    <input class="input" type="text" id="monthly_expense" name="monthly_expense" data-field="monthly_expense" placeholder="Monthly Expense (BDT)">
-                    <label for="monthly_expense">Monthly Expense</label>
-                    <p class="field-error hidden" data-error-for="monthly_expense"></p>
-                </div>
-
-                <div class="fl">
-                    <input type="file" id="logo" name="logo" class="input" accept="image/*" required>
-                    <label for="logo">Institute Logo <span class="text-red-500">*</span></label>
-                    <img id="logo-preview" class="mt-2 hidden h-20 w-20 rounded object-cover" alt="">
-                    <p class="field-error hidden" data-error-for="logo"></p>
-                </div>
-
-                <div class="fl">
-                    <input class="input" type="file" id="principal_photo" name="principal_photo" accept="image/*">
-                    <label for="principal_photo">Principal Photo</label>
-                    <p class="field-error hidden" data-error-for="principal_photo"></p>
+                    <div class="fl membership-upload-card">
+                        <input class="input" type="file" id="principal_photo" name="principal_photo" accept="image/*">
+                        <label for="principal_photo">Principal Photo</label>
+                        <p class="upload-help">Upload an optional, clear principal photo.</p>
+                        <img id="principal-photo-preview" class="membership-upload-preview hidden" alt="Principal photo preview">
+                        <p class="field-error hidden" data-error-for="principal_photo"></p>
+                    </div>
                 </div>
 
                 <div class="membership-full fl">
@@ -286,14 +294,23 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
         document.getElementById('cert-wrap').classList.toggle('hidden', this.value !== '2');
     });
 
-    document.getElementById('logo').addEventListener('change', function () {
-        const img = document.getElementById('logo-preview');
-        if (this.files && this.files[0]) {
-            img.src = URL.createObjectURL(this.files[0]);
-            img.classList.remove('hidden');
-        } else {
-            img.classList.add('hidden');
-        }
+    [
+        ['logo', 'logo-preview'],
+        ['principal_photo', 'principal-photo-preview'],
+    ].forEach(([inputId, previewId]) => {
+        document.getElementById(inputId).addEventListener('change', function () {
+            const img = document.getElementById(previewId);
+            if (this.files && this.files[0]) {
+                if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+                img.dataset.objectUrl = URL.createObjectURL(this.files[0]);
+                img.src = img.dataset.objectUrl;
+                img.classList.remove('hidden');
+            } else {
+                if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+                img.removeAttribute('src');
+                img.classList.add('hidden');
+            }
+        });
     });
 
     function clearErrors() {
@@ -373,7 +390,12 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
             if (r.ok && body.status === 'success') {
                 form.reset();
                 document.getElementById('cert-wrap').classList.add('hidden');
-                document.getElementById('logo-preview').classList.add('hidden');
+                ['logo-preview', 'principal-photo-preview'].forEach(id => {
+                    const img = document.getElementById(id);
+                    if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+                    img.removeAttribute('src');
+                    img.classList.add('hidden');
+                });
                 alertMsg('Congratulations! Your membership registration has been completed successfully. ' +
                     'Please wait for authority approval or contact (+88 01711168094). ' +
                     'You can print your card below.', 'success', {

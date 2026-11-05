@@ -58,11 +58,12 @@ $textFields = [
     <section class="card">
         <div class="card-header">Brand images</div>
         <div class="card-body">
-            <p class="mb-5 text-sm text-slate-500">Upload PNG or JPEG artwork up to 4 MB. These replace the authority logo, print-card header/footer, watermark, and background pattern.</p>
+            <p class="mb-5 text-sm text-slate-500">Upload PNG or JPEG artwork up to 4 MB. The membership header logo is separate from the logo used elsewhere in the system.</p>
             <p class="mb-5 text-sm text-slate-500">Signature images are managed in <a class="text-emerald-700 underline" href="/settings">Settings → Result Sheet Signatures</a>.</p>
             <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
                 <?php foreach ([
                     'logo' => ['Logo', 'logo_path', '/assets/img/result/logo.png'],
+                    'membership_logo' => ['Membership form header logo', 'membership_logo_path', '/assets/img/result/logo.png'],
                     'header_image' => ['Header image', 'header_image_path', '/assets/img/result/header.png'],
                     'footer_image' => ['Footer image', 'footer_image_path', '/assets/img/result/header.png'],
                     'favicon' => ['Favicon', 'favicon_path', '/assets/img/result/logo.png'],
