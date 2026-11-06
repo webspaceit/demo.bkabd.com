@@ -50,7 +50,7 @@
                 </div>
             </form>
         </div>
-        <p class="text-center text-xs text-slate-400 mt-4">Demo credentials are listed in README.md</p>
+        <!-- <p class="text-center text-xs text-slate-400 mt-4">Demo credentials are listed in README.md</p> -->
     </div>
 </div>
 <script>

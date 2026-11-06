@@ -15,14 +15,17 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
 .membership-intro {
     text-align: center!important;
     padding: 1%!important;
+    background:none!important;
+    box-shadow:none!important;
+    
 }
-    .membership-intro .membership-kicker { margin-bottom: .35rem; }
+    .membership-intro .membership-kicker { margin-bottom: .35rem; color:#fff!important;background: radial-gradient(circle at 90% 10%, rgba(110,231,183,.35), transparent 28%), linear-gradient(120deg, #064e3b, #047857 58%, #059669); font-size: 1.25rem; font-weight: 700; }
     
     .membership-intro > p {max-width: 100%!important;margin-top: 0rem!important; }
     .membership-kicker { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: .75rem; padding: .35rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; background: rgba(255,255,255,.1); color: #d1fae5; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
     .membership-hero > h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 1.25rem); line-height: 1.15; font-weight: bold; letter-spacing: -.025em;text-transform: uppercase; }
     .membership-hero > p { max-width: 54rem; margin: .75rem 0 0; color: #ecfdf5; font-size: .95rem; line-height: 1.65; }
-    .membership-card { overflow: visible; border: 1px solid #d1fae5; border-radius: 1.5rem; background: linear-gradient(145deg,#fff 0%,#fbfffd 100%); box-shadow: 0 16px 42px rgba(15,23,42,.08); }
+    .membership-card { overflow: visible; border: 1px solid #06503d; border-radius: 1.5rem; background: linear-gradient(145deg,#fff 0%,#fbfffd 100%); box-shadow: 0 16px 42px rgba(15,23,42,.08); }
     .membership-card-body { padding: clamp(1rem, 2.5vw, 2.25rem); }
     .membership-form { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1.2rem 1rem; }
     .membership-form > .membership-full { grid-column: 1 / -1; }
@@ -65,13 +68,14 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
     .membership-form .field-error { grid-column: 1 / -1; margin: .3rem 0 0; color: #b91c1c; font-size: .8rem; }
     @media (max-width: 1023px) { .membership-form { grid-template-columns: repeat(2,minmax(0,1fr)); } .membership-financial-row { grid-template-columns: repeat(2,minmax(0,1fr)); } .membership-triple { grid-template-columns: repeat(2,minmax(0,1fr)); } }
     @media (max-width: 639px) { .membership-page { padding-top: .75rem; } .membership-form { grid-template-columns: 1fr; gap: 1rem; } .membership-form > .membership-full { grid-column: 1; } .membership-file-row, .membership-two, .membership-financial-row, .membership-triple { grid-template-columns: 1fr; } .membership-submit { width: 100%; } }
+    .membership-page p.mt-5.text-center a{background:#06503d!important;}
 </style>
 <div class="membership-page">
     <?= partial('shared.membership_header') ?>
     <section class="membership-hero membership-intro">
-        <span class="membership-kicker">Membership application</span>
-        <h1>Institute Registration</h1>
-        <p>Complete the form to apply for institute membership. Enter accurate details and attach the required logo.</p>
+       
+        <h1 class="membership-kicker">Memership/Institute Registration</h1>
+        <!-- <p>Complete the form to apply for institute membership. Enter accurate details and attach the required logo.</p> -->
     </section>
 
     <div class="membership-card">

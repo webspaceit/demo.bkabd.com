@@ -26,13 +26,16 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
 ?>
 <style>
     .result-membership-page { background: transparent; }
-    .result-membership-intro { padding: 1rem; text-align: center; }
-    .result-membership-intro .membership-kicker { display: inline-flex; margin-bottom: .35rem; padding: .35rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; background: rgba(255,255,255,.1); color: #d1fae5; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .result-membership-intro { padding: 1rem; text-align: center; background: none !important; box-shadow: none !important; }
+    .result-membership-intro .membership-kicker { display: inline-flex; margin-bottom: .35rem; padding: .35rem .75rem; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; background: radial-gradient(circle at 90% 10%, rgba(110,231,183,.35), transparent 28%), linear-gradient(120deg, #064e3b, #047857 58%, #059669); font-size: 1.25rem; font-weight: 700; /*letter-spacing: .08em;*/ text-transform: uppercase; }
     .result-membership-intro h1 { margin: 0; color: #fff; font-size: clamp(1.25rem, 2.4vw, 1.8rem); line-height: 1.2; font-weight: 800; }
     .result-membership-intro p { margin: .35rem 0 0; color: #ecfdf5; font-size: .95rem; line-height: 1.5; }
     .result-contact-address { white-space: nowrap; font-size: clamp(.55rem, 1vw, .75rem); }
     .result-contact-email { justify-content: center; text-align: center; }
-    .result-form-card { overflow: visible; border: 1px solid #d1fae5; border-radius: 1.5rem; background: linear-gradient(145deg,#fff 0%,#fbfffd 100%); box-shadow: 0 16px 42px rgba(15,23,42,.08); }
+    .result-contact-strip { border: 1px solid #06503d; }
+    .result-membership-page .btn-dark { background-color: #06503d; border-color: #06503d; }
+    .result-membership-page .btn-dark:hover { background-color: #043f30; border-color: #043f30; }
+    .result-form-card { overflow: visible; border: 1px solid #06503d; border-radius: 1.5rem; background: linear-gradient(145deg,#fff 0%,#fbfffd 100%); box-shadow: 0 16px 42px rgba(15,23,42,.08); }
     .result-form-card-body { padding: clamp(1rem, 2.5vw, 2.25rem); }
     .result-form-heading { margin-bottom: 1.5rem; }
     .result-form-heading h2 { margin: 0; color: #0f172a; font-size: 1.25rem; line-height: 1.5rem; font-weight: 700; }
@@ -61,9 +64,9 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
 <div class="membership-page result-membership-page">
     <?= partial('shared.membership_header') ?>
     <section class="membership-hero result-membership-intro">
-        <span class="membership-kicker">Results</span>
-        <h1><?= e(brand('exam_name')) ?> Result</h1>
-        <p>Enter your registration number to view the published result.</p>
+        <!-- <span class="membership-kicker">Results</span> -->
+        <h1 class="membership-kicker"><?= e(brand('exam_name')) ?> Result</h1>
+        <!-- <p>Enter your registration number to view the published result.</p> -->
     </section>
 
         <!-- Search card -->
@@ -153,7 +156,7 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
         </div>
 
         <!-- Contact / help -->
-        <div class="mt-6 grid gap-3 rounded-2xl bg-white/70 px-6 py-5 text-center text-xs text-slate-500 ring-1 ring-slate-200/70 sm:grid-cols-3 sm:text-left">
+        <div class="result-contact-strip mt-6 grid gap-3 rounded-2xl bg-white/70 px-6 py-5 text-center text-xs text-slate-500 sm:grid-cols-3 sm:text-left">
             <div class="result-contact-address flex items-center justify-center gap-2 sm:justify-start">
                 <svg class="h-4 w-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
                 <span><?= e(brand('address')) ?></span>
