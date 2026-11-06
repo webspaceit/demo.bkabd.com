@@ -562,6 +562,8 @@ document.addEventListener('DOMContentLoaded', function () {
         setText('m-name', 'Loading student details…');
         const photo = document.getElementById('modal-photo');
         if (photo) { photo.classList.add('hidden'); photo.removeAttribute('src'); }
+        const photoPlaceholder = document.getElementById('modal-photo-placeholder');
+        if (photoPlaceholder) { photoPlaceholder.classList.remove('hidden'); }
         BK.get('/api/students/' + encodeURIComponent(id)).then(function (json) {
             const s = (json && json.data) || {};
             setText('m-name', s.name);
@@ -590,10 +592,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const img = document.getElementById('modal-photo');
             if (img) {
                 if (s.photo) {
+                    img.onload = function () {
+                        img.classList.remove('hidden');
+                        if (photoPlaceholder) { photoPlaceholder.classList.add('hidden'); }
+                    };
+                    img.onerror = function () {
+                        img.classList.add('hidden');
+                        if (photoPlaceholder) { photoPlaceholder.classList.remove('hidden'); }
+                    };
                     img.src = '/' + s.photo;
-                    img.classList.remove('hidden');
                 } else {
                     img.classList.add('hidden');
+                    if (photoPlaceholder) { photoPlaceholder.classList.remove('hidden'); }
                 }
             }
         }).catch(function (err) {

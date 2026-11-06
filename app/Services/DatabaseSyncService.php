@@ -205,7 +205,7 @@ final class DatabaseSyncService
                     continue;
                 }
                 $storedPath = (string) $sourceRow['photo'];
-                $expectedPath = 'uploads/students/sync_' . (int) $targetRow['id'] . '_' . substr(hash('sha256', $storedPath), 0, 16) . '.jpg';
+                $expectedPath = 'uploads/students/sync_hq_' . (int) $targetRow['id'] . '_' . substr(hash('sha256', $storedPath), 0, 16) . '.jpg';
                 $currentPath = ltrim(str_replace('\\', '/', trim((string) ($targetRow['photo'] ?? ''))), '/');
                 if ($currentPath === $expectedPath && is_file(BASE_PATH . '/public/' . $expectedPath)) {
                     $counts['already_synced']++;
@@ -334,7 +334,7 @@ final class DatabaseSyncService
                     $targetRow = $targetByRegistration[mb_strtolower(trim((string) $row['registration']), 'UTF-8')] ?? null;
                     $storedPath = (string) $row['photo'];
                     $urls = $this->studentPhotoUrls($storedPath);
-                    $expectedPath = $targetRow === null ? '' : 'uploads/students/sync_' . (int) $targetRow['id'] . '_' . substr(hash('sha256', $storedPath), 0, 16) . '.jpg';
+                    $expectedPath = $targetRow === null ? '' : 'uploads/students/sync_hq_' . (int) $targetRow['id'] . '_' . substr(hash('sha256', $storedPath), 0, 16) . '.jpg';
                     $actualPath = str_replace('\\', '/', trim((string) ($targetRow['photo'] ?? '')));
                     $pathMatches = $expectedPath !== '' && ltrim($actualPath, '/') === $expectedPath;
                     $fileExists = $pathMatches && is_file(BASE_PATH . '/public/' . $expectedPath);
@@ -484,7 +484,7 @@ final class DatabaseSyncService
                 }
                 $counts['matched']++;
                 $photoPath = str_replace('\\', '/', (string) ($targetRow['photo'] ?? ''));
-                if (preg_match('#(?:^|/)sync_[^/]+\.(?:jpe?g|png|gif)$#i', $photoPath)) {
+                if (preg_match('#(?:^|/)sync_hq_[^/]+\.jpg$#i', $photoPath)) {
                     $counts['uploaded']++;
                 } else {
                     $counts['pending']++;
@@ -497,7 +497,7 @@ final class DatabaseSyncService
                 'source_photos' => $counts['source_photos'],
                 'without_registration' => $counts['without_registration'],
             ] + $counts + [
-                'note' => 'Already synced counts demo photo paths created by this sync tool. Pending counts matched students whose demo photo has not been synced by this tool yet; sync replaces the current demo photo when an exam photo is available.',
+                'note' => 'Photos are saved as high-resolution JPEGs (up to 600 × 700 px) for clearer student details and print output. Earlier 60 × 70 sync files count as pending and will be replaced on the next sync. Demo photos change only when a valid exam photo is available.',
             ];
         } finally {
             if ($source->inTransaction()) { $source->rollBack(); }
@@ -631,7 +631,7 @@ final class DatabaseSyncService
         $ext = 'jpg';
         $directory = BASE_PATH . '/public/uploads/students';
         if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) { return null; }
-        $name = 'sync_' . $studentId . '_' . substr(hash('sha256', $storedPath), 0, 16) . '.' . $ext;
+        $name = 'sync_hq_' . $studentId . '_' . substr(hash('sha256', $storedPath), 0, 16) . '.' . $ext;
         return ['uploads/students/' . $name, $directory . '/' . $name, $bytes];
     }
 
@@ -639,9 +639,7 @@ final class DatabaseSyncService
     {
         $width = imagesx($image);
         $height = imagesy($image);
-        $targetWidth = 60;
-        $targetHeight = 70;
-        $targetRatio = $targetWidth / $targetHeight;
+        $targetRatio = 6 / 7;
         if ($width / $height > $targetRatio) {
             $cropHeight = $height;
             $cropWidth = max(1, (int) round($height * $targetRatio));
@@ -653,12 +651,18 @@ final class DatabaseSyncService
             $sourceX = 0;
             $sourceY = (int) floor(($height - $cropHeight) / 2);
         }
+        // Keep enough pixels for the larger student-details photo and print
+        // layouts. Do not upscale small originals; only downsample to this cap.
+        $scale = min(1, 600 / $cropWidth, 700 / $cropHeight);
+        $targetWidth = max(1, (int) round($cropWidth * $scale));
+        $targetHeight = max(1, (int) round($cropHeight * $scale));
         $canvas = imagecreatetruecolor($targetWidth, $targetHeight);
         imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
         imagecopyresampled($canvas, $image, 0, 0, $sourceX, $sourceY, $targetWidth, $targetHeight, $cropWidth, $cropHeight);
         ob_start();
-        imagejpeg($canvas, null, 86);
+        imagejpeg($canvas, null, 92);
         $encoded = (string) ob_get_clean();
+        imagedestroy($canvas);
         if ($encoded === '') { throw new RuntimeException('A student photo could not be encoded on demo.'); }
         return $encoded;
     }

@@ -3549,3 +3549,11 @@ textarea:focus {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+@media (min-width: 640px) {
+    .student-details-identity-grid {
+        grid-template-columns: 150px minmax(0, 1fr);
+    }
+}
+.student-details-identity-grid {
+    grid-template-columns: minmax(0, 1fr);
+}

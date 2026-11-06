@@ -171,7 +171,7 @@ if ($mainWebsite !== '' && !preg_match('~^https?://~i', $mainWebsite)) { $mainWe
             </div>
         </div>
 
-        <p class="mt-6 text-center">
+        <p class="mt-6 text-center"Membership application>
             <?php if ($mainWebsite !== ''): ?><a href="<?= e($mainWebsite) ?>" class="btn btn-dark btn-sm">Go to <?= e(brand('authority_name')) ?> Website</a><?php endif; ?>
         </p>
 </div>
