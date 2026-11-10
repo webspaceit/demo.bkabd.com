@@ -295,7 +295,7 @@ $activeSession = Auth::activeSession();
 
             <div class="flex items-center gap-3 md:gap-4">
                 <?php if (Auth::isAdmin() && $sessions): ?>
-                <select id="session-switcher" class="hidden md:block w-auto border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white text-slate-700 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none shadow-sm">
+                <select id="session-switcher" class="hidden md:block w-auto border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold bg-white text-slate-700 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none shadow-sm">
                     <?php foreach ($sessions as $s): ?>
                         <option value="<?= (int) $s['id'] ?>" <?= (string) $s['session'] === (string) $activeSession ? 'selected' : '' ?>>
                             Session <?= e($s['session']) ?><?= (int) $s['active'] === 1 ? ' (active)' : '' ?>
