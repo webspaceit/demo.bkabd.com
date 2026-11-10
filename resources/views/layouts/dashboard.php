@@ -155,6 +155,15 @@ if (Auth::isAdmin()) {
     $sessions = \App\Models\ExamSession::query()->orderBy('id', 'desc')->get();
 }
 $activeSession = Auth::activeSession();
+$activeSessionLabel = 'Session ' . (string) $activeSession;
+foreach ($sessions as $sessionOption) {
+    if ((string) $sessionOption['session'] === (string) $activeSession) {
+        if ((int) $sessionOption['active'] === 1) {
+            $activeSessionLabel .= ' (active)';
+        }
+        break;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -295,13 +304,25 @@ $activeSession = Auth::activeSession();
 
             <div class="flex items-center gap-3 md:gap-4">
                 <?php if (Auth::isAdmin() && $sessions): ?>
-                <select id="session-switcher" class="hidden md:block w-auto border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold bg-[#047253] text-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none shadow-sm">
+                <div class="session-switcher-wrap hidden md:block">
+                <select id="session-switcher" class="hidden" aria-hidden="true" tabindex="-1">
                     <?php foreach ($sessions as $s): ?>
                         <option value="<?= (int) $s['id'] ?>" <?= (string) $s['session'] === (string) $activeSession ? 'selected' : '' ?>>
                             Session <?= e($s['session']) ?><?= (int) $s['active'] === 1 ? ' (active)' : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <button id="session-switcher-trigger" type="button" class="session-switcher-trigger" aria-haspopup="listbox" aria-expanded="false">
+                    <span><?= e($activeSessionLabel) ?></span>
+                    <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7.5 5 5 5-5"/></svg>
+                </button>
+                <div id="session-switcher-menu" class="session-switcher-menu hidden" role="listbox" aria-label="Select exam session">
+                    <?php foreach ($sessions as $s): ?>
+                        <?php $sessionLabel = 'Session ' . (string) $s['session'] . ((int) $s['active'] === 1 ? ' (active)' : ''); ?>
+                        <button type="button" class="session-switcher-option" role="option" aria-selected="<?= (string) $s['session'] === (string) $activeSession ? 'true' : 'false' ?>" data-value="<?= (int) $s['id'] ?>"><?= e($sessionLabel) ?></button>
+                    <?php endforeach; ?>
+                </div>
+                </div>
                 <?php endif; ?>
 
                 <?php if ($canSee('student-list|student-approve')): ?>

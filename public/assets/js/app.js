@@ -401,6 +401,35 @@ window.BK = (function () {
 
     const switcher = document.getElementById('session-switcher');
     if (switcher) {
+        const switcherTrigger = document.getElementById('session-switcher-trigger');
+        const switcherMenu = document.getElementById('session-switcher-menu');
+        if (switcherTrigger && switcherMenu) {
+            const closeSessionMenu = function () {
+                switcherMenu.classList.add('hidden');
+                switcherTrigger.setAttribute('aria-expanded', 'false');
+            };
+            switcherTrigger.addEventListener('click', function (event) {
+                event.stopPropagation();
+                const isOpening = switcherMenu.classList.contains('hidden');
+                switcherMenu.classList.toggle('hidden', !isOpening);
+                switcherTrigger.setAttribute('aria-expanded', isOpening ? 'true' : 'false');
+            });
+            switcherMenu.querySelectorAll('[data-value]').forEach(function (option) {
+                option.addEventListener('click', function () {
+                    switcher.value = option.dataset.value;
+                    closeSessionMenu();
+                    switcher.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            });
+            switcherMenu.addEventListener('click', function (event) { event.stopPropagation(); });
+            document.addEventListener('click', closeSessionMenu);
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !switcherMenu.classList.contains('hidden')) {
+                    closeSessionMenu();
+                    switcherTrigger.focus();
+                }
+            });
+        }
         switcher.addEventListener('change', async function () {
             try {
                 await BK.get('/api/updateSession/' + encodeURIComponent(switcher.value));
