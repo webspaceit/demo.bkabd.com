@@ -3595,4 +3595,7 @@ textarea:focus {
 .session-switcher-menu:not(.hidden){display:block}
 .session-switcher-option{display:block;width:100%;padding:7px 10px;border:0;border-radius:5px;background:transparent;color:#fff;text-align:left;font-size:12px;font-weight:600;line-height:1.25;white-space:nowrap;cursor:pointer}
 .session-switcher-option:hover,.session-switcher-option:focus-visible,.session-switcher-option[aria-selected="true"]{background:#ECFDF5;color:#064e3b;outline:none}
+.dashboard-public-site-link{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #047253;border-radius:9px;background:#047253;color:#fff;font-size:12px;font-weight:700;line-height:1.25;text-decoration:none;white-space:nowrap;box-shadow:0 1px 2px rgb(15 23 42 / 8%)}
+.dashboard-public-site-link:hover,.dashboard-public-site-link:focus-visible{background:#035b43;outline:2px solid rgb(4 114 83 / 22%);outline-offset:2px}
+.dashboard-public-site-link svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 

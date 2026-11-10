@@ -325,6 +325,11 @@ foreach ($sessions as $sessionOption) {
                 </div>
                 <?php endif; ?>
 
+                <a href="https://bkabd.com" target="_blank" rel="noopener noreferrer" class="dashboard-public-site-link">
+                    Go to website
+                    <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M11 3h6v6M17 3l-8 8"/><path d="M15 11v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>
+                </a>
+
                 <?php if ($canSee('student-list|student-approve')): ?>
                 <a href="/pending-students" class="relative p-1 text-slate-500 hover:text-slate-700 transition shrink-0" title="Pending registrations" aria-label="Pending registrations">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
